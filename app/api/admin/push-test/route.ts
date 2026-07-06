@@ -18,8 +18,14 @@ export async function POST() {
 
   const baseUrl = (process.env.APP_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
   const result = await sendPushToAll({
-    title: "テスト通知",
-    body: `Push通知のテストです。\n送信日時: ${new Date().toLocaleString("ja-JP")}`,
+    title: "📦 オールマイト",
+    body: `テスト通知です。\n送信日時: ${new Date().toLocaleString("ja-JP")}`,
+    icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    image: "/icons/icon-512.png",
+    tag: "request-test",
+    renotify: true,
+    requireInteraction: true,
     url: `${baseUrl}/admin/requests`,
   });
 

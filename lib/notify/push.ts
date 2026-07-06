@@ -20,6 +20,14 @@ export type PushPayload = {
   icon?: string;
   /** バッジアイコン(未指定時はSW側の既定アイコン) */
   badge?: string;
+  /** 大きい画像(Androidのビッグピクチャー表示) */
+  image?: string;
+  /** 通知のグルーピングタグ */
+  tag?: string;
+  /** 同一tagでも再通知するか */
+  renotify?: boolean;
+  /** ユーザーが操作するまで通知を残すか */
+  requireInteraction?: boolean;
 };
 
 export type PushSendResult = {
@@ -138,28 +146,25 @@ export const pushNotifier: Notifier = {
   },
 
   async sendNewRequest(n: NewRequestNotification) {
-    const value = (v: string) => (v && v.trim() ? v : "-");
+    // 通知クリックで管理画面(申請一覧)を開く
+    let url = "/admin/requests";
+    try {
+      url = `${new URL(n.adminUrl).origin}/admin/requests`;
+    } catch {
+      /* adminUrlが相対等の場合は既定値のまま */
+    }
 
-    // 種別ごとに通知の見た目を切り替える(通知を見ただけで種別が分かるように)
-    const isAllmight = n.formTypeName === "オールマイト";
-    const title = isAllmight
-      ? "📦 オールマイト 新規申請"
-      : "🎨 てずくーる 新規申請";
-    const icon = isAllmight
-      ? "/icons/allmight-icon.png"
-      : "/icons/tezukuru-icon.png";
-
+    // ALLMIGHTアイコンで統一(PWAアイコンと同一。2026-07-06仕様)
     await sendPushToAll({
-      title,
-      body: [
-        `取次店：${value(n.agencyName)}`,
-        `会場：${value(n.boothName)}`,
-        `納品：${value(n.deliveryDate)}`,
-      ].join("\n"),
-      icon,
-      badge: icon,
-      // タップで申請詳細(/admin/requests/{id})を開く
-      url: n.adminUrl,
+      title: "📦 オールマイト",
+      body: "新しい申請があります",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      image: "/icons/icon-512.png",
+      tag: "request",
+      renotify: true,
+      requireInteraction: true,
+      url,
     });
   },
 };
