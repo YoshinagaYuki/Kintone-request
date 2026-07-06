@@ -58,18 +58,6 @@ export default async function RequestsPage({
       <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="text-xl font-bold sm:text-2xl">申請一覧</h1>
         <div className="flex flex-wrap items-baseline gap-3">
-          <Link
-            href="/admin/staff"
-            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
-          >
-            担当者マスター
-          </Link>
-          <Link
-            href="/admin/items"
-            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
-          >
-            名称マスター
-          </Link>
           <PushTestButton />
           <p className="text-sm text-gray-500">
             {statusFilter ? `${STATUS_LABELS[statusFilter]}: ` : ""}
