@@ -10,6 +10,7 @@ export function ApproveActions({
   requestId,
   status,
   previewOk,
+  confirmWarnings = [],
   usesRentalPlan = false,
   planSelectionRequired = false,
   rentalStatus = null,
@@ -20,6 +21,8 @@ export function ApproveActions({
   requestId: string;
   status: RequestStatus;
   previewOk: boolean;
+  /** 未入力の「確認が必要な項目」。承認時の確認ダイアログにも表示する */
+  confirmWarnings?: string[];
   /** レンタルプランを使う種別(てずくーる)か */
   usesRentalPlan?: boolean;
   /** プラン選択を必須にするか(旧申請で既にプラン確定済みなら false) */
@@ -59,6 +62,12 @@ export function ApproveActions({
     }
   }
 
+  /** 未入力の要確認項目を確認ダイアログ先頭に添える */
+  const warningBlock =
+    confirmWarnings.length > 0
+      ? `【確認が必要な項目】\n${confirmWarnings.map((l) => `⚠ ${l}が未入力です。`).join("\n")}\n\n`
+      : "";
+
   function handleApprove() {
     if (submitting) return;
 
@@ -75,12 +84,12 @@ export function ApproveActions({
         rentalStatus === "new_rental"
           ? `申請者が選択したレンタルプランは『${requestedPlanName ?? planName}』です。\n承認するプラン: 『${planName}』\nこの内容で承認しますか？`
           : `レンタルプラン『${planName}』で登録し承認します。よろしいですか？`;
-      if (!window.confirm(confirmMessage)) return;
+      if (!window.confirm(warningBlock + confirmMessage)) return;
       void post("approve", planId ? { rental_plan_id: planId } : {});
       return;
     }
 
-    if (!window.confirm("承認してkintoneへ登録します。よろしいですか?")) return;
+    if (!window.confirm(warningBlock + "承認してkintoneへ登録します。よろしいですか?")) return;
     void post("approve");
   }
 

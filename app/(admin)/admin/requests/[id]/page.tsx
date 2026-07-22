@@ -120,6 +120,11 @@ export default async function RequestDetailPage({
   const parsedEntries = Object.entries(request.parsed_data ?? {});
   const shippingSynced = histories.some((h) => h.action === "shipping_synced");
 
+  // 「確認が必要な項目」(parser_config.confirm_labels): 未入力でも申請は通るが承認前に要確認
+  const confirmWarnings = (request.form_types?.parser_config?.confirm_labels ?? []).filter(
+    (label) => !((request.parsed_data ?? {})[label] ?? "").trim()
+  );
+
   // レンタルプラン(てずくーる)関連
   const usesRentalPlan = (request.form_types?.parser_config?.select_fields ?? []).some(
     (sf) => sf.label === "レンタルプラン"
@@ -243,6 +248,22 @@ export default async function RequestDetailPage({
           {request.reject_reason}
         </div>
       )}
+
+      {/* 確認が必要な項目(未入力でも申請は可。承認前に承認者が確認する) */}
+      {confirmWarnings.length > 0 &&
+        (request.status === "pending" || request.status === "register_failed") && (
+          <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+            <p className="font-semibold">確認が必要な項目</p>
+            <ul className="mt-2 space-y-1">
+              {confirmWarnings.map((label) => (
+                <li key={label}>⚠ {label}が未入力です。</li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs">
+              未入力でも承認できます。内容をご確認のうえ、必要に応じてkintone側で補記してください。
+            </p>
+          </div>
+        )}
 
       {/* 入力者情報 */}
       <SectionCard title="入力者情報">
@@ -424,6 +445,7 @@ export default async function RequestDetailPage({
           requestId={request.id}
           status={request.status}
           previewOk={preview?.ok ?? false}
+          confirmWarnings={confirmWarnings}
           usesRentalPlan={usesRentalPlan}
           planSelectionRequired={
             usesRentalPlan && !(request.parsed_data ?? {})["レンタルプラン"]

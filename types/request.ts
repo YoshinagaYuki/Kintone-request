@@ -120,6 +120,11 @@ export type ParserConfig = {
   separator?: string;
   /** 必須ラベル。欠落していると申請エラー */
   required_labels?: string[];
+  /**
+   * 「確認が必要な項目」ラベル。未入力でも申請は通すが、
+   * 承認画面で警告表示し、承認者が確認したうえで承認する運用に使う
+   */
+  confirm_labels?: string[];
   /** 画面選択UI定義(例: てずくーるのレンタルプラン)。種別追加時もSQLだけで設定可能 */
   select_fields?: SelectFieldConfig[];
   /**

@@ -189,7 +189,7 @@ set
       { "fmt_label": "レンタルプラン", "kintone_code": "レンタル機材", "kintone_type": "DROP_DOWN", "required": true },
       { "fmt_label": "取次店名", "kintone_code": "文字列__1行__1", "kintone_type": "SINGLE_LINE_TEXT", "required": true },
       { "fmt_label": "担当者", "kintone_code": "文字列__1行__0", "kintone_type": "SINGLE_LINE_TEXT", "required": true },
-      { "fmt_label": "◯月分として請求", "kintone_code": "文字列__1行_", "kintone_type": "SINGLE_LINE_TEXT", "required": true, "transform": "billing_month_next" },
+      { "fmt_label": "◯月分として請求", "kintone_code": "文字列__1行_", "kintone_type": "SINGLE_LINE_TEXT", "transform": "billing_month_next" },
       { "fmt_label": "イベントブース名", "kintone_code": "イベント実施場所", "kintone_type": "SINGLE_LINE_TEXT" },
       { "fmt_label": "コンテンツ1", "kintone_code": "コンテンツ", "kintone_type": "DROP_DOWN", "required": true },
       { "fmt_label": "数量1", "kintone_code": "数値", "kintone_type": "NUMBER", "required": true },
@@ -237,8 +237,10 @@ set
   }'::jsonb,
   parser_config = '{
     "separator": ":",
-    "required_labels": ["レンタルプラン", "取次店名", "担当者", "◯月分として請求", "コンテンツ1", "数量1", "配送日付", "集荷日付"],
+    "required_labels": ["レンタルプラン", "取次店名", "担当者", "コンテンツ1", "数量1", "配送日付", "集荷日付"],
+    "confirm_labels": ["◯月分として請求", "配送料"],
     "label_aliases": {
+      "〇月分として請求": "◯月分として請求",
       "緊急時責任者氏名": "責任者氏名",
       "緊急時責任者電話番号": "責任者電話番号",
       "請求月": "◯月分として請求"
