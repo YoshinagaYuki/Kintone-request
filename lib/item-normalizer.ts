@@ -51,15 +51,92 @@ const TARGETS: Record<string, { category: string; fields: string[] }> = {
   },
 };
 
-/** 比較用正規化: 小文字化・空白/括弧/一部記号の除去・全角英数→半角 */
-function normalizeForCompare(s: string): string {
+/**
+ * 比較用正規化。表記ゆれを吸収する:
+ * 全角英数→半角 / 英字小文字化 / 空白・括弧・記号除去 / カタカナ→ひらがな / 長音符除去
+ */
+export function normalizeForCompare(s: string): string {
   return s
     .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (c) =>
       String.fromCharCode(c.charCodeAt(0) - 0xfee0)
     )
     .toLowerCase()
     .replace(/[\s　]+/g, "")
-    .replace(/[()（）\[\]【】・.。、,，!！?？]/g, "");
+    .replace(/[()（）\[\]【】・.。、,，!！?？~〜_\-–—]/g, "")
+    // カタカナ → ひらがな(ひらがな/カタカナ表記ゆれの吸収)
+    .replace(/[ァ-ヶ]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60))
+    // 長音符の軽微な違いを無視
+    .replace(/[ーｰ]/g, "");
+}
+
+/** 2-gram の集合(1文字語はその文字自身) */
+function bigrams(s: string): string[] {
+  if (s.length <= 1) return s ? [s] : [];
+  const out: string[] = [];
+  for (let i = 0; i < s.length - 1; i++) out.push(s.slice(i, i + 2));
+  return out;
+}
+
+/**
+ * 類似度(0〜1)。Dice係数ベース + 部分一致・略称を優遇。
+ * 例: 「シャカキー」↔「しゃかしゃかキーホルダー」が高スコアになる
+ */
+export function similarity(a: string, b: string): number {
+  const x = normalizeForCompare(a);
+  const y = normalizeForCompare(b);
+  if (!x || !y) return 0;
+  if (x === y) return 1;
+
+  // 部分一致(略称の入力を想定)
+  if (y.includes(x) || x.includes(y)) {
+    const ratio = Math.min(x.length, y.length) / Math.max(x.length, y.length);
+    return Math.max(0.75, ratio); // 部分一致は最低0.75を保証
+  }
+
+  const bx = bigrams(x);
+  const by = bigrams(y);
+  if (bx.length === 0 || by.length === 0) return 0;
+  const pool = [...by];
+  let hit = 0;
+  for (const g of bx) {
+    const i = pool.indexOf(g);
+    if (i >= 0) {
+      hit++;
+      pool.splice(i, 1);
+    }
+  }
+  return (2 * hit) / (bx.length + by.length);
+}
+
+/** この値未満は「自動選択しない(選択してください)」とする閾値 */
+export const AUTO_SELECT_THRESHOLD = 0.5;
+
+export type ItemSuggestion = { name: string; score: number };
+
+/**
+ * 入力値に最も近い正式名称を1つ提案する。
+ * ・完全一致 / 別名一致は score=1
+ * ・それ以外は類似度で判定し、AUTO_SELECT_THRESHOLD 未満なら null(未選択)
+ */
+export function suggestItemName(
+  input: string,
+  entries: ItemMasterEntry[]
+): ItemSuggestion | null {
+  const raw = (input ?? "").trim();
+  if (!raw || entries.length === 0) return null;
+
+  // 完全一致 / 別名一致(正規化込み)を最優先
+  const exact = normalizeItemName(raw, entries);
+  if (exact.matched) return { name: exact.name, score: 1 };
+
+  let best: ItemSuggestion | null = null;
+  for (const e of entries) {
+    const candidates = [e.name, ...(e.aliases ?? [])];
+    const score = Math.max(...candidates.map((c) => similarity(raw, c)));
+    if (!best || score > best.score) best = { name: e.name, score };
+  }
+  if (!best || best.score < AUTO_SELECT_THRESHOLD) return null;
+  return best;
 }
 
 /** レーベンシュタイン距離(閾値1で使う想定の素朴な実装) */

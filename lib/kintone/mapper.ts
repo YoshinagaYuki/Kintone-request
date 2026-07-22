@@ -7,6 +7,8 @@
  * レコード登録(API呼び出し)は手順7-8で実装。
  */
 
+import { normalizeBillingMonth } from "../billing-month";
+
 export type FieldMappingEntry = {
   /** FMT側のラベル(parsed_data のキー) */
   fmt_label: string;
@@ -50,7 +52,8 @@ export type KintoneMappableType =
 export type KintoneRecord = Record<string, { value: string | string[] }>;
 
 export type MapResult =
-  | { ok: true; record: KintoneRecord }
+  /** warnings: 送信を見送った項目の警告(承認は可能。承認画面に表示する) */
+  | { ok: true; record: KintoneRecord; warnings: string[] }
   | { ok: false; errors: string[] };
 
 /** 全角数字(U+FF10-FF19)を半角へ */
@@ -138,31 +141,20 @@ function normalizeDate(raw: string): string | null {
 function transformBillingMonthNext(
   raw: string,
   label: string
-): { value: string } | { error: string } {
-  const s = toHalfWidthDigits(raw).trim();
-
-  // 変換済み形式(「7月分8月請求」等)はそのまま通す(旧FMT互換)
-  if (/^(?:\d{4}年)?\d{1,2}月分\d{1,2}月請求$/.test(s)) {
-    return { value: s };
+): { value: string } | { warning: string } {
+  // 変換ロジックは lib/billing-month.ts に集約(重複実装しない)
+  const result = normalizeBillingMonth(raw);
+  if (!result.ok) {
+    // 勝手に補完せず、送信もしない。承認画面で警告表示する
+    return { warning: `「${label}」を請求月として判定できませんでした(入力値: ${raw})` };
   }
-
-  const m = s.match(/^(?:(\d{4})年)?\s*(\d{1,2})月(?:分)?$/);
-  if (!m) {
-    return { error: `「${label}」を請求月として解釈できません(例: 7月分): ${raw}` };
-  }
-  const yearPrefix = m[1] ? `${Number(m[1])}年` : "";
-  const month = Number(m[2]);
-  if (month < 1 || month > 12) {
-    return { error: `「${label}」の月が不正です(1〜12): ${raw}` };
-  }
-  const nextMonth = month === 12 ? 1 : month + 1;
-  return { value: `${yearPrefix}${month}月分${nextMonth}月請求` };
+  return { value: result.value };
 }
 
 /** 特殊変換の一覧。追加時はここに登録し、field_mapping の transform で指定する */
 const TRANSFORMS: Record<
   string,
-  (raw: string, label: string) => { value: string } | { error: string }
+  (raw: string, label: string) => { value: string } | { error: string } | { warning: string }
 > = {
   billing_month_next: transformBillingMonthNext,
 };
@@ -210,6 +202,7 @@ export function buildKintoneRecord(
   mapping: FieldMapping
 ): MapResult {
   const errors: string[] = [];
+  const warnings: string[] = [];
   const record: KintoneRecord = {};
 
   if (!mapping || !Array.isArray(mapping.mappings) || mapping.mappings.length === 0) {
@@ -244,6 +237,11 @@ export function buildKintoneRecord(
         errors.push(transformed.error);
         continue;
       }
+      if ("warning" in transformed) {
+        // 判定できない値は補完も送信もせず、警告として承認画面へ通知
+        warnings.push(transformed.warning);
+        continue;
+      }
       record[entry.kintone_code] = { value: transformed.value };
       continue;
     }
@@ -261,5 +259,5 @@ export function buildKintoneRecord(
   }
 
   if (errors.length > 0) return { ok: false, errors };
-  return { ok: true, record };
+  return { ok: true, record, warnings };
 }

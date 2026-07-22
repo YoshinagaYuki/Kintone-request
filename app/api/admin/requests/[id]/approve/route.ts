@@ -26,7 +26,11 @@ export async function POST(
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
   }
 
-  let body: { rental_plan_id?: string | null } = {};
+  let body: {
+    rental_plan_id?: string | null;
+    /** 承認画面で確定したコンテンツ正式名称 { "コンテンツ1": "..." } */
+    contents?: Record<string, string> | null;
+  } = {};
   try {
     body = await req.json();
   } catch {
@@ -105,6 +109,35 @@ export async function POST(
         { error: "レンタルプランを選択してください(承認にはプランの確定が必要です)" },
         { status: 409 }
       );
+    }
+  }
+
+  // コンテンツ確定(商品マスタの正式名称のみ許可)。申請原文は parsed_data に保持したまま
+  if (body.contents && typeof body.contents === "object") {
+    const entries = Object.entries(body.contents).filter(
+      ([label, name]) => /^コンテンツ\d+$/.test(label) && typeof name === "string" && name.trim()
+    );
+    if (entries.length > 0) {
+      const { data: masterRows } = await supabase
+        .from("item_name_master")
+        .select("name")
+        .eq("is_active", true);
+      const validNames = new Set((masterRows ?? []).map((r) => r.name as string));
+      const invalid = entries.filter(([, name]) => !validNames.has(name));
+      if (invalid.length > 0) {
+        return NextResponse.json(
+          {
+            error: `商品マスタに存在しない(または無効な)コンテンツが指定されました: ${invalid
+              .map(([l, n]) => `${l}=${n}`)
+              .join(", ")}`,
+          },
+          { status: 400 }
+        );
+      }
+      await supabase
+        .from("requests")
+        .update({ approved_contents: Object.fromEntries(entries) })
+        .eq("id", id);
     }
   }
 

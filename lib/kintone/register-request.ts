@@ -43,7 +43,7 @@ export async function registerRequestToKintone(
   const { data: request, error: fetchError } = await supabase
     .from("requests")
     .select(
-      "id, parsed_data, status, kintone_record_id, form_type_id, form_type_version, applicant_name, applicant_email, approved_rental_plan_id, requested_rental_plan_id, form_types(name, kintone_app_id, field_mapping)"
+      "id, parsed_data, status, kintone_record_id, form_type_id, form_type_version, applicant_name, applicant_email, approved_rental_plan_id, requested_rental_plan_id, approved_contents, form_types(name, kintone_app_id, field_mapping)"
     )
     .eq("id", requestId)
     .maybeSingle();
@@ -74,6 +74,13 @@ export async function registerRequestToKintone(
       .eq("id", planId)
       .maybeSingle();
     if (plan?.name) parsedData["レンタルプラン"] = plan.name;
+  }
+
+  // 承認画面で確定したコンテンツ正式名称をkintone登録値に反映
+  // (申請原文ではなく商品マスタの正式名称を登録。数量との対応はラベルで保たれる)
+  const approvedContents = (request.approved_contents ?? {}) as Record<string, string>;
+  for (const [label, name] of Object.entries(approvedContents)) {
+    if (name && name.trim()) parsedData[label] = name;
   }
 
   // kintone AppID は form_types(現行)から取得

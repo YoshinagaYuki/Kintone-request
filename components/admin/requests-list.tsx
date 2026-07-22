@@ -40,6 +40,30 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
 
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
 
+  /** 行内のボタン/リンク/入力操作では遷移させない */
+  function isInteractive(target: EventTarget | null): boolean {
+    return Boolean(
+      target instanceof HTMLElement &&
+        target.closest("a, button, input, select, textarea, label, [role='button']")
+    );
+  }
+
+  /** 行クリック → 詳細へ遷移(キーボードは Enter / Space) */
+  function openDetail(id: string) {
+    router.push(`/admin/requests/${id}`);
+  }
+  function handleRowClick(e: React.MouseEvent, id: string) {
+    if (isInteractive(e.target)) return;
+    openDetail(id);
+  }
+  function handleRowKeyDown(e: React.KeyboardEvent, id: string) {
+    if (isInteractive(e.target)) return;
+    if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+      e.preventDefault();
+      openDetail(id);
+    }
+  }
+
   function toggle(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -129,7 +153,12 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
             {rows.map((row) => (
               <tr
                 key={row.id}
-                className={`transition-colors hover:bg-blue-50/40 ${selected.has(row.id) ? "bg-red-50/50" : ""}`}
+                onClick={(e) => handleRowClick(e, row.id)}
+                onKeyDown={(e) => handleRowKeyDown(e, row.id)}
+                tabIndex={0}
+                role="link"
+                aria-label={`${row.form_type_name} の申請詳細を開く`}
+                className={`cursor-pointer transition-colors hover:bg-blue-50 focus:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${selected.has(row.id) ? "bg-red-50/50" : ""}`}
               >
                 <td className="px-4 py-3">
                   <input
@@ -180,7 +209,12 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
         {rows.map((row) => (
           <div
             key={row.id}
-            className={`flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm ${selected.has(row.id) ? "border-red-300 bg-red-50/50" : ""}`}
+            onClick={(e) => handleRowClick(e, row.id)}
+            onKeyDown={(e) => handleRowKeyDown(e, row.id)}
+            tabIndex={0}
+            role="link"
+            aria-label={`${row.form_type_name} の申請詳細を開く`}
+            className={`flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:bg-gray-50 ${selected.has(row.id) ? "border-red-300 bg-red-50/50" : ""}`}
           >
             <input
               type="checkbox"

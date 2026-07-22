@@ -5,6 +5,8 @@ import { StatusBadge } from "@/components/admin/status-badge";
 import { ApproveActions } from "@/components/admin/approve-actions";
 import { buildKintoneRecord, type FieldMapping } from "@/lib/kintone/mapper";
 import { getVersionedConfig, isKintoneReady } from "@/lib/form-types";
+import { suggestItemName, type ItemMasterEntry } from "@/lib/item-normalizer";
+import type { ApproveContentSlot } from "@/components/admin/approve-actions";
 import {
   ACTION_LABELS,
   RENTAL_STATUS_LABELS,
@@ -35,6 +37,7 @@ type Detail = {
   requested_rental_plan_id: string | null;
   approved_rental_plan_id: string | null;
   customer_requests: string | null;
+  approved_contents: Record<string, string> | null;
   application_email_sent_at: string | null;
   approval_email_sent_at: string | null;
   application_email_error: string | null;
@@ -102,7 +105,7 @@ export default async function RequestDetailPage({
   const { data } = await supabase
     .from("requests")
     .select(
-      "id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
+      "id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, approved_contents, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
     )
     .eq("id", id)
     .maybeSingle();
@@ -138,9 +141,9 @@ export default async function RequestDetailPage({
     typeof lastFailure?.detail?.error === "string" ? lastFailure.detail.error : null;
 
   // 「確認が必要な項目」(parser_config.confirm_labels): 未入力でも申請は通るが承認前に要確認
-  const confirmWarnings = (request.form_types?.parser_config?.confirm_labels ?? []).filter(
-    (label) => !((request.parsed_data ?? {})[label] ?? "").trim()
-  );
+  const confirmLabelWarnings = (request.form_types?.parser_config?.confirm_labels ?? [])
+    .filter((label) => !((request.parsed_data ?? {})[label] ?? "").trim())
+    .map((label) => `${label}が未入力です。`);
 
   // レンタルプラン(てずくーる)関連
   const usesRentalPlan = (request.form_types?.parser_config?.select_fields ?? []).some(
@@ -158,6 +161,41 @@ export default async function RequestDetailPage({
     pid ? allPlans.find((p) => p.id === pid)?.name ?? "(削除済みプラン)" : null;
   const requestedPlanName = planName(request.requested_rental_plan_id);
   const approvedPlanName = planName(request.approved_rental_plan_id);
+
+  // コンテンツ確定用: 商品マスタ(有効な正式名称)と、申請入力からの自動選択
+  const itemCategory =
+    request.form_types?.name === "オールマイト" ? "allmight" : "tezukuru";
+  const { data: itemData } = await supabase
+    .from("item_name_master")
+    .select("name, aliases, sort_order")
+    .eq("category", itemCategory)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+  const itemEntries: ItemMasterEntry[] = (itemData ?? []).map((r) => ({
+    name: r.name as string,
+    aliases: Array.isArray(r.aliases) ? (r.aliases as string[]) : [],
+  }));
+  const itemOptions = itemEntries.map((e) => e.name);
+
+  // 申請にコンテンツ入力があるスロットのみ対象(数量との対応はラベルで保持)
+  const parsed = (request.parsed_data ?? {}) as Record<string, string>;
+  const approvedContents = (request.approved_contents ?? {}) as Record<string, string>;
+  const contentSlots: ApproveContentSlot[] = Array.from({ length: 10 }, (_, i) => {
+    const label = `コンテンツ${i + 1}`;
+    const original = (parsed[label] ?? "").trim();
+    if (!original) return null;
+    // 承認済みの選択があればそれを、無ければ商品マスタから自動選択(低類似度は未選択)
+    const suggested =
+      approvedContents[label] ??
+      suggestItemName(original, itemEntries)?.name ??
+      "";
+    return {
+      label,
+      original,
+      suggested: itemOptions.includes(suggested) ? suggested : "",
+      quantity: (parsed[`数量${i + 1}`] ?? "").trim(),
+    };
+  }).filter((s): s is ApproveContentSlot => s !== null);
 
   // 申請時点の version の定義を使用(FMT改訂後も過去申請の表示・承認が壊れない)
   const versioned = await getVersionedConfig(
@@ -180,6 +218,10 @@ export default async function RequestDetailPage({
   // プレビュー用 parsed_data: レンタルプランは承認/申請プラン名で補完
   // (already_renting で未確定でも他項目の検証ができるよう、承認時に選択する旨のプレースホルダを入れる)
   const previewParsed: Record<string, string> = { ...(request.parsed_data ?? {}) };
+  // 承認画面で選択済みのコンテンツ正式名称をプレビューへ反映
+  for (const [label, name] of Object.entries(approvedContents)) {
+    if (name) previewParsed[label] = name;
+  }
   if (usesRentalPlan && !previewParsed["レンタルプラン"]) {
     previewParsed["レンタルプラン"] =
       approvedPlanName ?? requestedPlanName ?? "(承認時に選択)";
@@ -188,6 +230,12 @@ export default async function RequestDetailPage({
     showPreview && fieldMapping
       ? buildKintoneRecord(previewParsed, fieldMapping)
       : null;
+
+  // 「確認が必要な項目」= 未入力の confirm_labels + 変換できず送信を見送った項目(請求月など)
+  const confirmWarnings = [
+    ...confirmLabelWarnings,
+    ...(preview?.ok ? preview.warnings : []),
+  ];
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:py-10">
@@ -321,8 +369,8 @@ export default async function RequestDetailPage({
           <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
             <p className="font-semibold">確認が必要な項目</p>
             <ul className="mt-2 space-y-1">
-              {confirmWarnings.map((label) => (
-                <li key={label}>⚠ {label}が未入力です。</li>
+              {confirmWarnings.map((text) => (
+                <li key={text}>⚠ {text}</li>
               ))}
             </ul>
             <p className="mt-2 text-xs">
@@ -522,6 +570,8 @@ export default async function RequestDetailPage({
             request.approved_rental_plan_id ?? request.requested_rental_plan_id ?? ""
           }
           plans={activePlans.map((p) => ({ id: p.id, name: p.name }))}
+          contentSlots={contentSlots}
+          itemOptions={itemOptions}
         />
       )}
 
