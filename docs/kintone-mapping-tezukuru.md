@@ -103,8 +103,8 @@ cc:
 |---|---|---|---|---|
 | レンタルプラン | `レンタル機材` | DROP_DOWN | ○ | **画面のプルダウンで選択**(FMT貼り付けには含めない。選択値がFMT行として自動注入される) |
 | 取次店名 | `文字列__1行__1` | SINGLE_LINE_TEXT | ○ | 貸出先法人 |
-| 担当者名 | `文字列__1行__0` | SINGLE_LINE_TEXT | ○ | kintone必須(確定: FMTに含める) |
-| 請求月 | `文字列__1行_` | SINGLE_LINE_TEXT | ○ | kintone必須(確定: FMTに含める)。例: 7月分8月請求 |
+| 担当者 | `文字列__1行__0` | SINGLE_LINE_TEXT | | **任意**(2026-07-06確定)。未入力ならkintoneへ送信しない / confirm_labels で承認画面に警告 |
+| ◯月分として請求 | `文字列__1行_` | SINGLE_LINE_TEXT | | **任意**(2026-07-06確定)。transform: billing_month_next(「7月分」→「7月分8月請求」)。未入力なら送信しない / 承認画面に警告 |
 | イベントブース名 | `イベント実施場所` | SINGLE_LINE_TEXT | | |
 | to | `to_addr` | SINGLE_LINE_TEXT | ○ | 2026-07-05: 「伝票通知to」から変更 |
 | cc | `cc_addr` | SINGLE_LINE_TEXT | | 2026-07-05: 「伝票通知cc」から変更 |
@@ -157,7 +157,7 @@ cc:
 
 | 項目 | kintoneフィールドコード | 内容 |
 |---|---|---|
-| 配送料(FMT) | `文字列__複数行_`(備考) | オールマイトと同じく備考へテキスト転記(`配送費` には入れない) |
+| 配送料(FMT) | `文字列__複数行_`(備考) | **任意**(2026-07-06確定)。備考へテキスト転記(`配送費` には入れない)。未入力なら送信しない / 承認画面に警告 |
 | 固定値: 納品手配種別 | `手配種別` | 「通常配送」(チャーター等はユニティが承認前に修正) |
 | 固定値: 集荷手配種別 | `集荷_手配種別` | 「通常配送」 |
 | 固定値: 商品発送確認 | `商品発送確認` | 「確認前」(2026-07-04追加。承認=発送準備開始のため「見積中」ではない) |
@@ -177,6 +177,13 @@ cc:
 
 ## 5. 反映用SQL(確定版・★未実行)
 
+> **2026-07-06 確定(必須項目の見直し)**
+> ・`担当者` / `◯月分として請求` / `配送料` は **申請時 任意**(未入力でも申請可)
+> ・未入力項目は **kintoneへ送信しない**(default_value・ダミー値は使わない)
+> ・未入力時は `parser_config.confirm_labels` に基づき **承認画面で警告表示**
+> ・kintone App49 側の必須設定はユニティ側で解除済み
+> ・必須のまま維持: レンタルプラン / 取次店名 / コンテンツ1 / 数量1 / 配送日付 / 集荷日付
+
 実行すると version が自動で +1 され、mappings が入るため**承認(kintone登録)が自動有効化**される。
 実行前に pending のてずくーる申請が無いか確認すること(旧version=マッピング空のため承認不可のまま残る。
 その場合は差戻し→再申請の運用)。
@@ -188,7 +195,7 @@ set
     "mappings": [
       { "fmt_label": "レンタルプラン", "kintone_code": "レンタル機材", "kintone_type": "DROP_DOWN", "required": true },
       { "fmt_label": "取次店名", "kintone_code": "文字列__1行__1", "kintone_type": "SINGLE_LINE_TEXT", "required": true },
-      { "fmt_label": "担当者", "kintone_code": "文字列__1行__0", "kintone_type": "SINGLE_LINE_TEXT", "required": true },
+      { "fmt_label": "担当者", "kintone_code": "文字列__1行__0", "kintone_type": "SINGLE_LINE_TEXT" },
       { "fmt_label": "◯月分として請求", "kintone_code": "文字列__1行_", "kintone_type": "SINGLE_LINE_TEXT", "transform": "billing_month_next" },
       { "fmt_label": "イベントブース名", "kintone_code": "イベント実施場所", "kintone_type": "SINGLE_LINE_TEXT" },
       { "fmt_label": "コンテンツ1", "kintone_code": "コンテンツ", "kintone_type": "DROP_DOWN", "required": true },
@@ -237,8 +244,8 @@ set
   }'::jsonb,
   parser_config = '{
     "separator": ":",
-    "required_labels": ["レンタルプラン", "取次店名", "担当者", "コンテンツ1", "数量1", "配送日付", "集荷日付"],
-    "confirm_labels": ["◯月分として請求", "配送料"],
+    "required_labels": ["レンタルプラン", "取次店名", "コンテンツ1", "数量1", "配送日付", "集荷日付"],
+    "confirm_labels": ["担当者", "◯月分として請求", "配送料"],
     "label_aliases": {
       "〇月分として請求": "◯月分として請求",
       "緊急時責任者氏名": "責任者氏名",

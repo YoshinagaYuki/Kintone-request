@@ -220,6 +220,7 @@ export function buildKintoneRecord(
   }
 
   for (const entry of mapping.mappings) {
+    // 未入力の項目はkintoneへ送信しない(ダミー値・既定値による補完は行わない方針)
     const raw = (parsedData[entry.fmt_label] ?? "").trim();
 
     if (!raw) {
