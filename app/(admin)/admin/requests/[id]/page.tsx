@@ -120,6 +120,23 @@ export default async function RequestDetailPage({
   const parsedEntries = Object.entries(request.parsed_data ?? {});
   const shippingSynced = histories.some((h) => h.action === "shipping_synced");
 
+  // 通知結果(共通通知サービスの結果。最新の notified/notify_failed 履歴から取得)
+  const notifyHistory = [...histories]
+    .reverse()
+    .find((h) => h.action === "notified" || h.action === "notify_failed");
+  const notifyResults = ((notifyHistory?.detail?.results ?? []) as {
+    channel: string;
+    ok: boolean;
+    error?: string;
+  }[]).filter((n) => typeof n?.channel === "string");
+
+  // 登録失敗の最新エラー(赤色表示用)
+  const lastFailure = [...histories]
+    .reverse()
+    .find((h) => h.action === "kintone_failed");
+  const lastFailureMessage =
+    typeof lastFailure?.detail?.error === "string" ? lastFailure.detail.error : null;
+
   // 「確認が必要な項目」(parser_config.confirm_labels): 未入力でも申請は通るが承認前に要確認
   const confirmWarnings = (request.form_types?.parser_config?.confirm_labels ?? []).filter(
     (label) => !((request.parsed_data ?? {})[label] ?? "").trim()
@@ -192,6 +209,55 @@ export default async function RequestDetailPage({
         申請日時: {formatDateTime(request.created_at)}
         <span className="ml-3">定義Version: {request.form_type_version}</span>
       </p>
+
+      {/* 登録完了の成功メッセージ(ページ再読み込み後も登録済みなら表示・自動消去しない) */}
+      {request.status === "registered" && (
+        <div className="mt-5 rounded-lg border-2 border-green-400 bg-green-50 p-5 shadow-sm">
+          <p className="text-lg font-bold text-green-800">✅ 登録が完了しました</p>
+          <p className="mt-1 text-sm text-green-900">
+            kintoneへの登録と配送管理連携が正常に完了しました。
+          </p>
+          <dl className="mt-3 space-y-1 text-sm text-green-900">
+            <div className="flex gap-2">
+              <dt className="w-40 shrink-0 text-green-700">管理番号</dt>
+              <dd className="font-mono font-bold">{request.management_no ?? "未採番"}</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="w-40 shrink-0 text-green-700">kintoneレコードID</dt>
+              <dd className="font-mono font-bold">{request.kintone_record_id ?? "-"}</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="w-40 shrink-0 text-green-700">配送管理連携</dt>
+              <dd className="font-bold">{shippingSynced ? "完了" : "未完了"}</dd>
+            </div>
+          </dl>
+          {notifyResults.length > 0 && (
+            <dl className="mt-3 space-y-1 border-t border-green-200 pt-3 text-sm text-green-900">
+              {notifyResults.map((n) => (
+                <div key={n.channel} className="flex gap-2">
+                  <dt className="w-40 shrink-0 text-green-700">{n.channel}</dt>
+                  <dd className={n.ok ? "font-bold" : "font-bold text-red-700"}>
+                    {n.ok ? "成功" : `失敗${n.error ? `(${n.error})` : ""}`}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
+      )}
+
+      {/* 登録失敗(赤色。再試行はこの下の操作ボタンから) */}
+      {request.status === "register_failed" && (
+        <div className="mt-5 rounded-lg border-2 border-red-400 bg-red-50 p-5 shadow-sm">
+          <p className="text-lg font-bold text-red-800">⛔ 登録に失敗しました</p>
+          {lastFailureMessage && (
+            <p className="mt-1 break-words text-sm text-red-900">{lastFailureMessage}</p>
+          )}
+          <p className="mt-2 text-sm text-red-900">
+            下の「kintone登録を再実行」から再試行してください(登録済みの処理はスキップされます)。
+          </p>
+        </div>
+      )}
 
       {/* kintone連携サマリー */}
       {request.kintone_record_id && (

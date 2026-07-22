@@ -25,6 +25,8 @@ import { getVersionedConfig, isKintoneReady } from "../form-types";
 import { applyAllmightPricing } from "../allmight/pricing";
 import { normalizeRecordItems } from "../item-normalizer";
 import { sendApprovalMail } from "../mail/application-mails";
+import { notifyRegistration, registrationDedupKey } from "../notify/registration";
+import { notificationFromKintoneRecord } from "../notify/kintone-record";
 
 /** App10側の管理番号フィールドコード(docs/kintone-fields-allmight.md) */
 const MANAGEMENT_NO_FIELD_APP10 = "管理番号";
@@ -211,6 +213,31 @@ export async function registerRequestToKintone(
     await notifyApproved({ formTypeName: formType.name, kintoneRecordId: recordId });
   } catch (err) {
     console.error("[register-request] LINE WORKS通知失敗:", err);
+  }
+
+  // 共通通知サービス(Google Chat / LINE)。
+  // 【通知条件】ここに到達するのは kintone登録・採番・配送管理連携が **すべて成功** した場合のみ
+  //   (いずれかが失敗した場合は上の catch で markFailed → return し、通知は行わない)
+  // 通知内容は **kintoneレコードから生成**するため、kintone直接登録時と本文が100%一致する。
+  // 【分離】通知の成否は登録処理の成否に影響させない(結果は履歴に保存し画面に表示)
+  try {
+    const { record: latestRecord } = await getRecord(appId, recordId);
+    const notifyResult = await notifyRegistration(
+      notificationFromKintoneRecord(latestRecord, appId, {
+        formTypeName: formType.name,
+        managementNo,
+        recordId,
+      }),
+      { source: "app", dedupKey: registrationDedupKey(appId, recordId) }
+    );
+    if (!notifyResult.skipped) {
+      const allOk = notifyResult.results.every((r) => r.ok);
+      await addHistory(allOk ? "notified" : "notify_failed", {
+        results: notifyResult.results,
+      });
+    }
+  } catch (err) {
+    console.error("[register-request] 共通通知に失敗:", err);
   }
 
   // 承認完了メール(入力者宛)。kintone登録=承認完了 の時点で一度だけ送信。

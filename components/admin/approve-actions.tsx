@@ -39,6 +39,8 @@ export function ApproveActions({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [planId, setPlanId] = useState(defaultPlanId);
+  /** 成功後にボタンを「登録完了」で固定し、再送信を防ぐ(router.refresh 反映前の二重押下対策) */
+  const [done, setDone] = useState(false);
 
   async function post(
     action: "approve" | "retry",
@@ -53,7 +55,11 @@ export function ApproveActions({
         body: payload ? JSON.stringify(payload) : undefined,
       });
       const body = await res.json().catch(() => null);
-      if (!res.ok) setError(body?.error ?? "処理に失敗しました");
+      if (!res.ok) {
+        setError(body?.error ?? "処理に失敗しました");
+      } else {
+        setDone(true); // 成功: ボタンを「登録完了」に固定(二重登録防止)
+      }
     } catch {
       setError("通信エラーが発生しました");
     } finally {
@@ -69,7 +75,7 @@ export function ApproveActions({
       : "";
 
   function handleApprove() {
-    if (submitting) return;
+    if (submitting || done) return; // 二重登録防止
 
     // レンタルプランを使う種別: プラン確定 + 確認アラート
     if (usesRentalPlan) {
@@ -133,10 +139,20 @@ export function ApproveActions({
       {status === "pending" && (
         <button
           onClick={handleApprove}
-          disabled={submitting || !previewOk}
+          disabled={submitting || done || !previewOk}
           className="rounded-md bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
         >
-          {submitting ? "登録中..." : "承認してkintoneへ登録"}
+          {submitting ? "登録中…" : done ? "登録完了" : "承認してkintoneへ登録"}
+        </button>
+      )}
+
+      {/* 登録完了後は登録ボタンを出さない(二重登録防止) */}
+      {status === "registered" && (
+        <button
+          disabled
+          className="cursor-not-allowed rounded-md bg-green-600 px-6 py-2.5 text-sm font-semibold text-white opacity-80"
+        >
+          登録完了
         </button>
       )}
       {status === "pending" && !previewOk && (
@@ -148,14 +164,15 @@ export function ApproveActions({
       {status === "register_failed" && (
         <button
           onClick={() => {
+            if (submitting || done) return;
             if (window.confirm("kintone登録を再実行します。よろしいですか?")) {
               void post("retry");
             }
           }}
-          disabled={submitting}
+          disabled={submitting || done}
           className="rounded-md bg-orange-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:bg-gray-300"
         >
-          {submitting ? "再実行中..." : "kintone登録を再実行"}
+          {submitting ? "登録中…" : done ? "登録完了" : "kintone登録を再実行"}
         </button>
       )}
     </div>
