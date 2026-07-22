@@ -416,10 +416,10 @@ export function ApplyForm({
         />
       </div>
 
-      {/* 5. お客様からの要望・連絡事項(任意) */}
+      {/* 5. お客様からの要望(任意・複数行・改行保持) */}
       <div>
         <label className="block text-sm font-medium text-gray-700">
-          お客様からの要望・連絡事項{" "}
+          お客様からの要望{" "}
           <span className="text-xs font-normal text-gray-500">(任意)</span>
         </label>
         <textarea
@@ -427,7 +427,7 @@ export function ApplyForm({
           onChange={(e) => setCustomerRequests(e.target.value)}
           rows={4}
           maxLength={MAX_CUSTOMER_REQUESTS}
-          placeholder="配送時間の希望、イベント内容に関する相談、その他の連絡事項をご入力ください。"
+          placeholder="イベント内容に関するご相談、その他の連絡事項をご入力ください。"
           className="mt-1 w-full rounded-md border border-gray-300 bg-white p-3 text-sm focus:border-blue-500 focus:outline-none"
         />
         <p className="mt-1 text-right text-xs text-gray-400">

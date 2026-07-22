@@ -3,6 +3,12 @@ import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ApplyForm, type ApplyFormType } from "@/components/apply/apply-form";
 import type { RentalPlan } from "@/types/request";
+import {
+  DEFAULT_FMT_TEMPLATE,
+  DEFAULT_INPUT_GUIDE,
+  DEFAULT_NOTES,
+  withFallback,
+} from "@/lib/form-defaults";
 
 export const dynamic = "force-dynamic";
 
@@ -29,9 +35,11 @@ export default async function ApplyPage() {
     return {
       id: f.id,
       name: f.name,
-      fmt_template: f.fmt_template,
-      input_guide: f.input_guide,
-      notes: f.notes,
+      // 管理画面「申請フォーム設定」で編集した内容を表示。
+      // DB未登録(空)の場合のみ既定値へフォールバック
+      fmt_template: withFallback(f.fmt_template, DEFAULT_FMT_TEMPLATE),
+      input_guide: withFallback(f.input_guide, DEFAULT_INPUT_GUIDE),
+      notes: withFallback(f.notes, DEFAULT_NOTES),
       select_fields: allSelectFields.filter((sf) => sf.label !== "レンタルプラン"),
       has_rental_plan: allSelectFields.some((sf) => sf.label === "レンタルプラン"),
     };

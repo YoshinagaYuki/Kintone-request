@@ -322,9 +322,9 @@ export default async function RequestDetailPage({
         </SectionCard>
       )}
 
-      {/* お客様からの要望・連絡事項 */}
+      {/* お客様からの要望(承認画面でも表示・改行保持) */}
       {request.customer_requests && (
-        <SectionCard title="お客様からの要望・連絡事項">
+        <SectionCard title="お客様からの要望">
           <p className="whitespace-pre-wrap break-words p-4 text-sm leading-relaxed">
             {request.customer_requests}
           </p>
