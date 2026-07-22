@@ -3,13 +3,17 @@ import { createClient } from "@/lib/supabase/server";
 import { registerRequestToKintone } from "@/lib/kintone/register-request";
 import { getVersionedConfig, isKintoneReady } from "@/lib/form-types";
 import type { FieldMapping } from "@/lib/kintone/mapper";
+import type { ParserConfig } from "@/types/request";
 
 /**
  * 承認: status=approved → kintone登録 → registered / register_failed。
+ * レンタルプランを使う種別(てずくーる)は承認前にプラン確定が必須:
+ *   ・body.rental_plan_id があればそれを approved_rental_plan_id に採用
+ *   ・無ければ既存の approved/requested を採用。どちらも無ければ 409(承認不可)
  * middleware は /api を保護しないため、ここで認証チェックする。
  */
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
@@ -22,10 +26,18 @@ export async function POST(
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
   }
 
-  // pending のみ承認可能
+  let body: { rental_plan_id?: string | null } = {};
+  try {
+    body = await req.json();
+  } catch {
+    /* body なしも許容 */
+  }
+
   const { data: request } = await supabase
     .from("requests")
-    .select("id, status, form_type_id, form_type_version, form_types(field_mapping)")
+    .select(
+      "id, status, form_type_id, form_type_version, parsed_data, requested_rental_plan_id, approved_rental_plan_id, form_types(field_mapping, parser_config)"
+    )
     .eq("id", id)
     .maybeSingle();
 
@@ -39,10 +51,12 @@ export async function POST(
     );
   }
 
-  // 設定駆動ガード: 申請時点version の field_mapping が空なら承認不可
   const formType = request.form_types as unknown as {
     field_mapping?: FieldMapping;
+    parser_config?: ParserConfig;
   } | null;
+
+  // 設定駆動ガード: 申請時点version の field_mapping が空なら承認不可
   const versioned = await getVersionedConfig(
     supabase,
     request.form_type_id as string,
@@ -53,6 +67,45 @@ export async function POST(
       { error: "kintone登録は未設定です(この種別のマッピング確定後に承認できます)" },
       { status: 409 }
     );
+  }
+
+  // レンタルプラン確定(てずくーる)
+  const usesRentalPlan = (formType?.parser_config?.select_fields ?? []).some(
+    (sf) => sf.label === "レンタルプラン"
+  );
+  if (usesRentalPlan) {
+    const desiredPlanId =
+      (typeof body.rental_plan_id === "string" && body.rental_plan_id) ||
+      (request.approved_rental_plan_id as string | null) ||
+      (request.requested_rental_plan_id as string | null);
+
+    // 旧申請(プランマスタ導入前)は parsed_data に既にレンタルプランを持つ → プラン確定は不要
+    const legacyPlan = Boolean(
+      (request.parsed_data as Record<string, string> | null)?.["レンタルプラン"]
+    );
+
+    if (desiredPlanId) {
+      const { data: plan } = await supabase
+        .from("rental_plans")
+        .select("id, is_active")
+        .eq("id", desiredPlanId)
+        .maybeSingle();
+      if (!plan || !plan.is_active) {
+        return NextResponse.json(
+          { error: "選択されたレンタルプランは利用できません" },
+          { status: 400 }
+        );
+      }
+      await supabase
+        .from("requests")
+        .update({ approved_rental_plan_id: plan.id })
+        .eq("id", id);
+    } else if (!legacyPlan) {
+      return NextResponse.json(
+        { error: "レンタルプランを選択してください(承認にはプランの確定が必要です)" },
+        { status: 409 }
+      );
+    }
   }
 
   // 承認を記録
@@ -78,7 +131,7 @@ export async function POST(
     actor: user.id,
   });
 
-  // kintone登録(共通処理)
+  // kintone登録(共通処理。成功時に承認完了メールも送信される)
   const result = await registerRequestToKintone(supabase, id, user.id);
 
   if (!result.ok) {

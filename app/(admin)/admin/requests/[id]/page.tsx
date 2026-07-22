@@ -7,8 +7,12 @@ import { buildKintoneRecord, type FieldMapping } from "@/lib/kintone/mapper";
 import { getVersionedConfig, isKintoneReady } from "@/lib/form-types";
 import {
   ACTION_LABELS,
+  RENTAL_STATUS_LABELS,
   type HistoryAction,
   type RequestStatus,
+  type RentalStatus,
+  type ParserConfig,
+  type RentalPlan,
 } from "@/types/request";
 
 export const dynamic = "force-dynamic";
@@ -24,10 +28,22 @@ type Detail = {
   form_type_id: string;
   form_type_version: number;
   created_at: string;
+  applicant_name: string | null;
+  applicant_phone: string | null;
+  applicant_email: string | null;
+  rental_status: RentalStatus | null;
+  requested_rental_plan_id: string | null;
+  approved_rental_plan_id: string | null;
+  customer_requests: string | null;
+  application_email_sent_at: string | null;
+  approval_email_sent_at: string | null;
+  application_email_error: string | null;
+  approval_email_error: string | null;
   form_types: {
     name: string;
     kintone_app_id: number;
     field_mapping: FieldMapping;
+    parser_config: ParserConfig;
   } | null;
 };
 
@@ -86,7 +102,7 @@ export default async function RequestDetailPage({
   const { data } = await supabase
     .from("requests")
     .select(
-      "id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, form_types(name, kintone_app_id, field_mapping)"
+      "id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
     )
     .eq("id", id)
     .maybeSingle();
@@ -103,6 +119,23 @@ export default async function RequestDetailPage({
   const histories = (historiesData ?? []) as History[];
   const parsedEntries = Object.entries(request.parsed_data ?? {});
   const shippingSynced = histories.some((h) => h.action === "shipping_synced");
+
+  // レンタルプラン(てずくーる)関連
+  const usesRentalPlan = (request.form_types?.parser_config?.select_fields ?? []).some(
+    (sf) => sf.label === "レンタルプラン"
+  );
+  const { data: plansData } = usesRentalPlan
+    ? await supabase
+        .from("rental_plans")
+        .select("id, name, description, sort_order, is_active")
+        .order("sort_order", { ascending: true })
+    : { data: [] };
+  const allPlans = (plansData ?? []) as RentalPlan[];
+  const activePlans = allPlans.filter((p) => p.is_active);
+  const planName = (pid: string | null) =>
+    pid ? allPlans.find((p) => p.id === pid)?.name ?? "(削除済みプラン)" : null;
+  const requestedPlanName = planName(request.requested_rental_plan_id);
+  const approvedPlanName = planName(request.approved_rental_plan_id);
 
   // 申請時点の version の定義を使用(FMT改訂後も過去申請の表示・承認が壊れない)
   const versioned = await getVersionedConfig(
@@ -122,9 +155,16 @@ export default async function RequestDetailPage({
     (request.status === "pending" ||
       request.status === "approved" ||
       request.status === "register_failed");
+  // プレビュー用 parsed_data: レンタルプランは承認/申請プラン名で補完
+  // (already_renting で未確定でも他項目の検証ができるよう、承認時に選択する旨のプレースホルダを入れる)
+  const previewParsed: Record<string, string> = { ...(request.parsed_data ?? {}) };
+  if (usesRentalPlan && !previewParsed["レンタルプラン"]) {
+    previewParsed["レンタルプラン"] =
+      approvedPlanName ?? requestedPlanName ?? "(承認時に選択)";
+  }
   const preview =
     showPreview && fieldMapping
-      ? buildKintoneRecord(request.parsed_data ?? {}, fieldMapping)
+      ? buildKintoneRecord(previewParsed, fieldMapping)
       : null;
 
   return (
@@ -201,6 +241,106 @@ export default async function RequestDetailPage({
         <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm">
           <span className="font-semibold text-red-700">差戻し理由: </span>
           {request.reject_reason}
+        </div>
+      )}
+
+      {/* 入力者情報 */}
+      <SectionCard title="入力者情報">
+        <table className="w-full text-sm">
+          <tbody className="divide-y divide-gray-100">
+            <tr>
+              <th className="w-36 bg-gray-50 px-4 py-2 text-left font-medium text-gray-600 sm:w-48">
+                氏名
+              </th>
+              <td className="px-4 py-2">{request.applicant_name ?? "-"}</td>
+            </tr>
+            <tr>
+              <th className="w-36 bg-gray-50 px-4 py-2 text-left font-medium text-gray-600 sm:w-48">
+                電話番号
+              </th>
+              <td className="px-4 py-2">
+                {request.applicant_phone ? (
+                  <a href={`tel:${request.applicant_phone}`} className="text-blue-600 hover:underline">
+                    {request.applicant_phone}
+                  </a>
+                ) : (
+                  "-"
+                )}
+              </td>
+            </tr>
+            <tr>
+              <th className="w-36 bg-gray-50 px-4 py-2 text-left font-medium text-gray-600 sm:w-48">
+                メールアドレス
+              </th>
+              <td className="break-all px-4 py-2">
+                {request.applicant_email ? (
+                  <a href={`mailto:${request.applicant_email}`} className="text-blue-600 hover:underline">
+                    {request.applicant_email}
+                  </a>
+                ) : (
+                  "-"
+                )}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </SectionCard>
+
+      {/* レンタル情報(てずくーる) */}
+      {usesRentalPlan && (
+        <SectionCard title="レンタル情報">
+          <table className="w-full text-sm">
+            <tbody className="divide-y divide-gray-100">
+              <tr>
+                <th className="w-36 bg-gray-50 px-4 py-2 text-left font-medium text-gray-600 sm:w-48">
+                  レンタル状況
+                </th>
+                <td className="px-4 py-2">
+                  {request.rental_status
+                    ? RENTAL_STATUS_LABELS[request.rental_status]
+                    : "-"}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-36 bg-gray-50 px-4 py-2 text-left font-medium text-gray-600 sm:w-48">
+                  申請時プラン
+                </th>
+                <td className="px-4 py-2">
+                  {requestedPlanName ?? (request.rental_status === "already_renting" ? "(承認時に設定)" : "-")}
+                </td>
+              </tr>
+              <tr>
+                <th className="w-36 bg-gray-50 px-4 py-2 text-left font-medium text-gray-600 sm:w-48">
+                  承認プラン
+                </th>
+                <td className="px-4 py-2 font-medium">
+                  {approvedPlanName ?? "(未確定)"}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </SectionCard>
+      )}
+
+      {/* お客様からの要望・連絡事項 */}
+      {request.customer_requests && (
+        <SectionCard title="お客様からの要望・連絡事項">
+          <p className="whitespace-pre-wrap break-words p-4 text-sm leading-relaxed">
+            {request.customer_requests}
+          </p>
+        </SectionCard>
+      )}
+
+      {/* メール送信状況 */}
+      {(request.application_email_error || request.approval_email_error) && (
+        <div className="mt-4 rounded-md border border-orange-300 bg-orange-50 p-3 text-sm text-orange-800">
+          <p className="font-semibold">メール送信エラー</p>
+          {request.application_email_error && (
+            <p className="mt-1">申請完了メール: {request.application_email_error}</p>
+          )}
+          {request.approval_email_error && (
+            <p className="mt-1">承認完了メール: {request.approval_email_error}</p>
+          )}
         </div>
       )}
 
@@ -284,6 +424,16 @@ export default async function RequestDetailPage({
           requestId={request.id}
           status={request.status}
           previewOk={preview?.ok ?? false}
+          usesRentalPlan={usesRentalPlan}
+          planSelectionRequired={
+            usesRentalPlan && !(request.parsed_data ?? {})["レンタルプラン"]
+          }
+          rentalStatus={request.rental_status}
+          requestedPlanName={requestedPlanName}
+          defaultPlanId={
+            request.approved_rental_plan_id ?? request.requested_rental_plan_id ?? ""
+          }
+          plans={activePlans.map((p) => ({ id: p.id, name: p.name }))}
         />
       )}
 

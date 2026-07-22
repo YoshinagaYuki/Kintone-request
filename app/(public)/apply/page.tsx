@@ -1,19 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import {
-  ApplyForm,
-  type ApplyFormType,
-  type StaffOption,
-} from "@/components/apply/apply-form";
+import { ApplyForm, type ApplyFormType } from "@/components/apply/apply-form";
+import type { RentalPlan } from "@/types/request";
 
 export const dynamic = "force-dynamic";
 
 /**
  * 申請ページ(単一URL /apply)。
- * is_active=true の form_types を display_order 順にラジオで自動描画し、
- * 選択種別に応じてテンプレート・入力説明・注意事項を切り替える(完全マスタ駆動)。
- * 種別追加は form_types へのレコードINSERTのみで反映される。
+ * is_active=true の form_types を display_order 順にラジオで自動描画。
+ * オールマイトは is_active=false(機能オフ)のため公開申請には出ない。
+ * 担当者選択は機能オフ(コード/マスタは保持)。代わりに入力者情報を入力。
  */
 export default async function ApplyPage() {
   const supabase = createAdminClient();
@@ -24,26 +21,30 @@ export default async function ApplyPage() {
     .eq("is_active", true)
     .order("display_order", { ascending: true });
 
-  // 選択UI定義(parser_config.select_fields)のみクライアントへ渡す
-  const formTypes: ApplyFormType[] = (data ?? []).map((f) => ({
-    id: f.id,
-    name: f.name,
-    fmt_template: f.fmt_template,
-    input_guide: f.input_guide,
-    notes: f.notes,
-    select_fields:
+  // 選択UI定義(parser_config.select_fields)。レンタルプランは専用UIで扱うため除外する
+  const formTypes: ApplyFormType[] = (data ?? []).map((f) => {
+    const allSelectFields =
       (f.parser_config as { select_fields?: ApplyFormType["select_fields"] })
-        ?.select_fields ?? [],
-  }));
+        ?.select_fields ?? [];
+    return {
+      id: f.id,
+      name: f.name,
+      fmt_template: f.fmt_template,
+      input_guide: f.input_guide,
+      notes: f.notes,
+      select_fields: allSelectFields.filter((sf) => sf.label !== "レンタルプラン"),
+      has_rental_plan: allSelectFields.some((sf) => sf.label === "レンタルプラン"),
+    };
+  });
   if (formTypes.length === 0) notFound();
 
-  // 担当者マスター(is_active=true を sort_order 順。両種別共通)
-  const { data: staffData } = await supabase
-    .from("staff_members")
-    .select("id, name, company")
+  // レンタルプランマスタ(有効なもののみ・表示順)
+  const { data: planData } = await supabase
+    .from("rental_plans")
+    .select("id, name, description, sort_order, is_active")
     .eq("is_active", true)
     .order("sort_order", { ascending: true });
-  const staffMembers = (staffData ?? []) as StaffOption[];
+  const rentalPlans = (planData ?? []) as RentalPlan[];
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:py-10">
@@ -51,7 +52,7 @@ export default async function ApplyPage() {
         <div>
           <h1 className="text-xl font-bold sm:text-2xl">案件申請</h1>
           <p className="mt-2 text-sm leading-relaxed text-gray-600">
-            申請種別を選択し、FMT(定型フォーマット)を貼り付けて申請してください。
+            必要事項を入力し、FMT(定型フォーマット)を貼り付けて申請してください。
           </p>
         </div>
         <Link
@@ -62,7 +63,7 @@ export default async function ApplyPage() {
         </Link>
       </div>
 
-      <ApplyForm formTypes={formTypes} staffMembers={staffMembers} />
+      <ApplyForm formTypes={formTypes} rentalPlans={rentalPlans} />
     </main>
   );
 }

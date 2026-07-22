@@ -19,6 +19,9 @@ type Row = {
   status: RequestStatus;
   management_no: string | null;
   created_at: string;
+  applicant_name: string | null;
+  applicant_phone: string | null;
+  applicant_email: string | null;
   form_types: { name: string } | null;
 };
 
@@ -35,7 +38,9 @@ export default async function RequestsPage({
   const supabase = await createClient();
   let query = supabase
     .from("requests")
-    .select("id, status, management_no, created_at, form_types(name)")
+    .select(
+      "id, status, management_no, created_at, applicant_name, applicant_phone, applicant_email, form_types(name)"
+    )
     .order("created_at", { ascending: false })
     .limit(100);
 
@@ -48,6 +53,9 @@ export default async function RequestsPage({
     management_no: row.management_no,
     created_at: row.created_at,
     form_type_name: row.form_types?.name ?? "-",
+    applicant_name: row.applicant_name,
+    applicant_phone: row.applicant_phone,
+    applicant_email: row.applicant_email,
   }));
 
   return (

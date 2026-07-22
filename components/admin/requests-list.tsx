@@ -12,6 +12,9 @@ export type RequestListRow = {
   management_no: string | null;
   created_at: string;
   form_type_name: string;
+  applicant_name: string | null;
+  applicant_phone: string | null;
+  applicant_email: string | null;
 };
 
 function formatDateTime(iso: string): string {
@@ -109,6 +112,7 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
               </th>
               <th className="px-4 py-3">申請日時</th>
               <th className="px-4 py-3">種別</th>
+              <th className="px-4 py-3">入力者</th>
               <th className="px-4 py-3">管理番号</th>
               <th className="px-4 py-3">ステータス</th>
               <th className="px-4 py-3"><span className="sr-only">操作</span></th>
@@ -117,7 +121,7 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
           <tbody className="divide-y divide-gray-100">
             {rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-gray-500">
+                <td colSpan={7} className="px-4 py-10 text-center text-gray-500">
                   申請はありません
                 </td>
               </tr>
@@ -140,6 +144,12 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
                   {formatDateTime(row.created_at)}
                 </td>
                 <td className="px-4 py-3">{row.form_type_name}</td>
+                <td className="px-4 py-3">
+                  <div className="text-gray-800">{row.applicant_name ?? "-"}</div>
+                  {row.applicant_email && (
+                    <div className="text-xs text-gray-500">{row.applicant_email}</div>
+                  )}
+                </td>
                 <td className="px-4 py-3 font-mono text-xs text-gray-600">
                   {row.management_no ?? "-"}
                 </td>
@@ -184,7 +194,10 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
                 <span className="text-sm font-semibold">{row.form_type_name}</span>
                 <StatusBadge status={row.status} />
               </div>
-              <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+              {row.applicant_name && (
+                <div className="mt-1 text-xs text-gray-600">入力者: {row.applicant_name}</div>
+              )}
+              <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
                 <span>{formatDateTime(row.created_at)}</span>
                 {row.management_no && (
                   <span className="font-mono">No. {row.management_no}</span>

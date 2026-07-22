@@ -24,6 +24,7 @@ import { notifyApproved } from "../lineworks/client";
 import { getVersionedConfig, isKintoneReady } from "../form-types";
 import { applyAllmightPricing } from "../allmight/pricing";
 import { normalizeRecordItems } from "../item-normalizer";
+import { sendApprovalMail } from "../mail/application-mails";
 
 /** App10側の管理番号フィールドコード(docs/kintone-fields-allmight.md) */
 const MANAGEMENT_NO_FIELD_APP10 = "管理番号";
@@ -40,7 +41,7 @@ export async function registerRequestToKintone(
   const { data: request, error: fetchError } = await supabase
     .from("requests")
     .select(
-      "id, parsed_data, status, kintone_record_id, form_type_id, form_type_version, form_types(name, kintone_app_id, field_mapping)"
+      "id, parsed_data, status, kintone_record_id, form_type_id, form_type_version, applicant_name, applicant_email, approved_rental_plan_id, requested_rental_plan_id, form_types(name, kintone_app_id, field_mapping)"
     )
     .eq("id", requestId)
     .maybeSingle();
@@ -57,6 +58,20 @@ export async function registerRequestToKintone(
 
   if (!formType) {
     return { ok: false, error: "案件種別が見つかりません" };
+  }
+
+  // レンタルプランをkintoneへ反映(承認プラン優先。既に借りている申請でも承認時に確定した値を使う)
+  const parsedData = { ...((request.parsed_data ?? {}) as Record<string, string>) };
+  const planId =
+    (request.approved_rental_plan_id as string | null) ??
+    (request.requested_rental_plan_id as string | null);
+  if (planId) {
+    const { data: plan } = await supabase
+      .from("rental_plans")
+      .select("name")
+      .eq("id", planId)
+      .maybeSingle();
+    if (plan?.name) parsedData["レンタルプラン"] = plan.name;
   }
 
   // kintone AppID は form_types(現行)から取得
@@ -105,10 +120,7 @@ export async function registerRequestToKintone(
   let recordId = request.kintone_record_id as string | null;
 
   if (!recordId) {
-    const mapped = buildKintoneRecord(
-      (request.parsed_data ?? {}) as Record<string, string>,
-      fieldMapping
-    );
+    const mapped = buildKintoneRecord(parsedData, fieldMapping);
     if (!mapped.ok) {
       const msg = `マッピングエラー: ${mapped.errors.join(" / ")}`;
       await markFailed("mapping", msg);
@@ -199,6 +211,26 @@ export async function registerRequestToKintone(
     await notifyApproved({ formTypeName: formType.name, kintoneRecordId: recordId });
   } catch (err) {
     console.error("[register-request] LINE WORKS通知失敗:", err);
+  }
+
+  // 承認完了メール(入力者宛)。kintone登録=承認完了 の時点で一度だけ送信。
+  // approval_email_sent_at で二重送信を防止(retry再実行・再読み込みでも重複しない)
+  try {
+    await sendApprovalMail(
+      supabase,
+      requestId,
+      {
+        applicant_name: (request.applicant_name as string | null) ?? null,
+        applicant_email: (request.applicant_email as string | null) ?? null,
+        management_no: managementNo,
+        formTypeName: formType.name,
+        boothName: parsedData["イベントブース名"] ?? "",
+        agencyName: parsedData["取次店名"] ?? "",
+      },
+      new Date().toISOString()
+    );
+  } catch (err) {
+    console.error("[register-request] 承認完了メール失敗:", err);
   }
 
   return { ok: true, recordId, managementNo };

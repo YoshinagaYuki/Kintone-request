@@ -25,7 +25,9 @@ export type HistoryAction =
   | "numbered"
   | "shipping_synced"
   | "notified"
-  | "notify_failed";
+  | "notify_failed"
+  | "email_sent"
+  | "email_failed";
 
 export const ACTION_LABELS: Record<HistoryAction, string> = {
   submitted: "申請",
@@ -37,6 +39,25 @@ export const ACTION_LABELS: Record<HistoryAction, string> = {
   shipping_synced: "配送管理連携",
   notified: "LINE WORKS通知",
   notify_failed: "通知失敗",
+  email_sent: "メール送信",
+  email_failed: "メール送信失敗",
+};
+
+/** レンタル状況(てずくーる) */
+export const RENTAL_STATUSES = ["already_renting", "new_rental"] as const;
+export type RentalStatus = (typeof RENTAL_STATUSES)[number];
+export const RENTAL_STATUS_LABELS: Record<RentalStatus, string> = {
+  already_renting: "すでに借りている",
+  new_rental: "これから新規で借りる",
+};
+
+/** レンタルプランマスタ */
+export type RentalPlan = {
+  id: string;
+  name: string;
+  description: string;
+  sort_order: number;
+  is_active: boolean;
 };
 
 export type FormType = {
