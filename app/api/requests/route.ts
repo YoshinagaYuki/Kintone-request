@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
     applicant_name?: string;
     applicant_phone?: string;
     applicant_email?: string;
+    company_staff_name?: string;
     rental_status?: string | null;
     rental_plan_id?: string | null;
     customer_requests?: string | null;
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest) {
   const applicant_name = (body.applicant_name ?? "").toString().trim();
   const applicant_phone = (body.applicant_phone ?? "").toString().trim();
   const applicant_email = (body.applicant_email ?? "").toString().trim();
+  const company_staff_name = (body.company_staff_name ?? "").toString().trim();
   const rental_status = body.rental_status ?? null;
   const rental_plan_id = body.rental_plan_id ?? null;
   const customer_requests = (body.customer_requests ?? "").toString();
@@ -82,6 +84,8 @@ export async function POST(req: NextRequest) {
   else if (!EMAIL_RE.test(applicant_email) || applicant_email.length > MAX_EMAIL) {
     errors.push("メールアドレスの形式が正しくありません。");
   }
+  if (!company_staff_name) errors.push("弊社担当者氏名を入力してください。");
+  else if (company_staff_name.length > MAX_NAME) errors.push("弊社担当者氏名が長すぎます。");
   if (rental_status !== null && rental_status !== "already_renting" && rental_status !== "new_rental") {
     errors.push("レンタル状況が不正です。");
   }
@@ -160,6 +164,7 @@ export async function POST(req: NextRequest) {
       applicant_name,
       applicant_phone,
       applicant_email,
+      company_staff_name_input: company_staff_name,
       rental_status: usesRentalPlan ? rental_status : null,
       requested_rental_plan_id: requestedPlanId,
       customer_requests: customer_requests.trim() || null,

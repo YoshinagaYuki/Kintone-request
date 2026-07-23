@@ -43,7 +43,7 @@ export async function registerRequestToKintone(
   const { data: request, error: fetchError } = await supabase
     .from("requests")
     .select(
-      "id, parsed_data, status, kintone_record_id, form_type_id, form_type_version, applicant_name, applicant_email, approved_rental_plan_id, requested_rental_plan_id, approved_contents, form_types(name, kintone_app_id, field_mapping)"
+      "id, parsed_data, status, kintone_record_id, form_type_id, form_type_version, applicant_name, applicant_email, approved_rental_plan_id, requested_rental_plan_id, approved_contents, company_staff_name_input, approved_staff_name, form_types(name, kintone_app_id, field_mapping)"
     )
     .eq("id", requestId)
     .maybeSingle();
@@ -81,6 +81,32 @@ export async function registerRequestToKintone(
   const approvedContents = (request.approved_contents ?? {}) as Record<string, string>;
   for (const [label, name] of Object.entries(approvedContents)) {
     if (name && name.trim()) parsedData[label] = name;
+  }
+
+  // 弊社担当者: 申請原文ではなく承認確定した正式名称を kintone「担当者」へ登録。
+  // サーバー側検証: 申請に担当者入力がある場合、承認済み担当者が担当者マスターに存在し有効であること
+  const staffInputForKintone = (request.company_staff_name_input as string | null)?.trim() ?? "";
+  if (staffInputForKintone) {
+    const approvedStaff = (request.approved_staff_name as string | null)?.trim() ?? "";
+    if (!approvedStaff) {
+      return {
+        ok: false,
+        error: "弊社担当者が未確定です(承認画面で正式名称を選択してください)",
+      };
+    }
+    const { data: staffRow } = await supabase
+      .from("staff_members")
+      .select("name, is_active")
+      .eq("name", approvedStaff)
+      .maybeSingle();
+    if (!staffRow || !staffRow.is_active) {
+      return {
+        ok: false,
+        error: "確定した担当者が担当者マスターに存在しないか無効です",
+      };
+    }
+    // App49「担当者」= 文字列__1行__0(FMTラベル「担当者」経由でマッピング)
+    parsedData["担当者"] = staffRow.name;
   }
 
   // kintone AppID は form_types(現行)から取得

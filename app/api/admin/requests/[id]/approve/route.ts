@@ -30,6 +30,8 @@ export async function POST(
     rental_plan_id?: string | null;
     /** 承認画面で確定したコンテンツ正式名称 { "コンテンツ1": "..." } */
     contents?: Record<string, string> | null;
+    /** 承認画面で確定した弊社担当者の正式名称 */
+    staff_name?: string | null;
   } = {};
   try {
     body = await req.json();
@@ -40,7 +42,7 @@ export async function POST(
   const { data: request } = await supabase
     .from("requests")
     .select(
-      "id, status, form_type_id, form_type_version, parsed_data, requested_rental_plan_id, approved_rental_plan_id, form_types(field_mapping, parser_config)"
+      "id, status, form_type_id, form_type_version, parsed_data, requested_rental_plan_id, approved_rental_plan_id, company_staff_name_input, form_types(field_mapping, parser_config)"
     )
     .eq("id", id)
     .maybeSingle();
@@ -139,6 +141,34 @@ export async function POST(
         .update({ approved_contents: Object.fromEntries(entries) })
         .eq("id", id);
     }
+  }
+
+  // 弊社担当者の確定(担当者マスターに存在する有効な正式名称のみ許可)。
+  // 申請に担当者入力がある場合は確定必須(申請原文は company_staff_name_input に保持)
+  const staffInput = (request.company_staff_name_input as string | null)?.trim() ?? "";
+  if (staffInput) {
+    const staffName = (typeof body.staff_name === "string" ? body.staff_name : "").trim();
+    if (!staffName) {
+      return NextResponse.json(
+        { error: "弊社担当者の正式名称を選択してください" },
+        { status: 409 }
+      );
+    }
+    const { data: staff } = await supabase
+      .from("staff_members")
+      .select("name, is_active")
+      .eq("name", staffName)
+      .maybeSingle();
+    if (!staff || !staff.is_active) {
+      return NextResponse.json(
+        { error: "選択された担当者は担当者マスターに存在しないか、無効です" },
+        { status: 400 }
+      );
+    }
+    await supabase
+      .from("requests")
+      .update({ approved_staff_name: staff.name })
+      .eq("id", id);
   }
 
   // 承認を記録

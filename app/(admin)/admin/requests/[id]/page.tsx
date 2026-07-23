@@ -6,6 +6,7 @@ import { ApproveActions } from "@/components/admin/approve-actions";
 import { buildKintoneRecord, type FieldMapping } from "@/lib/kintone/mapper";
 import { getVersionedConfig, isKintoneReady } from "@/lib/form-types";
 import { suggestItemName, type ItemMasterEntry } from "@/lib/item-normalizer";
+import { matchStaffName } from "@/lib/name-matcher";
 import type { ApproveContentSlot } from "@/components/admin/approve-actions";
 import {
   ACTION_LABELS,
@@ -38,6 +39,8 @@ type Detail = {
   approved_rental_plan_id: string | null;
   customer_requests: string | null;
   approved_contents: Record<string, string> | null;
+  company_staff_name_input: string | null;
+  approved_staff_name: string | null;
   application_email_sent_at: string | null;
   approval_email_sent_at: string | null;
   application_email_error: string | null;
@@ -105,7 +108,7 @@ export default async function RequestDetailPage({
   const { data } = await supabase
     .from("requests")
     .select(
-      "id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, approved_contents, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
+      "id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, approved_contents, company_staff_name_input, approved_staff_name, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
     )
     .eq("id", id)
     .maybeSingle();
@@ -196,6 +199,29 @@ export default async function RequestDetailPage({
       quantity: (parsed[`数量${i + 1}`] ?? "").trim(),
     };
   }).filter((s): s is ApproveContentSlot => s !== null);
+
+  // 弊社担当者: 担当者マスター(有効)から自動照合(既存の商品照合ロジックを再利用)
+  const { data: staffData } = await supabase
+    .from("staff_members")
+    .select("name, name_kana, is_active, sort_order")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+  const staffOptions = (staffData ?? []).map((r) => r.name as string);
+  const staffCandidates = (staffData ?? []).map((r) => ({
+    name: r.name as string,
+    readings: (r.name_kana as string | null)?.trim()
+      ? [(r.name_kana as string).trim()]
+      : [],
+  }));
+  const staffInputRaw = (request.company_staff_name_input ?? "").trim();
+  const staffMatch = matchStaffName(staffInputRaw, staffCandidates);
+  // 既に承認済みの確定値があればそれを初期選択に
+  const staffSuggested = request.approved_staff_name
+    ? staffOptions.includes(request.approved_staff_name)
+      ? request.approved_staff_name
+      : ""
+    : staffMatch.suggested;
 
   // 申請時点の version の定義を使用(FMT改訂後も過去申請の表示・承認が壊れない)
   const versioned = await getVersionedConfig(
@@ -417,6 +443,30 @@ export default async function RequestDetailPage({
                 )}
               </td>
             </tr>
+            <tr>
+              <th className="w-36 bg-gray-50 px-4 py-2 text-left font-medium text-gray-600 sm:w-48">
+                弊社担当者氏名
+              </th>
+              <td className="px-4 py-2">
+                {staffInputRaw ? (
+                  <span>
+                    <span className="text-gray-500">申請入力: </span>
+                    {staffInputRaw}
+                    {request.approved_staff_name ? (
+                      <span className="ml-2 inline-flex items-center rounded bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                        確定: {request.approved_staff_name}
+                      </span>
+                    ) : (
+                      <span className="ml-2 inline-flex items-center rounded bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                        未確定(承認時に選択)
+                      </span>
+                    )}
+                  </span>
+                ) : (
+                  "-"
+                )}
+              </td>
+            </tr>
           </tbody>
         </table>
       </SectionCard>
@@ -572,6 +622,12 @@ export default async function RequestDetailPage({
           plans={activePlans.map((p) => ({ id: p.id, name: p.name }))}
           contentSlots={contentSlots}
           itemOptions={itemOptions}
+          staffInput={staffInputRaw}
+          staffSuggested={staffSuggested}
+          staffScore={staffMatch.score}
+          staffAmbiguous={staffMatch.ambiguous}
+          staffAmbiguousCandidates={staffMatch.ambiguousCandidates}
+          staffOptions={staffOptions}
         />
       )}
 

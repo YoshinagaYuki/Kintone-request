@@ -63,6 +63,7 @@ export function ApplyForm({
   const [applicantName, setApplicantName] = useState("");
   const [applicantPhone, setApplicantPhone] = useState("");
   const [applicantEmail, setApplicantEmail] = useState("");
+  const [companyStaffName, setCompanyStaffName] = useState("");
   const [rentalStatus, setRentalStatus] = useState<RentalStatus | "">("");
   const [rentalPlanId, setRentalPlanId] = useState("");
   const [rawText, setRawText] = useState("");
@@ -97,6 +98,7 @@ export function ApplyForm({
     } else if (!EMAIL_RE.test(applicantEmail.trim())) {
       errs.push("メールアドレスの形式が正しくありません。");
     }
+    if (!companyStaffName.trim()) errs.push("弊社担当者氏名を入力してください。");
     if (usesRentalPlan) {
       if (!rentalStatus) errs.push("レンタル状況を選択してください。");
       if (rentalStatus === "new_rental" && !rentalPlanId) {
@@ -146,6 +148,7 @@ export function ApplyForm({
           applicant_name: applicantName.trim(),
           applicant_phone: applicantPhone.trim(),
           applicant_email: applicantEmail.trim(),
+          company_staff_name: companyStaffName.trim(),
           rental_status: usesRentalPlan ? rentalStatus : null,
           rental_plan_id: rentalStatus === "new_rental" ? rentalPlanId : null,
           customer_requests: customerRequests.trim() || null,
@@ -261,6 +264,22 @@ export function ApplyForm({
                 />
                 <p className="mt-1 text-xs text-gray-500">
                   申請完了メール・承認完了メールをこのアドレスへお送りします。
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  弊社担当者氏名 <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={companyStaffName}
+                  onChange={(e) => setCompanyStaffName(e.target.value)}
+                  maxLength={100}
+                  placeholder="例：吉永、田中、山田太郎"
+                  className={inputClass}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  弊社の担当者名をご入力ください(社内で正式名称に確認・修正します)。
                 </p>
               </div>
             </div>
