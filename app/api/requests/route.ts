@@ -3,6 +3,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { parseFmt } from "@/lib/parser/fmt-parser";
 import { notifyNewRequest } from "@/lib/notify/notify";
 import { sendApplicationMail } from "@/lib/mail/application-mails";
+import { getMinimumOrderQuantity } from "@/lib/system-settings";
+import { contentLabel, quantityLabel, MAX_PRODUCTS } from "@/lib/tezukuru-fmt";
 import type { ParserConfig } from "@/types/request";
 
 const MAX_BODY_LENGTH = 40000;
@@ -45,6 +47,7 @@ export async function POST(req: NextRequest) {
   let body: {
     form_type_id?: string;
     raw_text?: string;
+    structured?: boolean;
     applicant_name?: string;
     applicant_phone?: string;
     applicant_email?: string;
@@ -153,6 +156,61 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ errors: result.errors }, { status: 400 });
   }
 
+  // 商品・数量のサーバー側検証(クライアントと同一ルール)。
+  // ・商品と数量はセット(片方だけはエラー)
+  // ・数量は整数のみ、最小数量(system_settings.minimum_order_quantity)以上
+  const minQty = await getMinimumOrderQuantity(supabase);
+  const productErrors: string[] = [];
+  for (let i = 1; i <= MAX_PRODUCTS; i++) {
+    const name = (result.data[contentLabel(i)] ?? "").trim();
+    const qtyRaw = (result.data[quantityLabel(i)] ?? "").trim();
+    if (!name && !qtyRaw) continue;
+    if (name && !qtyRaw) {
+      productErrors.push(`商品${i}の数量を入力してください。`);
+      continue;
+    }
+    if (!name && qtyRaw) {
+      productErrors.push(`商品${i}が未選択です(数量のみ入力されています)。`);
+      continue;
+    }
+    if (!/^\d+$/.test(qtyRaw)) {
+      productErrors.push(`商品${i}の数量は整数で入力してください。`);
+      continue;
+    }
+    if (Number.parseInt(qtyRaw, 10) < minQty) {
+      productErrors.push(`商品${i}の数量は${minQty}以上で入力してください。`);
+    }
+  }
+  if (productErrors.length > 0) {
+    return NextResponse.json({ errors: productErrors }, { status: 400 });
+  }
+
+  // スロット固有の選択肢制約(App49: シールは①のみ・粘土12色は④に無い 等)をサーバー側でも検証。
+  // 画面①〜⑩は位置を保持して登録するため、スロットに存在しない商品は拒否する。
+  const { data: slotItems } = await supabase
+    .from("item_name_master")
+    .select("name, excluded_slots")
+    .eq("category", "tezukuru")
+    .eq("is_active", true);
+  const excludedBy = new Map<string, number[]>(
+    (slotItems ?? []).map((r) => [
+      r.name as string,
+      Array.isArray(r.excluded_slots) ? (r.excluded_slots as number[]) : [],
+    ])
+  );
+  const slotErrors: string[] = [];
+  for (let i = 1; i <= MAX_PRODUCTS; i++) {
+    const name = (result.data[contentLabel(i)] ?? "").trim();
+    if (!name) continue;
+    const ex = excludedBy.get(name);
+    if (ex && ex.includes(i)) {
+      slotErrors.push(`商品${i}に「${name}」は選択できません(このスロットでは取り扱いがありません)。`);
+    }
+  }
+  if (slotErrors.length > 0) {
+    return NextResponse.json({ errors: slotErrors }, { status: 400 });
+  }
+
   const { data: request, error: insertError } = await supabase
     .from("requests")
     .insert({
@@ -165,6 +223,7 @@ export async function POST(req: NextRequest) {
       applicant_phone,
       applicant_email,
       company_staff_name_input: company_staff_name,
+      is_structured: body.structured === true,
       rental_status: usesRentalPlan ? rental_status : null,
       requested_rental_plan_id: requestedPlanId,
       customer_requests: customer_requests.trim() || null,
@@ -208,6 +267,9 @@ export async function POST(req: NextRequest) {
       formTypeName: formType.name,
       boothName: result.data["イベントブース名"] ?? "",
       agencyName: result.data["取次店名"] ?? "",
+      parsedData: result.data,
+      staffName: company_staff_name || null, // 申請時点は申請入力(確定は承認時)
+      customerRequests: customer_requests.trim() || null,
     },
     request.created_at
   );

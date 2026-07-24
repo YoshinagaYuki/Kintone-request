@@ -43,7 +43,7 @@ export async function registerRequestToKintone(
   const { data: request, error: fetchError } = await supabase
     .from("requests")
     .select(
-      "id, parsed_data, status, kintone_record_id, form_type_id, form_type_version, applicant_name, applicant_email, approved_rental_plan_id, requested_rental_plan_id, approved_contents, company_staff_name_input, approved_staff_name, form_types(name, kintone_app_id, field_mapping)"
+      "id, parsed_data, status, kintone_record_id, form_type_id, form_type_version, applicant_name, applicant_email, approved_rental_plan_id, requested_rental_plan_id, approved_contents, company_staff_name_input, approved_staff_name, customer_requests, form_types(name, kintone_app_id, field_mapping)"
     )
     .eq("id", requestId)
     .maybeSingle();
@@ -286,6 +286,9 @@ export async function registerRequestToKintone(
         formTypeName: formType.name,
         boothName: parsedData["イベントブース名"] ?? "",
         agencyName: parsedData["取次店名"] ?? "",
+        parsedData,
+        staffName: parsedData["担当者"] ?? null, // 承認時に確定した正式名称
+        customerRequests: (request.customer_requests as string | null) ?? null,
       },
       new Date().toISOString()
     );

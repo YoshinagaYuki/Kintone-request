@@ -16,6 +16,8 @@ const NAV_ITEMS = [
   { href: "/admin/plans", icon: "🏷️", label: "レンタルプラン", shortLabel: "プラン" },
   { href: "/admin/items", icon: "📦", label: "商品マスタ", shortLabel: "商品" },
   { href: "/admin/staff", icon: "👥", label: "担当者", shortLabel: "担当者" },
+  { href: "/admin/email-templates", icon: "✉️", label: "メールテンプレート", shortLabel: "メール" },
+  { href: "/admin/settings", icon: "⚙️", label: "システム設定", shortLabel: "システム" },
 ] as const;
 
 export function AdminHeader() {

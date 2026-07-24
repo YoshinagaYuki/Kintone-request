@@ -39,6 +39,7 @@ type Detail = {
   approved_rental_plan_id: string | null;
   customer_requests: string | null;
   approved_contents: Record<string, string> | null;
+  is_structured: boolean | null;
   company_staff_name_input: string | null;
   approved_staff_name: string | null;
   application_email_sent_at: string | null;
@@ -108,7 +109,7 @@ export default async function RequestDetailPage({
   const { data } = await supabase
     .from("requests")
     .select(
-      "id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, approved_contents, company_staff_name_input, approved_staff_name, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
+      "id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, approved_contents, is_structured, company_staff_name_input, approved_staff_name, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
     )
     .eq("id", id)
     .maybeSingle();
@@ -180,10 +181,14 @@ export default async function RequestDetailPage({
   }));
   const itemOptions = itemEntries.map((e) => e.name);
 
-  // 申請にコンテンツ入力があるスロットのみ対象(数量との対応はラベルで保持)
+  // 申請にコンテンツ入力があるスロットのみ対象(数量との対応はラベルで保持)。
+  // 構造化フォーム由来(is_structured)は申請時に商品マスターの正式名称を選択済みのため、
+  // 承認画面での再マッチング・再選択は行わない(申請時の値をそのまま登録する)。
   const parsed = (request.parsed_data ?? {}) as Record<string, string>;
   const approvedContents = (request.approved_contents ?? {}) as Record<string, string>;
-  const contentSlots: ApproveContentSlot[] = Array.from({ length: 10 }, (_, i) => {
+  const contentSlots: ApproveContentSlot[] = request.is_structured
+    ? []
+    : Array.from({ length: 10 }, (_, i) => {
     const label = `コンテンツ${i + 1}`;
     const original = (parsed[label] ?? "").trim();
     if (!original) return null;

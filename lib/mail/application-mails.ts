@@ -2,9 +2,15 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendMail, type MailResult } from "./mailer";
+import { getEmailTemplate, renderTemplate } from "./templates";
+import { buildOrderDetails } from "./order-details";
+import { getManualDriveUrl } from "../system-settings";
 
 /**
  * 申請完了メール / 承認完了メール。
+ * ・本文は email_templates(DB・管理画面で編集可)から取得し、差込で生成(コード直書きしない)
+ * ・{{order_details}} は parsed_data から実際の申請内容(商品/数量/配送先/配送日/担当者/電話/住所)を展開
+ * ・{{manual_drive_url}} は system_settings の Google Drive 共有リンクを差込
  * ・二重送信防止: application_email_sent_at / approval_email_sent_at を確認し、送信成功時に記録
  * ・送信失敗は *_email_error に記録し、履歴にも残す(申請/承認処理自体は失敗させない)
  * ・本文はプレーンテキスト(HTML/スクリプトは埋め込まない)
@@ -17,6 +23,12 @@ type ApplicantContext = {
   formTypeName: string;
   boothName: string;
   agencyName: string;
+  /** メール差込用: 申請内容(FMTラベル→値)。注文内容の自動展開に使う */
+  parsedData?: Record<string, string> | null;
+  /** 弊社担当者(承認確定値 or 申請入力)。注文内容へ表示 */
+  staffName?: string | null;
+  /** お客様からの要望(requests.customer_requests)。注文内容へ表示 */
+  customerRequests?: string | null;
 };
 
 function formatDateTime(iso: string): string {
@@ -27,10 +39,6 @@ function formatDateTime(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function line(label: string, value: string | null): string {
-  return `${label}: ${value && value.trim() ? value : "(未入力)"}`;
 }
 
 async function recordHistory(
@@ -45,6 +53,24 @@ async function recordHistory(
     actor: "system",
     detail,
   });
+}
+
+/** テンプレート共通の差込変数を組み立てる */
+function baseVars(ctx: ApplicantContext, dateVarName: string, isoDate: string) {
+  const orderDetails = buildOrderDetails({
+    parsedData: ctx.parsedData ?? {},
+    staffName: ctx.staffName ?? null,
+    customerRequests: ctx.customerRequests ?? null,
+  });
+  return {
+    applicant_name: ctx.applicant_name ?? "ご担当者",
+    management_no: ctx.management_no ?? "確認中(社内処理後に採番されます)",
+    form_type_name: ctx.formTypeName,
+    booth_name: ctx.boothName,
+    agency_name: ctx.agencyName,
+    order_details: orderDetails || "(申請内容の詳細はありません)",
+    [dateVarName]: formatDateTime(isoDate),
+  } as Record<string, string>;
 }
 
 /**
@@ -66,21 +92,10 @@ export async function sendApplicationMail(
     .maybeSingle();
   if (current?.application_email_sent_at) return { sent: false, skipped: true };
 
-  const subject = `【${ctx.formTypeName}】申請を受け付けました`;
-  const text = [
-    `${ctx.applicant_name ?? "ご担当者"} 様`,
-    "",
-    "この度は申請いただきありがとうございます。以下の内容で申請を受け付けました。",
-    "",
-    line("管理番号", ctx.management_no ?? "確認中(社内処理後に採番されます)"),
-    line("イベントブース名", ctx.boothName),
-    line("取次店名", ctx.agencyName),
-    line("申請日時", formatDateTime(submittedAt)),
-    "",
-    "現在は「確認待ち」の状態です。社内で内容を確認のうえ、あらためてご連絡いたします。",
-    "",
-    "※このメールは自動送信です。ご返信いただいてもお答えできない場合があります。",
-  ].join("\n");
+  const template = await getEmailTemplate(supabase, "application");
+  const vars = baseVars(ctx, "submitted_at", submittedAt);
+  const subject = renderTemplate(template.subject, vars);
+  const text = renderTemplate(template.body, vars);
 
   const result = await sendMail({ to: ctx.applicant_email, subject, text });
 
@@ -122,21 +137,11 @@ export async function sendApprovalMail(
     .maybeSingle();
   if (current?.approval_email_sent_at) return { sent: false, skipped: true };
 
-  const subject = `【${ctx.formTypeName}】申請が承認されました`;
-  const text = [
-    `${ctx.applicant_name ?? "ご担当者"} 様`,
-    "",
-    "ご申請いただいた内容が承認されました。",
-    "",
-    line("管理番号", ctx.management_no),
-    line("イベントブース名", ctx.boothName),
-    line("取次店名", ctx.agencyName),
-    line("承認日時", formatDateTime(approvedAt)),
-    "",
-    "今後の詳細については、必要に応じて担当者よりご連絡いたします。",
-    "",
-    "※このメールは自動送信です。ご返信いただいてもお答えできない場合があります。",
-  ].join("\n");
+  const template = await getEmailTemplate(supabase, "approval");
+  const vars = baseVars(ctx, "approved_at", approvedAt);
+  vars.manual_drive_url = await getManualDriveUrl(supabase);
+  const subject = renderTemplate(template.subject, vars);
+  const text = renderTemplate(template.body, vars);
 
   const result = await sendMail({ to: ctx.applicant_email, subject, text });
 

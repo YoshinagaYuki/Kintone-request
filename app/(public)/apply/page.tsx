@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ApplyForm, type ApplyFormType } from "@/components/apply/apply-form";
 import type { RentalPlan } from "@/types/request";
+import { getMinimumOrderQuantity } from "@/lib/system-settings";
 import {
   DEFAULT_FMT_TEMPLATE,
   DEFAULT_INPUT_GUIDE,
@@ -54,13 +55,32 @@ export default async function ApplyPage() {
     .order("sort_order", { ascending: true });
   const rentalPlans = (planData ?? []) as RentalPlan[];
 
+  // 商品(コンテンツ)プルダウン: 商品マスターの有効な正式名称のみ・sort_order→正式名称順。
+  // 固定配列は使わない(マスターから取得)。excluded_slots でスロット固有の除外を表現。
+  const { data: itemData } = await supabase
+    .from("item_name_master")
+    .select("name, sort_order, is_active, category, excluded_slots")
+    .eq("category", "tezukuru")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true })
+    .order("name", { ascending: true });
+  const productItems = (itemData ?? []).map((r) => ({
+    name: r.name as string,
+    excludedSlots: Array.isArray(r.excluded_slots)
+      ? (r.excluded_slots as number[])
+      : [],
+  }));
+
+  // 最小注文数量(system_settings。未設定時は初期値100)
+  const minimumOrderQuantity = await getMinimumOrderQuantity(supabase);
+
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:py-10">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold sm:text-2xl">案件申請</h1>
           <p className="mt-2 text-sm leading-relaxed text-gray-600">
-            必要事項を入力し、FMT(定型フォーマット)を貼り付けて申請してください。
+            各項目を入力して申請してください。
           </p>
         </div>
         <Link
@@ -71,7 +91,12 @@ export default async function ApplyPage() {
         </Link>
       </div>
 
-      <ApplyForm formTypes={formTypes} rentalPlans={rentalPlans} />
+      <ApplyForm
+        formTypes={formTypes}
+        rentalPlans={rentalPlans}
+        productItems={productItems}
+        minimumOrderQuantity={minimumOrderQuantity}
+      />
     </main>
   );
 }
