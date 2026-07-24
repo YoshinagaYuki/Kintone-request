@@ -10,12 +10,15 @@ import { usePathname } from "next/navigation";
  * ・「➕ 新規申請」は /apply へ(種別が増えても申請画面側の選択で吸収)
  */
 
+// 「フォーム設定」(/admin/form-settings)は構造化申請フォーム導入により通常運用では不要になったため
+// ナビから非表示にしている。ルート・API・DB・データは当面残置(URL直開きは可能)。
+// 【削除候補】旧FMT申請との互換が不要になった段階で /admin/form-settings 一式を完全撤去する。
 const NAV_ITEMS = [
   { href: "/admin/requests", icon: "📋", label: "申請一覧", shortLabel: "申請" },
-  { href: "/admin/form-settings", icon: "📝", label: "フォーム設定", shortLabel: "設定" },
   { href: "/admin/plans", icon: "🏷️", label: "レンタルプラン", shortLabel: "プラン" },
   { href: "/admin/items", icon: "📦", label: "商品マスタ", shortLabel: "商品" },
   { href: "/admin/staff", icon: "👥", label: "担当者", shortLabel: "担当者" },
+  { href: "/admin/admin-users", icon: "🛡️", label: "管理者", shortLabel: "権限" },
   { href: "/admin/email-templates", icon: "✉️", label: "メールテンプレート", shortLabel: "メール" },
   { href: "/admin/settings", icon: "⚙️", label: "システム設定", shortLabel: "システム" },
 ] as const;

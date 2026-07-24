@@ -6,7 +6,14 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/** 申請フォーム設定(FMTテンプレート/注意事項/案内文章)。middleware により認証必須 */
+/**
+ * 申請フォーム設定(FMTテンプレート/注意事項/案内文章)。middleware により認証必須。
+ *
+ * 【削除候補 / DEPRECATED】
+ * 構造化申請フォーム導入により、公開申請画面は form_settings の案内文章・FMTテンプレート本文を
+ * 参照しなくなった(旧FMT申請との互換のためルート・API・DB・データは当面残置)。
+ * ナビからは非表示。旧FMT互換が不要になった段階で本ページ一式を撤去する。
+ */
 export default async function FormSettingsPage() {
   const supabase = await createClient();
 
