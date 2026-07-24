@@ -10,8 +10,6 @@ alter table public.requests
 alter table public.requests
   add column if not exists approved_staff_name text;
 
--- 担当者マスターに読み仮名を追加(任意)。
--- 「よしなが」のようなひらがな入力を漢字氏名へ自動照合するために使う。
--- 未入力でも動作するが、その場合ひらがな入力は自動選択されず「選択してください」になる。
-alter table public.staff_members
-  add column if not exists name_kana text not null default '';
+-- 注記: 当初この migration では staff_members.name_kana(読み仮名)も追加していたが、
+-- 運用負荷が高いため name_kana 機能は廃止した。列・制約の追加は行わない
+-- (適用済み環境向けの削除は 0017_drop_staff_name_kana.sql を参照)。

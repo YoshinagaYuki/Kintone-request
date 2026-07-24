@@ -18,7 +18,6 @@ export async function PATCH(
 
   let body: {
     name?: string;
-    name_kana?: string;
     company?: string;
     sort_order?: number;
     is_active?: boolean;
@@ -34,12 +33,6 @@ export async function PATCH(
     const name = body.name.trim();
     if (!name) return NextResponse.json({ error: "氏名は必須です" }, { status: 400 });
     update.name = name;
-  }
-  if (typeof body.name_kana === "string") {
-    const nameKana = body.name_kana.trim();
-    if (!nameKana)
-      return NextResponse.json({ error: "読み(ふりがな)は必須です" }, { status: 400 });
-    update.name_kana = nameKana;
   }
   if (typeof body.company === "string") update.company = body.company.trim();
   if (Number.isInteger(body.sort_order)) update.sort_order = body.sort_order;

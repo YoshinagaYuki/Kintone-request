@@ -208,16 +208,14 @@ export default async function RequestDetailPage({
   // 弊社担当者: 担当者マスター(有効)から自動照合(既存の商品照合ロジックを再利用)
   const { data: staffData } = await supabase
     .from("staff_members")
-    .select("name, name_kana, is_active, sort_order")
+    .select("name, is_active, sort_order")
     .eq("is_active", true)
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
   const staffOptions = (staffData ?? []).map((r) => r.name as string);
+  // 照合は 完全一致 / 部分一致 / 名字一致 / 類似度50%以上 のみ(読み仮名は使わない)
   const staffCandidates = (staffData ?? []).map((r) => ({
     name: r.name as string,
-    readings: (r.name_kana as string | null)?.trim()
-      ? [(r.name_kana as string).trim()]
-      : [],
   }));
   const staffInputRaw = (request.company_staff_name_input ?? "").trim();
   const staffMatch = matchStaffName(staffInputRaw, staffCandidates);

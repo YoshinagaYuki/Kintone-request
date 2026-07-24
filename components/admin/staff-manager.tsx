@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 export type StaffRow = {
   id: string;
   name: string;
-  name_kana: string;
   company: string;
   sort_order: number;
   is_active: boolean;
@@ -20,7 +19,6 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
 
   // 新規作成フォーム
   const [newName, setNewName] = useState("");
-  const [newKana, setNewKana] = useState("");
   const [newCompany, setNewCompany] = useState("");
   const [newOrder, setNewOrder] = useState(0);
 
@@ -28,12 +26,10 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [edit, setEdit] = useState<{
     name: string;
-    name_kana: string;
     company: string;
     sort_order: number;
   }>({
     name: "",
-    name_kana: "",
     company: "",
     sort_order: 0,
   });
@@ -66,13 +62,11 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
     e.preventDefault();
     const ok = await call("/api/admin/staff", "POST", {
       name: newName,
-      name_kana: newKana,
       company: newCompany,
       sort_order: newOrder,
     });
     if (ok) {
       setNewName("");
-      setNewKana("");
       setNewCompany("");
       setNewOrder(0);
     }
@@ -116,16 +110,6 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600">読み(ふりがな) *</label>
-          <input
-            value={newKana}
-            onChange={(e) => setNewKana(e.target.value)}
-            required
-            className="mt-1 rounded-md border border-gray-300 p-2 text-sm"
-            placeholder="よしなが ゆうき"
-          />
-        </div>
-        <div>
           <label className="block text-xs font-medium text-gray-600">所属会社</label>
           <input
             value={newCompany}
@@ -158,7 +142,6 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
           <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs text-gray-500">
             <tr>
               <th className="px-4 py-2">氏名</th>
-              <th className="px-4 py-2">読み(ふりがな)</th>
               <th className="px-4 py-2">所属会社</th>
               <th className="px-4 py-2">表示順</th>
               <th className="px-4 py-2">公開</th>
@@ -168,7 +151,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
           <tbody className="divide-y divide-gray-100">
             {staff.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
                   担当者が登録されていません
                 </td>
               </tr>
@@ -180,14 +163,6 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
                     <input
                       value={edit.name}
                       onChange={(e) => setEdit({ ...edit, name: e.target.value })}
-                      className="w-full rounded-md border border-gray-300 p-1.5 text-sm"
-                    />
-                  </td>
-                  <td className="px-4 py-2">
-                    <input
-                      value={edit.name_kana}
-                      onChange={(e) => setEdit({ ...edit, name_kana: e.target.value })}
-                      placeholder="よしなが ゆうき"
                       className="w-full rounded-md border border-gray-300 p-1.5 text-sm"
                     />
                   </td>
@@ -228,7 +203,6 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
               ) : (
                 <tr key={row.id} className={row.is_active ? "" : "bg-gray-50 text-gray-400"}>
                   <td className="px-4 py-2">{row.name}</td>
-                  <td className="px-4 py-2">{row.name_kana || "-"}</td>
                   <td className="px-4 py-2">{row.company || "-"}</td>
                   <td className="px-4 py-2">{row.sort_order}</td>
                   <td className="px-4 py-2">
@@ -250,7 +224,6 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
                         setEditingId(row.id);
                         setEdit({
                           name: row.name,
-                          name_kana: row.name_kana,
                           company: row.company,
                           sort_order: row.sort_order,
                         });

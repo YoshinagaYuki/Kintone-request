@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
   }
 
-  let body: { name?: string; name_kana?: string; company?: string; sort_order?: number };
+  let body: { name?: string; company?: string; sort_order?: number };
   try {
     body = await req.json();
   } catch {
@@ -23,14 +23,9 @@ export async function POST(req: NextRequest) {
   if (!name) {
     return NextResponse.json({ error: "氏名は必須です" }, { status: 400 });
   }
-  const nameKana = (body.name_kana ?? "").trim();
-  if (!nameKana) {
-    return NextResponse.json({ error: "読み(ふりがな)は必須です" }, { status: 400 });
-  }
 
   const { error } = await supabase.from("staff_members").insert({
     name,
-    name_kana: nameKana,
     company: (body.company ?? "").trim(),
     sort_order: Number.isInteger(body.sort_order) ? body.sort_order : 0,
   });
