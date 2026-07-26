@@ -15,6 +15,8 @@
  * ・レンタルプランはFMTに含めない(従来どおり select_fields としてサーバーで先頭注入)。
  */
 
+import { formatPhoneNumber } from "./phone";
+
 /** 商品(コンテンツ)は最大10組 */
 export const MAX_PRODUCTS = 10;
 
@@ -109,18 +111,19 @@ export function buildTezukuruFmt(input: TezukuruInput): string {
   push(FMT_LABELS.deliveryPostal, input.deliveryPostal);
   push(FMT_LABELS.deliveryAddress, input.deliveryAddress);
   push(FMT_LABELS.deliveryReceiver, input.deliveryReceiver);
-  push(FMT_LABELS.deliveryContact, input.deliveryContact);
+  // 電話番号は共通フォーマッタでハイフン整形(固定電話は配送/集荷住所から市外局番判定)
+  push(FMT_LABELS.deliveryContact, formatPhoneNumber(input.deliveryContact, input.deliveryAddress));
 
   push(FMT_LABELS.pickupDate, input.pickupDate);
   push(FMT_LABELS.pickupPostal, input.pickupPostal);
   push(FMT_LABELS.pickupAddress, input.pickupAddress);
   push(FMT_LABELS.pickupHandover, input.pickupHandover);
-  push(FMT_LABELS.pickupContact, input.pickupContact);
+  push(FMT_LABELS.pickupContact, formatPhoneNumber(input.pickupContact, input.pickupAddress));
 
   push(FMT_LABELS.slipTo, input.slipTo);
   push(FMT_LABELS.slipCc, input.slipCc);
   push(FMT_LABELS.emergencyName, input.emergencyName);
-  push(FMT_LABELS.emergencyPhone, input.emergencyPhone);
+  push(FMT_LABELS.emergencyPhone, formatPhoneNumber(input.emergencyPhone, input.deliveryAddress));
 
   return lines.join("\n");
 }

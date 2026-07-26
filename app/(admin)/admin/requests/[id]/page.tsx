@@ -7,6 +7,8 @@ import { buildKintoneRecord, type FieldMapping } from "@/lib/kintone/mapper";
 import { getVersionedConfig, isKintoneReady } from "@/lib/form-types";
 import { suggestItemName, type ItemMasterEntry } from "@/lib/item-normalizer";
 import { matchStaffName } from "@/lib/name-matcher";
+import { formatPhoneNumber } from "@/lib/phone";
+import { FMT_LABELS } from "@/lib/tezukuru-fmt";
 import type { ApproveContentSlot } from "@/components/admin/approve-actions";
 import {
   ACTION_LABELS,
@@ -425,7 +427,7 @@ export default async function RequestDetailPage({
               <td className="px-4 py-2">
                 {request.applicant_phone ? (
                   <a href={`tel:${request.applicant_phone}`} className="text-blue-600 hover:underline">
-                    {request.applicant_phone}
+                    {formatPhoneNumber(request.applicant_phone)}
                   </a>
                 ) : (
                   "-"
@@ -542,14 +544,24 @@ export default async function RequestDetailPage({
                   <td className="px-4 py-4 text-gray-500">パース済み項目はありません</td>
                 </tr>
               )}
-              {parsedEntries.map(([label, value]) => (
-                <tr key={label}>
-                  <th className="w-36 bg-gray-50 px-4 py-2 text-left align-top font-medium text-gray-600 sm:w-48">
-                    {label}
-                  </th>
-                  <td className="whitespace-pre-wrap break-words px-4 py-2">{value}</td>
-                </tr>
-              ))}
+              {parsedEntries.map(([label, value]) => {
+                // 電話番号ラベルは共通フォーマッタで整形表示(固定電話は対応住所で市外局番判定)
+                const phoneAddr: Record<string, string> = {
+                  [FMT_LABELS.deliveryContact]: parsed[FMT_LABELS.deliveryAddress] ?? "",
+                  [FMT_LABELS.pickupContact]: parsed[FMT_LABELS.pickupAddress] ?? "",
+                  [FMT_LABELS.emergencyPhone]: parsed[FMT_LABELS.deliveryAddress] ?? "",
+                };
+                const shown =
+                  label in phoneAddr ? formatPhoneNumber(value, phoneAddr[label]) : value;
+                return (
+                  <tr key={label}>
+                    <th className="w-36 bg-gray-50 px-4 py-2 text-left align-top font-medium text-gray-600 sm:w-48">
+                      {label}
+                    </th>
+                    <td className="whitespace-pre-wrap break-words px-4 py-2">{shown}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -1,4 +1,5 @@
 import { contentLabel, quantityLabel, FMT_LABELS, MAX_PRODUCTS } from "../tezukuru-fmt";
+import { formatPhoneNumber } from "../phone";
 
 /**
  * メール差込用「注文内容」ブロックの自動生成。
@@ -63,14 +64,14 @@ export function buildOrderDetails(input: OrderDetailsInput): string {
   add("配送郵便番号", val(d, FMT_LABELS.deliveryPostal));
   add("配送住所", val(d, FMT_LABELS.deliveryAddress));
   add("配送受領者", val(d, FMT_LABELS.deliveryReceiver));
-  add("配送連絡先", val(d, FMT_LABELS.deliveryContact));
+  add("配送連絡先", formatPhoneNumber(val(d, FMT_LABELS.deliveryContact), val(d, FMT_LABELS.deliveryAddress)));
 
   // 集荷
   add("集荷日", val(d, FMT_LABELS.pickupDate));
   add("集荷郵便番号", val(d, FMT_LABELS.pickupPostal));
   add("集荷住所", val(d, FMT_LABELS.pickupAddress));
   add("当日引渡者", val(d, FMT_LABELS.pickupHandover));
-  add("集荷連絡先", val(d, FMT_LABELS.pickupContact));
+  add("集荷連絡先", formatPhoneNumber(val(d, FMT_LABELS.pickupContact), val(d, FMT_LABELS.pickupAddress)));
 
   // 伝票番号連絡先
   add("伝票番号連絡先 To", val(d, FMT_LABELS.slipTo));
@@ -81,7 +82,7 @@ export function buildOrderDetails(input: OrderDetailsInput): string {
 
   // 緊急時責任者
   add("緊急時責任者", val(d, FMT_LABELS.emergencyName));
-  add("緊急時責任者電話番号", val(d, FMT_LABELS.emergencyPhone));
+  add("緊急時責任者電話番号", formatPhoneNumber(val(d, FMT_LABELS.emergencyPhone), val(d, FMT_LABELS.deliveryAddress)));
 
   // お客様からの要望
   add("お客様からの要望", input.customerRequests ?? "");
