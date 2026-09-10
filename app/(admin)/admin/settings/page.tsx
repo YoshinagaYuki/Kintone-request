@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { SettingsEditor } from "@/components/admin/settings-editor";
-import { getMinimumOrderQuantity, getManualDriveUrl } from "@/lib/system-settings";
+import {
+  getMinimumOrderQuantity,
+  getManualDriveUrl,
+  getAlwaysCcEmails,
+} from "@/lib/system-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -12,9 +16,10 @@ export const dynamic = "force-dynamic";
  */
 export default async function SettingsPage() {
   const supabase = await createClient();
-  const [minimumOrderQuantity, manualDriveUrl] = await Promise.all([
+  const [minimumOrderQuantity, manualDriveUrl, alwaysCcEmails] = await Promise.all([
     getMinimumOrderQuantity(supabase),
     getManualDriveUrl(supabase),
+    getAlwaysCcEmails(supabase),
   ]);
 
   return (
@@ -27,6 +32,7 @@ export default async function SettingsPage() {
       <SettingsEditor
         minimumOrderQuantity={minimumOrderQuantity}
         manualDriveUrl={manualDriveUrl}
+        alwaysCcEmails={alwaysCcEmails}
       />
     </main>
   );

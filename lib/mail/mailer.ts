@@ -1,6 +1,8 @@
 import "server-only";
 
 import nodemailer, { type Transporter } from "nodemailer";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getAlwaysCcEmails, dedupeEmails } from "@/lib/system-settings";
 
 /**
  * メール送信の共通抽象(Google Workspace SMTP / nodemailer)。
@@ -22,6 +24,11 @@ export type MailInput = {
   subject: string;
   /** プレーンテキスト本文(HTMLは埋め込まない) */
   text: string;
+  /**
+   * 呼び出し側が指定する既存CC(任意)。ここに常時CC(system_settings)を合流する。
+   * 注意: これはサーバー側で組み立てた値のみを渡すこと(外部リクエスト値をそのまま渡さない)。
+   */
+  cc?: string | string[];
 };
 
 export type MailResult =
@@ -32,6 +39,39 @@ export type MailResult =
 /** 制御文字を除去(ヘッダインジェクション対策) */
 function sanitizeHeader(v: string): string {
   return v.replace(/[\r\n]+/g, " ").trim();
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * 既存CC(呼び出し側)と常時CC(system_settings)を合流し、重複排除したCC配列を返す。
+ * ・大文字小文字を無視して重複排除
+ * ・To と同一のアドレスはCCから除外(二重送信防止)
+ * ・不正形式・制御文字混入は除外
+ * ・常時CCの取得失敗はログのみ(既存CCで継続)。CC取得エラーでTo送信を止めない。
+ */
+async function buildCcList(
+  existingCc: string | string[] | undefined,
+  to: string
+): Promise<string[]> {
+  const existing = Array.isArray(existingCc)
+    ? existingCc
+    : existingCc
+      ? [existingCc]
+      : [];
+
+  let always: string[] = [];
+  try {
+    always = await getAlwaysCcEmails(createAdminClient());
+  } catch (err) {
+    console.error("[mail] 常時CC設定の取得に失敗しました(Toへの送信は継続):", err);
+    always = [];
+  }
+
+  const toKey = sanitizeHeader(to).toLowerCase();
+  const merged = dedupeEmails([...existing, ...always].map((e) => sanitizeHeader(e)))
+    .filter((e) => EMAIL_RE.test(e) && e.toLowerCase() !== toKey);
+  return merged;
 }
 
 let cachedTransporter: Transporter | null = null;
@@ -71,8 +111,13 @@ export async function sendMail(input: MailInput): Promise<MailResult> {
     return { sent: false, skipped: true };
   }
 
+  // CC合流: 既存CC(呼び出し側) + 常時CC(system_settings)。
+  // ・大文字小文字を無視して重複排除。To と同一のアドレスもCCから除外。
+  // ・常時CCの取得失敗はログのみで、To への送信は継続する(安全側)。
+  const cc = await buildCcList(input.cc, to);
+
   try {
-    await transporter.sendMail({ from, to, subject, text });
+    await transporter.sendMail({ from, to, subject, text, ...(cc.length ? { cc } : {}) });
     return { sent: true, provider: "smtp" };
   } catch (err) {
     // エラーメッセージに宛先が含まれ得るためログには出さず、呼び出し元へ返す
