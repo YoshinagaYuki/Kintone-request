@@ -15,6 +15,8 @@ export type OrderDetailsInput = {
   staffName?: string | null;
   /** お客様からの要望(requests.customer_requests)。無ければ表示しない */
   customerRequests?: string | null;
+  /** 料金区分(てずくーる承認時)。'paid'|'free'|null。null は表示しない */
+  billingType?: string | null;
 };
 
 function val(data: Record<string, string>, label: string): string {
@@ -83,6 +85,13 @@ export function buildOrderDetails(input: OrderDetailsInput): string {
   // 緊急時責任者
   add("緊急時責任者", val(d, FMT_LABELS.emergencyName));
   add("緊急時責任者電話番号", formatPhoneNumber(val(d, FMT_LABELS.emergencyPhone), val(d, FMT_LABELS.deliveryAddress)));
+
+  // 料金区分(てずくーる承認時。有償/無償)
+  if (input.billingType === "paid") add("料金区分", "有償");
+  else if (input.billingType === "free") add("料金区分", "無償");
+
+  // SNS宣伝(てずくーる。希望する/希望しない)
+  add("SNS宣伝", val(d, FMT_LABELS.snsPromotion));
 
   // お客様からの要望
   add("お客様からの要望", input.customerRequests ?? "");

@@ -37,6 +37,8 @@ export function ApproveActions({
   staffAmbiguous = false,
   staffAmbiguousCandidates = [],
   staffOptions = [],
+  requireBillingType = false,
+  billingTypeDefault = "",
 }: {
   requestId: string;
   status: RequestStatus;
@@ -70,6 +72,10 @@ export function ApproveActions({
   staffAmbiguousCandidates?: string[];
   /** 担当者マスターの正式名称(有効なもののみ) */
   staffOptions?: string[];
+  /** 料金区分(有償/無償)の選択を必須にするか(てずくーるのみ true) */
+  requireBillingType?: boolean;
+  /** 料金区分の初期値(承認済みなら 'paid'|'free'、未確定は '') */
+  billingTypeDefault?: "" | "paid" | "free";
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -89,6 +95,10 @@ export function ApproveActions({
   const [staffName, setStaffName] = useState(staffSuggested);
   const staffRequired = staffInput.trim().length > 0;
   const staffUnselected = staffRequired && !staffName;
+
+  /** 料金区分(てずくーるのみ・初期未選択)。未選択では承認不可 */
+  const [billingType, setBillingType] = useState<"" | "paid" | "free">(billingTypeDefault);
+  const billingUnselected = requireBillingType && !billingType;
 
   async function post(
     action: "approve" | "retry",
@@ -141,6 +151,12 @@ export function ApproveActions({
       return;
     }
 
+    // 料金区分(てずくーる)が未選択なら登録させない
+    if (billingUnselected) {
+      setError("料金区分を選択してください。");
+      return;
+    }
+
     // レンタルプランを使う種別: プラン確定 + 確認アラート
     if (usesRentalPlan) {
       if (planSelectionRequired && !planId) {
@@ -155,12 +171,21 @@ export function ApproveActions({
           ? `申請者が選択したレンタルプランは『${requestedPlanName ?? planName}』です。\n承認するプラン: 『${planName}』\nこの内容で承認しますか？`
           : `レンタルプラン『${planName}』で登録し承認します。よろしいですか？`;
       if (!window.confirm(warningBlock + confirmMessage)) return;
-      void post("approve", { ...(planId ? { rental_plan_id: planId } : {}), contents, staff_name: staffName });
+      void post("approve", {
+        ...(planId ? { rental_plan_id: planId } : {}),
+        contents,
+        staff_name: staffName,
+        ...(requireBillingType ? { billing_type: billingType } : {}),
+      });
       return;
     }
 
     if (!window.confirm(warningBlock + "承認してkintoneへ登録します。よろしいですか?")) return;
-    void post("approve", { contents, staff_name: staffName });
+    void post("approve", {
+      contents,
+      staff_name: staffName,
+      ...(requireBillingType ? { billing_type: billingType } : {}),
+    });
   }
 
   return (
@@ -298,10 +323,50 @@ export function ApproveActions({
         </div>
       )}
 
+      {/* 料金区分の確定(てずくーるのみ・初期未選択) */}
+      {requireBillingType && status === "pending" && (
+        <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <p className="text-sm font-semibold text-gray-800">
+            料金区分 <span className="text-red-600">*</span>
+          </p>
+          <p className="mt-1 text-xs text-gray-500">
+            この案件を有償・無償のどちらで承認するか選択してください(未選択では承認できません)。
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {([
+              ["paid", "有償"],
+              ["free", "無償"],
+            ] as const).map(([val, label]) => (
+              <label
+                key={val}
+                className={`flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
+                  billingType === val
+                    ? "border-blue-600 bg-blue-50 text-blue-800"
+                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="billing_type"
+                  value={val}
+                  checked={billingType === val}
+                  onChange={() => {
+                    setBillingType(val);
+                    setError(null);
+                  }}
+                  className="h-4 w-4 accent-blue-600"
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
       {status === "pending" && (
         <button
           onClick={handleApprove}
-          disabled={submitting || done || !previewOk || unselectedContents.length > 0 || staffUnselected}
+          disabled={submitting || done || !previewOk || unselectedContents.length > 0 || staffUnselected || billingUnselected}
           className="rounded-md bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
         >
           {submitting ? "登録中…" : done ? "登録完了" : "承認してkintoneへ登録"}

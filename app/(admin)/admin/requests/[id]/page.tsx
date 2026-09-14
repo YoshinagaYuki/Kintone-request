@@ -42,6 +42,8 @@ type Detail = {
   customer_requests: string | null;
   approved_contents: Record<string, string> | null;
   is_structured: boolean | null;
+  sns_promotion_requested: boolean | null;
+  billing_type: string | null;
   company_staff_name_input: string | null;
   approved_staff_name: string | null;
   application_email_sent_at: string | null;
@@ -111,7 +113,7 @@ export default async function RequestDetailPage({
   const { data } = await supabase
     .from("requests")
     .select(
-      "id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, approved_contents, is_structured, company_staff_name_input, approved_staff_name, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
+      "id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, approved_contents, is_structured, sns_promotion_requested, billing_type, company_staff_name_input, approved_staff_name, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
     )
     .eq("id", id)
     .maybeSingle();
@@ -512,6 +514,40 @@ export default async function RequestDetailPage({
         </SectionCard>
       )}
 
+      {/* 案件区分(SNS宣伝 / 料金区分) */}
+      <SectionCard title="案件区分">
+        <table className="w-full text-sm">
+          <tbody className="divide-y divide-gray-100">
+            <tr>
+              <th className="w-36 bg-gray-50 px-4 py-2 text-left font-medium text-gray-600 sm:w-48">
+                SNS宣伝
+              </th>
+              <td className="px-4 py-2">
+                {request.sns_promotion_requested === null
+                  ? "未設定"
+                  : request.sns_promotion_requested
+                    ? "希望する"
+                    : "希望しない"}
+              </td>
+            </tr>
+            {request.form_types?.kintone_app_id === 49 && (
+              <tr>
+                <th className="w-36 bg-gray-50 px-4 py-2 text-left font-medium text-gray-600 sm:w-48">
+                  料金区分
+                </th>
+                <td className="px-4 py-2">
+                  {request.billing_type === "paid"
+                    ? "有償"
+                    : request.billing_type === "free"
+                      ? "無償"
+                      : "未設定(承認時に確定)"}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </SectionCard>
+
       {/* お客様からの要望(承認画面でも表示・改行保持) */}
       {request.customer_requests && (
         <SectionCard title="お客様からの要望">
@@ -643,6 +679,12 @@ export default async function RequestDetailPage({
           staffAmbiguous={staffMatch.ambiguous}
           staffAmbiguousCandidates={staffMatch.ambiguousCandidates}
           staffOptions={staffOptions}
+          requireBillingType={request.form_types?.kintone_app_id === 49}
+          billingTypeDefault={
+            request.billing_type === "paid" || request.billing_type === "free"
+              ? request.billing_type
+              : ""
+          }
         />
       )}
 

@@ -29,6 +29,8 @@ type ApplicantContext = {
   staffName?: string | null;
   /** お客様からの要望(requests.customer_requests)。注文内容へ表示 */
   customerRequests?: string | null;
+  /** 料金区分(てずくーる承認時)。'paid'|'free'|null。注文内容へ表示 */
+  billingType?: string | null;
 };
 
 function formatDateTime(iso: string): string {
@@ -61,6 +63,7 @@ function baseVars(ctx: ApplicantContext, dateVarName: string, isoDate: string) {
     parsedData: ctx.parsedData ?? {},
     staffName: ctx.staffName ?? null,
     customerRequests: ctx.customerRequests ?? null,
+    billingType: ctx.billingType ?? null,
   });
   return {
     applicant_name: ctx.applicant_name ?? "ご担当者",

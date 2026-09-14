@@ -18,15 +18,17 @@ export default async function CompletePage({
 
   let managementNo: string | null = null;
   let applicantEmail: string | null = null;
+  let snsPromotion: boolean | null = null;
   if (rid) {
     const supabase = createAdminClient();
     const { data } = await supabase
       .from("requests")
-      .select("management_no, applicant_email")
+      .select("management_no, applicant_email, sns_promotion_requested")
       .eq("id", rid)
       .maybeSingle();
     managementNo = data?.management_no ?? null;
     applicantEmail = data?.applicant_email ?? null;
+    snsPromotion = (data?.sns_promotion_requested as boolean | null) ?? null;
   }
 
   const emailMasked = applicantEmail
@@ -67,6 +69,12 @@ export default async function CompletePage({
             {managementNo ?? "社内確認後に発行されます"}
           </span>
         </p>
+        {snsPromotion !== null && (
+          <p className="mt-2 flex justify-between gap-3">
+            <span className="text-gray-500">SNS宣伝</span>
+            <span className="text-gray-800">{snsPromotion ? "希望する" : "希望しない"}</span>
+          </p>
+        )}
       </div>
 
       {/* メール送信結果(正確な文言) */}

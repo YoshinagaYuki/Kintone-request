@@ -32,6 +32,8 @@ export async function POST(
     contents?: Record<string, string> | null;
     /** 承認画面で確定した弊社担当者の正式名称 */
     staff_name?: string | null;
+    /** 料金区分(てずくーるのみ): 'paid'|'free' */
+    billing_type?: string | null;
   } = {};
   try {
     body = await req.json();
@@ -42,7 +44,7 @@ export async function POST(
   const { data: request } = await supabase
     .from("requests")
     .select(
-      "id, status, form_type_id, form_type_version, parsed_data, requested_rental_plan_id, approved_rental_plan_id, company_staff_name_input, form_types(field_mapping, parser_config)"
+      "id, status, form_type_id, form_type_version, parsed_data, requested_rental_plan_id, approved_rental_plan_id, company_staff_name_input, form_types(field_mapping, parser_config, kintone_app_id)"
     )
     .eq("id", id)
     .maybeSingle();
@@ -60,7 +62,19 @@ export async function POST(
   const formType = request.form_types as unknown as {
     field_mapping?: FieldMapping;
     parser_config?: ParserConfig;
+    kintone_app_id?: number;
   } | null;
+
+  // 事業判定は表示名ではなく kintone_app_id(49=てずくーる)で行う。
+  // てずくーるのみ料金区分(有償/無償)を必須にする。オールマイトは対象外。
+  const isTezukuru = formType?.kintone_app_id === 49;
+  if (isTezukuru) {
+    const billingType = typeof body.billing_type === "string" ? body.billing_type : "";
+    if (billingType !== "paid" && billingType !== "free") {
+      return NextResponse.json({ error: "料金区分を選択してください" }, { status: 409 });
+    }
+    await supabase.from("requests").update({ billing_type: billingType }).eq("id", id);
+  }
 
   // 設定駆動ガード: 申請時点version の field_mapping が空なら承認不可
   const versioned = await getVersionedConfig(
@@ -192,6 +206,7 @@ export async function POST(
     request_id: id,
     action: "approved",
     actor: user.id,
+    ...(isTezukuru ? { detail: { billing_type: body.billing_type } } : {}),
   });
 
   // kintone登録(共通処理。成功時に承認完了メールも送信される)

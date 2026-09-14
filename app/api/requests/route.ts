@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
     rental_status?: string | null;
     rental_plan_id?: string | null;
     customer_requests?: string | null;
+    sns_promotion_requested?: boolean | null;
   };
   try {
     const text = await req.text();
@@ -104,13 +105,25 @@ export async function POST(req: NextRequest) {
   // 種別の解決(公開中=is_active のもののみ。無効種別はサーバー側で拒否)
   const { data: formType } = await supabase
     .from("form_types")
-    .select("id, name, version, parser_config")
+    .select("id, name, version, parser_config, kintone_app_id")
     .eq("id", form_type_id)
     .eq("is_active", true)
     .maybeSingle();
 
   if (!formType) {
     return NextResponse.json({ errors: ["申請種別が正しくありません。"] }, { status: 400 });
+  }
+
+  // 事業判定は表示名ではなく kintone_app_id(49=てずくーる)で行う
+  const isTezukuru = (formType.kintone_app_id as number) === 49;
+  const snsPromotionRequested =
+    typeof body.sns_promotion_requested === "boolean" ? body.sns_promotion_requested : null;
+  // SNS宣伝はてずくーるのみ必須(未選択=null は不可)
+  if (isTezukuru && snsPromotionRequested === null) {
+    return NextResponse.json(
+      { errors: ["SNSでの宣伝について、希望する/希望しないを選択してください。"] },
+      { status: 400 }
+    );
   }
 
   const parserConfig = (formType.parser_config ?? {}) as ParserConfig;
@@ -224,6 +237,7 @@ export async function POST(req: NextRequest) {
       applicant_email,
       company_staff_name_input: company_staff_name,
       is_structured: body.structured === true,
+      sns_promotion_requested: snsPromotionRequested,
       rental_status: usesRentalPlan ? rental_status : null,
       requested_rental_plan_id: requestedPlanId,
       customer_requests: customer_requests.trim() || null,

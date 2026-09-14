@@ -48,6 +48,13 @@ export const FMT_LABELS = {
   slipCc: "cc",
   emergencyName: "責任者氏名",
   emergencyPhone: "責任者電話番号",
+  snsPromotion: "SNS宣伝",
+} as const;
+
+/** SNS宣伝の表示ラベル(希望有無) */
+export const SNS_PROMOTION_LABELS = {
+  yes: "希望する",
+  no: "希望しない",
 } as const;
 
 export type ProductRow = { name: string; quantity: string };
@@ -72,6 +79,8 @@ export type TezukuruInput = {
   slipCc: string;
   emergencyName: string;
   emergencyPhone: string;
+  /** SNS宣伝の希望有無(FMTへ「SNS宣伝: 希望する/希望しない」として反映)。未選択は空 */
+  snsPromotion?: string;
 };
 
 /** 成立している(商品名・数量ともに入力された)商品行だけを返す */
@@ -124,6 +133,9 @@ export function buildTezukuruFmt(input: TezukuruInput): string {
   push(FMT_LABELS.slipCc, input.slipCc);
   push(FMT_LABELS.emergencyName, input.emergencyName);
   push(FMT_LABELS.emergencyPhone, formatPhoneNumber(input.emergencyPhone, input.deliveryAddress));
+
+  // SNS宣伝(希望する/希望しない)。既存FMTの末尾に追加(互換性を壊さない位置)
+  push(FMT_LABELS.snsPromotion, input.snsPromotion ?? "");
 
   return lines.join("\n");
 }

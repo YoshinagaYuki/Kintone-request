@@ -12,6 +12,7 @@ import {
   buildTezukuruFmt,
   validProducts,
   MAX_PRODUCTS,
+  SNS_PROMOTION_LABELS,
   type ProductRow,
 } from "@/lib/tezukuru-fmt";
 
@@ -38,6 +39,8 @@ export type ApplyFormType = {
   notes: string;
   select_fields: SelectFieldDef[];
   has_rental_plan?: boolean;
+  /** てずくーる(App49)か。SNS宣伝など てずくーる限定項目の表示判定に使う(表示名では判定しない) */
+  is_tezukuru?: boolean;
 };
 
 /**
@@ -124,6 +127,9 @@ export function ApplyForm({
   const [emergencyName, setEmergencyName] = useState("");
   const [emergencyPhone, setEmergencyPhone] = useState("");
 
+  // SNS宣伝(てずくーるのみ・必須)。"" = 未選択 / "yes" / "no"
+  const [snsPromotion, setSnsPromotion] = useState<"" | "yes" | "no">("");
+
   const [customerRequests, setCustomerRequests] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -131,6 +137,8 @@ export function ApplyForm({
   const selected = formTypes.find((f) => f.id === selectedId) ?? null;
   const usesRentalPlan = Boolean(selected?.has_rental_plan);
   const showPlanSelect = usesRentalPlan && rentalStatus === "new_rental";
+  // てずくーる限定項目(SNS宣伝)の表示判定。表示名ではなく is_tezukuru(App49)で判定
+  const isTezukuru = Boolean(selected?.is_tezukuru);
 
   /** スロット番号(行番号=idx+1)で選択可能な商品名(除外スロットを反映) */
   function slotOptions(slot: number): string[] {
@@ -212,6 +220,11 @@ export function ApplyForm({
     if (!pickupHandover.trim()) errs.push("当日引渡者氏名を入力してください。");
     if (!pickupContact.trim()) errs.push("集荷連絡先を入力してください。");
 
+    // SNS宣伝(てずくーるのみ必須)
+    if (isTezukuru && snsPromotion === "") {
+      errs.push("SNSでの宣伝について、希望する/希望しないを選択してください。");
+    }
+
     if (customerRequests.length > MAX_CUSTOMER_REQUESTS)
       errs.push(`要望・連絡事項は${MAX_CUSTOMER_REQUESTS}文字以内で入力してください。`);
     return errs;
@@ -250,6 +263,12 @@ export function ApplyForm({
       slipCc,
       emergencyName,
       emergencyPhone,
+      snsPromotion:
+        snsPromotion === "yes"
+          ? SNS_PROMOTION_LABELS.yes
+          : snsPromotion === "no"
+            ? SNS_PROMOTION_LABELS.no
+            : "",
     });
 
     try {
@@ -267,6 +286,8 @@ export function ApplyForm({
           rental_status: usesRentalPlan ? rentalStatus : null,
           rental_plan_id: rentalStatus === "new_rental" ? rentalPlanId : null,
           customer_requests: customerRequests.trim() || null,
+          sns_promotion_requested:
+            snsPromotion === "" ? null : snsPromotion === "yes",
         }),
       });
       const body = await res.json().catch(() => null);
@@ -665,6 +686,51 @@ export function ApplyForm({
               </div>
             </div>
           </section>
+
+          {/* SNS宣伝(てずくーるのみ・必須) */}
+          {isTezukuru && (
+            <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <h2 className="text-sm font-semibold text-gray-800">
+                SNSでの宣伝について {req}
+              </h2>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {([
+                  ["yes", SNS_PROMOTION_LABELS.yes],
+                  ["no", SNS_PROMOTION_LABELS.no],
+                ] as const).map(([val, label]) => (
+                  <label
+                    key={val}
+                    className={`flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
+                      snsPromotion === val
+                        ? "border-blue-600 bg-blue-50 text-blue-800"
+                        : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="sns_promotion"
+                      value={val}
+                      checked={snsPromotion === val}
+                      onChange={() => {
+                        setSnsPromotion(val);
+                        setErrors([]);
+                      }}
+                      className="h-4 w-4 accent-blue-600"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
+                <p className="font-semibold">ご注意ください</p>
+                <p className="mt-1">
+                  SNSでの宣伝は<strong>有料サービス</strong>です。内容・スケジュール・案件条件等によっては
+                  お受けできない場合があります。「希望する」を選択した時点では<strong>実施確定ではありません</strong>。
+                  別途お見積り・ご相談のうえで実施可否を判断いたします。
+                </p>
+              </div>
+            </section>
+          )}
         </>
       )}
 

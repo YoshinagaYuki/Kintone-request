@@ -24,7 +24,7 @@ export default async function ApplyPage() {
 
   const { data } = await supabase
     .from("form_types")
-    .select("id, name, fmt_template, input_guide, notes, parser_config")
+    .select("id, name, fmt_template, input_guide, notes, parser_config, kintone_app_id")
     .eq("is_active", true)
     .order("display_order", { ascending: true });
 
@@ -43,6 +43,8 @@ export default async function ApplyPage() {
       notes: withFallback(f.notes, DEFAULT_NOTES),
       select_fields: allSelectFields.filter((sf) => sf.label !== "レンタルプラン"),
       has_rental_plan: allSelectFields.some((sf) => sf.label === "レンタルプラン"),
+      // てずくーるは App49。表示名ではなく kintone_app_id で判定
+      is_tezukuru: (f.kintone_app_id as number) === 49,
     };
   });
   if (formTypes.length === 0) notFound();
