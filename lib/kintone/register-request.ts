@@ -112,6 +112,24 @@ export async function registerRequestToKintone(
   // kintone AppID は form_types(現行)から取得
   const appId = formType.kintone_app_id;
 
+  // 料金区分 → kintone「イベント種類」(ドロップダウン)。てずくーる(App49)のみ。
+  // ・承認画面で管理者が選択した billing_type(paid/free)を正として送信する。
+  // ・paid → 有償イベント / free → 無償イベント。それ以外の値は送信しない。
+  // ・再実行時も保存済み billing_type を参照。未設定/不正なら推測せずエラー(管理者に選択を求める)。
+  const EVENT_TYPE_BY_BILLING: Record<"paid" | "free", string> = {
+    paid: "有償イベント",
+    free: "無償イベント",
+  };
+  const billingTypeForKintone = (request.billing_type as string | null) ?? null;
+  if (appId === 49) {
+    if (billingTypeForKintone !== "paid" && billingTypeForKintone !== "free") {
+      return {
+        ok: false,
+        error: "料金区分(有償／無償)を選択してください",
+      };
+    }
+  }
+
   // field_mapping は「申請時点の version」の定義を使用する
   // (FMT・マッピング改訂後も過去申請が壊れない。履歴が無い場合のみ現行へフォールバック)
   const versioned = await getVersionedConfig(
@@ -167,6 +185,14 @@ export async function registerRequestToKintone(
     const normalized = await normalizeRecordItems(supabase, formType.name, mapped.record);
     normalized.warnings.forEach((w) => console.warn("[item-normalize]", w));
     normalized.corrections.forEach((c) => console.info("[item-normalize]", c));
+
+    // イベント種類(有償/無償)をてずくーる(App49)のレコードへ反映。
+    // 既存マッピングで設定済みでも、承認時に管理者が選んだ値を正として上書きする(二重設定・競合防止)。
+    if (appId === 49 && (billingTypeForKintone === "paid" || billingTypeForKintone === "free")) {
+      mapped.record["イベント種類"] = {
+        value: EVENT_TYPE_BY_BILLING[billingTypeForKintone],
+      };
+    }
 
     // オールマイトのみ: API登録ではkintone JSが発火しないため、
     // 利用日数・利用金額①〜⑤をサーバー側で計算して補完(計算/配送費/調整額には触れない)
