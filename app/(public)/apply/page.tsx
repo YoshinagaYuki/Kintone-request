@@ -1,88 +1,40 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { ApplyForm, type ApplyFormType } from "@/components/apply/apply-form";
-import type { RentalPlan } from "@/types/request";
-import { getMinimumOrderQuantity } from "@/lib/system-settings";
-import {
-  DEFAULT_FMT_TEMPLATE,
-  DEFAULT_INPUT_GUIDE,
-  DEFAULT_NOTES,
-  withFallback,
-} from "@/lib/form-defaults";
 
 export const dynamic = "force-dynamic";
 
 /**
- * 申請ページ(単一URL /apply)。
- * is_active=true の form_types を display_order 順にラジオで自動描画。
- * オールマイトは is_active=false(機能オフ)のため公開申請には出ない。
- * 担当者選択は機能オフ(コード/マスタは保持)。代わりに入力者情報を入力。
+ * 申請トップページ(事業選択)。/apply
+ *
+ * ・お申し込み事業(てずくーる / オールマイト)をロゴカードで選択する。
+ * ・てずくーる → /apply/tezukuru(既存フォーム)。公開中(App49 is_active)のときのみ有効。
+ * ・オールマイト → 専用フォーム・App10連携が未完成のため「準備中」(選択不可)。
+ * ・事業判定は表示名ではなく kintone_app_id(49/10)で行う。
+ * ・ロゴ画像は public/images 配下を使用(縦横比維持・object-contain)。
  */
-export default async function ApplyPage() {
+
+// オールマイトは第6段階(専用フォーム+App10連携)完成までは公開しない。
+const ALLMIGHT_PUBLIC = false;
+
+export default async function ApplyTopPage() {
   const supabase = createAdminClient();
 
   const { data } = await supabase
     .from("form_types")
-    .select("id, name, fmt_template, input_guide, notes, parser_config, kintone_app_id")
-    .eq("is_active", true)
-    .order("display_order", { ascending: true });
+    .select("kintone_app_id, is_active")
+    .eq("is_active", true);
+  const activeAppIds = new Set((data ?? []).map((r) => r.kintone_app_id as number));
 
-  // 選択UI定義(parser_config.select_fields)。レンタルプランは専用UIで扱うため除外する
-  const formTypes: ApplyFormType[] = (data ?? []).map((f) => {
-    const allSelectFields =
-      (f.parser_config as { select_fields?: ApplyFormType["select_fields"] })
-        ?.select_fields ?? [];
-    return {
-      id: f.id,
-      name: f.name,
-      // 管理画面「申請フォーム設定」で編集した内容を表示。
-      // DB未登録(空)の場合のみ既定値へフォールバック
-      fmt_template: withFallback(f.fmt_template, DEFAULT_FMT_TEMPLATE),
-      input_guide: withFallback(f.input_guide, DEFAULT_INPUT_GUIDE),
-      notes: withFallback(f.notes, DEFAULT_NOTES),
-      select_fields: allSelectFields.filter((sf) => sf.label !== "レンタルプラン"),
-      has_rental_plan: allSelectFields.some((sf) => sf.label === "レンタルプラン"),
-      // てずくーるは App49。表示名ではなく kintone_app_id で判定
-      is_tezukuru: (f.kintone_app_id as number) === 49,
-    };
-  });
-  if (formTypes.length === 0) notFound();
-
-  // レンタルプランマスタ(有効なもののみ・表示順)
-  const { data: planData } = await supabase
-    .from("rental_plans")
-    .select("id, name, description, sort_order, is_active")
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true });
-  const rentalPlans = (planData ?? []) as RentalPlan[];
-
-  // 商品(コンテンツ)プルダウン: 商品マスターの有効な正式名称のみ・sort_order→正式名称順。
-  // 固定配列は使わない(マスターから取得)。excluded_slots でスロット固有の除外を表現。
-  const { data: itemData } = await supabase
-    .from("item_name_master")
-    .select("name, sort_order, is_active, category, excluded_slots")
-    .eq("category", "tezukuru")
-    .eq("is_active", true)
-    .order("sort_order", { ascending: true })
-    .order("name", { ascending: true });
-  const productItems = (itemData ?? []).map((r) => ({
-    name: r.name as string,
-    excludedSlots: Array.isArray(r.excluded_slots)
-      ? (r.excluded_slots as number[])
-      : [],
-  }));
-
-  // 最小注文数量(system_settings。未設定時は初期値100)
-  const minimumOrderQuantity = await getMinimumOrderQuantity(supabase);
+  const tezukuruAvailable = activeAppIds.has(49);
+  const allmightAvailable = ALLMIGHT_PUBLIC && activeAppIds.has(10);
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:py-10">
+    <main className="mx-auto w-full max-w-2xl px-4 py-10 sm:py-14">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold sm:text-2xl">案件申請</h1>
+          <h1 className="text-2xl font-bold">案件申請受付</h1>
           <p className="mt-2 text-sm leading-relaxed text-gray-600">
-            各項目を入力して申請してください。
+            お申し込み希望のコンテンツを選択してください
           </p>
         </div>
         <Link
@@ -93,12 +45,85 @@ export default async function ApplyPage() {
         </Link>
       </div>
 
-      <ApplyForm
-        formTypes={formTypes}
-        rentalPlans={rentalPlans}
-        productItems={productItems}
-        minimumOrderQuantity={minimumOrderQuantity}
-      />
+      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* てずくーる */}
+        <BusinessCard
+          available={tezukuruAvailable}
+          href="/apply/tezukuru"
+          logoSrc="/images/tezukuru-logo.png"
+          alt="てずくーる!!"
+          description="ワークショップ"
+        />
+
+        {/* オールマイト */}
+        <BusinessCard
+          available={allmightAvailable}
+          href="/apply/allmight"
+          logoSrc="/images/allmight-logo.png"
+          alt="オールマイト"
+          description="アミューズメント機器"
+        />
+      </div>
     </main>
+  );
+}
+
+function BusinessCard({
+  available,
+  href,
+  logoSrc,
+  alt,
+  description,
+}: {
+  available: boolean;
+  href: string;
+  logoSrc: string;
+  alt: string;
+  description: string;
+}) {
+  const inner = (
+    <>
+      {/* ロゴ表示領域(高さ統一・縦横比維持) */}
+      <div className="flex h-20 w-full items-center justify-center sm:h-24">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={logoSrc}
+          alt={alt}
+          className="max-h-full max-w-full object-contain"
+        />
+      </div>
+      <div className="mt-4 text-sm font-medium text-gray-700">{description}</div>
+      <div className="mt-4">
+        {available ? (
+          <span className="inline-flex items-center gap-1 text-sm font-semibold text-blue-700">
+            申請する →
+          </span>
+        ) : (
+          <span className="inline-flex items-center rounded-full bg-gray-200 px-3 py-1 text-xs font-semibold text-gray-600">
+            準備中
+          </span>
+        )}
+      </div>
+    </>
+  );
+
+  if (!available) {
+    return (
+      <div
+        aria-disabled="true"
+        className="flex min-h-[13rem] cursor-not-allowed flex-col items-center justify-center rounded-2xl border border-gray-200 bg-gray-50 p-6 text-center opacity-80"
+      >
+        {inner}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      className="flex min-h-[13rem] flex-col items-center justify-center rounded-2xl border-2 border-blue-200 bg-white p-6 text-center shadow-sm transition-colors hover:border-blue-500 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:bg-blue-100"
+    >
+      {inner}
+    </Link>
   );
 }

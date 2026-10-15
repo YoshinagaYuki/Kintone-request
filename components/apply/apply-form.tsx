@@ -71,6 +71,7 @@ export function ApplyForm({
   rentalPlans,
   productItems,
   minimumOrderQuantity,
+  backHref = "/apply",
 }: {
   formTypes: ApplyFormType[];
   rentalPlans: RentalPlan[];
@@ -78,6 +79,8 @@ export function ApplyForm({
   productItems: ProductItem[];
   /** 数量の最小値(system_settings) */
   minimumOrderQuantity: number;
+  /** 「事業選択に戻る」ボタンの遷移先(既定: /apply) */
+  backHref?: string;
 }) {
   const router = useRouter();
   const [selectedId, setSelectedId] = useState(
@@ -305,6 +308,28 @@ export function ApplyForm({
     }
   }
 
+  /** 入力途中かどうか(事業選択に戻る際の確認用) */
+  function hasAnyInput(): boolean {
+    return Boolean(
+      applicantName || applicantPhone || applicantEmail || companyStaffName ||
+      rentalStatus || rentalPlanId || agencyName || boothName || billingMonth ||
+      shippingFee || deliveryDate || deliveryPostal || deliveryAddress ||
+      deliveryReceiver || deliveryContact || pickupDate || pickupPostal ||
+      pickupAddress || pickupHandover || pickupContact || slipTo || slipCc ||
+      emergencyName || emergencyPhone || snsPromotion || customerRequests ||
+      products.some((p) => p.name || p.quantity)
+    );
+  }
+
+  /** 事業選択へ戻る。入力があれば確認してからブラウザ履歴に依存せず遷移 */
+  function handleBack() {
+    if (submitting) return;
+    if (hasAnyInput() && !window.confirm("入力内容は保存されません。事業選択に戻りますか?")) {
+      return;
+    }
+    router.push(backHref);
+  }
+
   const inputClass =
     "mt-1 w-full rounded-md border border-gray-300 bg-white p-2.5 text-sm focus:border-blue-500 focus:outline-none";
   const labelClass = "block text-sm font-medium text-gray-700";
@@ -313,6 +338,14 @@ export function ApplyForm({
 
   return (
     <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+      <button
+        type="button"
+        onClick={handleBack}
+        className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
+      >
+        ← 事業選択に戻る
+      </button>
+
       {errors.length > 0 && (
         <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
           <ul className="list-disc pl-5">

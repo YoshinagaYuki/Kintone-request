@@ -104,7 +104,7 @@ export default async function CompletePage({
           href="/apply"
           className="block w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
         >
-          続けて申請する
+          事業選択に戻る
         </Link>
         <Link
           href="/admin/requests"
