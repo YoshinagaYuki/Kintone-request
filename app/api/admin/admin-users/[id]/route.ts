@@ -6,6 +6,8 @@ import {
   isActiveAdmin,
   recordAdminAudit,
   countActiveMasters,
+  findInvalidFormTypeIds,
+  setAdminBusinessAndNotify,
   type AdminUser,
 } from "@/lib/admin-users";
 
@@ -26,7 +28,14 @@ export async function PATCH(
     return NextResponse.json({ error: "権限がありません" }, { status: 403 });
   }
 
-  let body: { status?: string; role?: string; display_name?: string };
+  let body: {
+    status?: string;
+    role?: string;
+    display_name?: string;
+    form_type_ids?: string[];
+    push_notify_enabled?: boolean;
+    email_notify_enabled?: boolean;
+  };
   try {
     body = await req.json();
   } catch {
@@ -101,13 +110,69 @@ export async function PATCH(
     audits.push({ action: "update_display_name", metadata: { display_name: dn } });
   }
 
-  if (Object.keys(update).length === 0) {
+  // 担当事業・通知設定(master のみ。クライアント値を信用せずサーバーで判定)
+  const wantsBusiness = Array.isArray(body.form_type_ids);
+  const wantsNotify =
+    typeof body.push_notify_enabled === "boolean" ||
+    typeof body.email_notify_enabled === "boolean";
+  if ((wantsBusiness || wantsNotify) && me!.role !== "master") {
+    return NextResponse.json(
+      { error: "担当事業・通知設定の変更は master のみ可能です" },
+      { status: 403 }
+    );
+  }
+
+  const formTypeIds = Array.isArray(body.form_type_ids)
+    ? body.form_type_ids.filter((x): x is string => typeof x === "string")
+    : [];
+  if (wantsBusiness && formTypeIds.length > 0) {
+    const invalid = await findInvalidFormTypeIds(admin, formTypeIds);
+    if (invalid.length > 0) {
+      return NextResponse.json({ error: "担当事業の指定が不正です" }, { status: 400 });
+    }
+  }
+
+  const pushVal = typeof body.push_notify_enabled === "boolean" ? body.push_notify_enabled : null;
+  const emailVal = typeof body.email_notify_enabled === "boolean" ? body.email_notify_enabled : null;
+
+  // 担当事業を変更しない場合のみ、通知フラグを admin_users 更新に含める(単一行で原子的)。
+  // 担当事業を変更する場合は、担当事業+通知を combined RPC で1トランザクション更新する。
+  if (!wantsBusiness) {
+    if (pushVal !== null) {
+      update.push_notify_enabled = pushVal;
+      audits.push({ action: "update_notify", metadata: { push: pushVal } });
+    }
+    if (emailVal !== null) {
+      update.email_notify_enabled = emailVal;
+      audits.push({ action: "update_notify", metadata: { email: emailVal } });
+    }
+  }
+
+  if (Object.keys(update).length === 0 && !wantsBusiness) {
     return NextResponse.json({ error: "更新項目がありません" }, { status: 400 });
   }
 
-  const { error } = await admin.from("admin_users").update(update).eq("id", id);
-  if (error) {
-    return NextResponse.json({ error: `更新に失敗しました: ${error.message}` }, { status: 500 });
+  if (Object.keys(update).length > 0) {
+    const { error } = await admin.from("admin_users").update(update).eq("id", id);
+    if (error) {
+      return NextResponse.json({ error: `更新に失敗しました: ${error.message}` }, { status: 500 });
+    }
+  }
+
+  // 担当事業(+通知)を combined RPC で1トランザクション更新。
+  // 途中失敗時は全ロールバックされ、担当事業・Push・メールの3項目が更新前の状態に戻る。
+  if (wantsBusiness) {
+    const r = await setAdminBusinessAndNotify(admin, id, formTypeIds, pushVal, emailVal);
+    if (!r.ok) {
+      return NextResponse.json(
+        { error: "担当事業・通知設定の保存に失敗しました(変更は反映されていません)" },
+        { status: 500 }
+      );
+    }
+    audits.push({ action: "update_businesses", metadata: { form_type_ids: formTypeIds } });
+    if (pushVal !== null || emailVal !== null) {
+      audits.push({ action: "update_notify", metadata: { push: pushVal, email: emailVal } });
+    }
   }
 
   // Supabase Auth の user_metadata(name)も可能なら更新(失敗しても致命ではない)

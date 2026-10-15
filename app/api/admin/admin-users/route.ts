@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentAdmin, isActiveAdmin, recordAdminAudit } from "@/lib/admin-users";
+import {
+  getCurrentAdmin,
+  isActiveAdmin,
+  recordAdminAudit,
+  findInvalidFormTypeIds,
+  setAdminBusinessAndNotify,
+} from "@/lib/admin-users";
 import { getSetPasswordUrl } from "@/lib/site-url";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -17,7 +23,25 @@ export async function GET() {
     .from("admin_users")
     .select("*")
     .order("created_at", { ascending: true });
-  return NextResponse.json({ users: data ?? [] });
+
+  // 担当事業(form_type_ids)を各管理者へ付与。
+  // admin_user_businesses は RLSポリシー無し = service_role 経由でのみ取得(直接SELECT不可)。
+  const svc = createAdminClient();
+  const { data: biz } = await svc
+    .from("admin_user_businesses")
+    .select("admin_user_id, form_type_id");
+  const byAdmin = new Map<string, string[]>();
+  for (const row of biz ?? []) {
+    const key = row.admin_user_id as string;
+    const arr = byAdmin.get(key) ?? [];
+    arr.push(row.form_type_id as string);
+    byAdmin.set(key, arr);
+  }
+  const users = (data ?? []).map((u) => ({
+    ...u,
+    form_type_ids: byAdmin.get(u.id as string) ?? [],
+  }));
+  return NextResponse.json({ users });
 }
 
 /**
@@ -32,7 +56,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "権限がありません" }, { status: 403 });
   }
 
-  let body: { email?: string; display_name?: string; role?: string };
+  let body: {
+    email?: string;
+    display_name?: string;
+    role?: string;
+    form_type_ids?: string[];
+    push_notify_enabled?: boolean;
+    email_notify_enabled?: boolean;
+  };
   try {
     body = await req.json();
   } catch {
@@ -58,7 +89,33 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // 担当事業・通知設定は master のみ設定可能(クライアント値を信用せずサーバーで判定)
+  const wantsBusinessOrNotify =
+    Array.isArray(body.form_type_ids) ||
+    typeof body.push_notify_enabled === "boolean" ||
+    typeof body.email_notify_enabled === "boolean";
+  if (wantsBusinessOrNotify && me!.role !== "master") {
+    return NextResponse.json(
+      { error: "担当事業・通知設定の変更は master のみ可能です" },
+      { status: 403 }
+    );
+  }
+
   const admin = createAdminClient();
+
+  // 担当事業の form_type_id を検証(不正IDは拒否)
+  const formTypeIds = Array.isArray(body.form_type_ids)
+    ? body.form_type_ids.filter((x): x is string => typeof x === "string")
+    : [];
+  if (formTypeIds.length > 0) {
+    const invalid = await findInvalidFormTypeIds(admin, formTypeIds);
+    if (invalid.length > 0) {
+      return NextResponse.json(
+        { error: "担当事業の指定が不正です" },
+        { status: 400 }
+      );
+    }
+  }
 
   // 既存の管理者ユーザーがいれば重複作成しない(招待再送を案内)
   const { data: existing } = await admin
@@ -85,29 +142,73 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { error: upsertError } = await admin.from("admin_users").upsert(
-    {
-      auth_user_id: invited.user.id,
-      email,
-      display_name: displayName,
-      role,
-      status: "invited",
-      invited_at: new Date().toISOString(),
-    },
-    { onConflict: "auth_user_id" }
-  );
-  if (upsertError) {
+  const { data: createdRow, error: upsertError } = await admin
+    .from("admin_users")
+    .upsert(
+      {
+        auth_user_id: invited.user.id,
+        email,
+        display_name: displayName,
+        role,
+        status: "invited",
+        invited_at: new Date().toISOString(),
+        // master が指定した場合のみ通知設定を反映(未指定は列既定 true のまま)
+        ...(typeof body.push_notify_enabled === "boolean"
+          ? { push_notify_enabled: body.push_notify_enabled }
+          : {}),
+        ...(typeof body.email_notify_enabled === "boolean"
+          ? { email_notify_enabled: body.email_notify_enabled }
+          : {}),
+      },
+      { onConflict: "auth_user_id" }
+    )
+    .select("id")
+    .single();
+  if (upsertError || !createdRow) {
     return NextResponse.json(
-      { error: `管理者レコードの作成に失敗しました: ${upsertError.message}` },
+      { error: `管理者レコードの作成に失敗しました: ${upsertError?.message ?? "不明なエラー"}` },
       { status: 500 }
     );
+  }
+
+  // 担当事業を設定(master が指定した場合)。
+  // 失敗時は「成功」にせず明示エラーを返す。管理者レコードは作成済みのため、
+  // 再招待(重複作成)ではなく一覧からの編集で修復してもらう。
+  if (Array.isArray(body.form_type_ids)) {
+    // 通知設定は上の upsert で確定済みのため、ここでは担当事業のみ置換(push/email は null=据え置き)
+    const bizResult = await setAdminBusinessAndNotify(
+      admin,
+      createdRow.id,
+      formTypeIds,
+      null,
+      null
+    );
+    if (!bizResult.ok) {
+      await recordAdminAudit(admin, {
+        actorUserId: me!.auth_user_id,
+        targetUserId: invited.user.id,
+        action: "invite_business_failed",
+        metadata: { error: bizResult.error },
+      });
+      return NextResponse.json(
+        {
+          error:
+            "管理者は作成しましたが、担当事業の保存に失敗しました。再招待は不要です。管理者一覧の「担当/通知 編集」から担当事業を設定してください。",
+        },
+        { status: 500 }
+      );
+    }
   }
 
   await recordAdminAudit(admin, {
     actorUserId: me!.auth_user_id,
     targetUserId: invited.user.id,
     action: "invite",
-    metadata: { email, role },
+    metadata: {
+      email,
+      role,
+      ...(Array.isArray(body.form_type_ids) ? { form_type_ids: formTypeIds } : {}),
+    },
   });
 
   return NextResponse.json({ ok: true });

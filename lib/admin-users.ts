@@ -21,6 +21,10 @@ export type AdminUser = {
   invited_at: string | null;
   activated_at: string | null;
   last_login_at: string | null;
+  /** プッシュ通知を受け取るか(担当事業とは独立) */
+  push_notify_enabled: boolean;
+  /** メール通知を受け取るか(担当事業とは独立) */
+  email_notify_enabled: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -92,6 +96,48 @@ export async function touchLastLogin(
     .from("admin_users")
     .update({ last_login_at: new Date().toISOString() })
     .eq("id", admin.id);
+}
+
+/** 指定の form_type_id がすべて実在するか検証(不正IDの登録防止)。無効なIDの配列を返す */
+export async function findInvalidFormTypeIds(
+  adminClient: SupabaseClient,
+  ids: string[]
+): Promise<string[]> {
+  if (ids.length === 0) return [];
+  const { data } = await adminClient
+    .from("form_types")
+    .select("id")
+    .in("id", ids);
+  const valid = new Set((data ?? []).map((r) => r.id as string));
+  return ids.filter((id) => !valid.has(id));
+}
+
+/**
+ * 管理者の担当事業(置換)+ 通知設定(Push/メール)を1トランザクションで原子的に更新する(service_role)。
+ *
+ * ・RPC set_admin_business_and_notify を呼ぶ。担当事業の delete→insert と通知フラグ更新を
+ *   単一トランザクションで実行し、途中失敗時は全ロールバック(3項目すべて更新前に戻る)。
+ * ・push / email に null を渡すと「変更しない」(現在値を維持)。
+ * ・0件(空配列)は担当事業の全解除として正常に許可。
+ * ・不正な form_type_id を含む場合は RPC 側で例外→ ok:false を返す。
+ * ・成否を返すので、呼び出し側は失敗時に明示エラーを返すこと。
+ */
+export async function setAdminBusinessAndNotify(
+  adminClient: SupabaseClient,
+  adminUserId: string,
+  formTypeIds: string[],
+  push: boolean | null,
+  email: boolean | null
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const unique = Array.from(new Set(formTypeIds));
+  const { error } = await adminClient.rpc("set_admin_business_and_notify", {
+    p_admin_user_id: adminUserId,
+    p_form_type_ids: unique,
+    p_push: push,
+    p_email: email,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
 }
 
 /** 現在 active な master の人数(最後の1人保護に使用) */

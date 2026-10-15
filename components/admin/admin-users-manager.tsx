@@ -14,7 +14,14 @@ export type AdminUserRow = {
   invited_at: string | null;
   activated_at: string | null;
   last_login_at: string | null;
+  push_notify_enabled: boolean;
+  email_notify_enabled: boolean;
+  /** 担当事業(form_types.id の配列) */
+  form_type_ids: string[];
 };
+
+/** 担当事業の選択肢(form_types) */
+export type BusinessOption = { id: string; name: string };
 
 const STATUS_LABEL: Record<AdminUserRow["status"], string> = {
   invited: "招待中",
@@ -33,10 +40,12 @@ const ROLE_LABEL: Record<AdminUserRow["role"], string> = {
 
 export function AdminUsersManager({
   users,
+  businessOptions,
   currentAuthUserId,
   currentRole,
 }: {
   users: AdminUserRow[];
+  businessOptions: BusinessOption[];
   currentAuthUserId: string;
   currentRole: "admin" | "master";
 }) {
@@ -64,6 +73,14 @@ export function AdminUsersManager({
   // 氏名インライン編集
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+
+  // 担当事業・通知設定の編集ダイアログ(master のみ)
+  const [bizEditUser, setBizEditUser] = useState<AdminUserRow | null>(null);
+
+  const businessName = (id: string) =>
+    businessOptions.find((b) => b.id === id)?.name ?? "(不明)";
+  const businessLabels = (ids: string[]) =>
+    ids.length === 0 ? "—" : ids.map(businessName).join("・");
 
   const activeMasters = users.filter((u) => u.role === "master" && u.status === "active");
   const isLastActiveMaster = (u: AdminUserRow) =>
@@ -196,6 +213,8 @@ export function AdminUsersManager({
             <tr>
               <th className="px-4 py-2">氏名 / メール</th>
               <th className="px-4 py-2">権限</th>
+              <th className="px-4 py-2">担当事業</th>
+              <th className="px-4 py-2">通知</th>
               <th className="px-4 py-2">状態</th>
               <th className="px-4 py-2">招待日時</th>
               <th className="px-4 py-2">最終ログイン</th>
@@ -205,7 +224,7 @@ export function AdminUsersManager({
           <tbody className="divide-y divide-gray-100">
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
                   {filtersActive ? "条件に一致する管理者がいません" : "管理者が登録されていません"}
                 </td>
               </tr>
@@ -265,6 +284,25 @@ export function AdminUsersManager({
                     ) : (
                       ROLE_LABEL[u.role]
                     )}
+                  </td>
+
+                  {/* 担当事業 */}
+                  <td className="px-4 py-2 text-xs">
+                    {businessLabels(u.form_type_ids)}
+                    {currentRole === "master" && (
+                      <button
+                        onClick={() => setBizEditUser(u)}
+                        className="ml-2 font-normal text-blue-600 hover:underline"
+                      >
+                        編集
+                      </button>
+                    )}
+                  </td>
+
+                  {/* 通知 */}
+                  <td className="px-4 py-2 text-xs">
+                    <div>Push: {u.push_notify_enabled ? "ON" : "OFF"}</div>
+                    <div>メール: {u.email_notify_enabled ? "ON" : "OFF"}</div>
                   </td>
 
                   {/* 状態 */}
@@ -345,6 +383,7 @@ export function AdminUsersManager({
       {inviteOpen && (
         <InviteDialog
           currentRole={currentRole}
+          businessOptions={businessOptions}
           onClose={() => setInviteOpen(false)}
           onSuccess={() => {
             setInviteOpen(false);
@@ -353,6 +392,112 @@ export function AdminUsersManager({
           }}
         />
       )}
+
+      {bizEditUser && (
+        <BizNotifyDialog
+          user={bizEditUser}
+          businessOptions={businessOptions}
+          onClose={() => setBizEditUser(null)}
+          onSaved={() => {
+            setBizEditUser(null);
+            setNotice("担当事業・通知設定を保存しました。");
+            router.refresh();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/** 担当事業・通知設定の編集ダイアログ(master のみ) */
+function BizNotifyDialog({
+  user,
+  businessOptions,
+  onClose,
+  onSaved,
+}: {
+  user: AdminUserRow;
+  businessOptions: BusinessOption[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [ids, setIds] = useState<string[]>(user.form_type_ids);
+  const [push, setPush] = useState(user.push_notify_enabled);
+  const [mail, setMail] = useState(user.email_notify_enabled);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const toggle = (id: string) =>
+    setIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  async function save() {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/admin-users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          form_type_ids: ids,
+          push_notify_enabled: push,
+          email_notify_enabled: mail,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setError(data?.error ?? "保存に失敗しました。");
+        setSubmitting(false);
+        return;
+      }
+      onSaved();
+    } catch {
+      setError("通信エラーが発生しました。");
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+      <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+        <h2 className="text-base font-semibold text-gray-800">担当事業・通知設定</h2>
+        <p className="mt-1 text-xs text-gray-500">{user.display_name || user.email}</p>
+
+        <fieldset className="mt-4">
+          <legend className="text-sm font-medium text-gray-700">担当事業</legend>
+          <div className="mt-2 space-y-1.5">
+            {businessOptions.map((b) => (
+              <label key={b.id} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={ids.includes(b.id)} onChange={() => toggle(b.id)} className="h-4 w-4 accent-blue-600" />
+                {b.name}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset className="mt-4">
+          <legend className="text-sm font-medium text-gray-700">通知設定</legend>
+          <div className="mt-2 space-y-1.5">
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={push} onChange={(e) => setPush(e.target.checked)} className="h-4 w-4 accent-blue-600" />
+              プッシュ通知を受け取る
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={mail} onChange={(e) => setMail(e.target.checked)} className="h-4 w-4 accent-blue-600" />
+              メール通知を受け取る
+            </label>
+          </div>
+        </fieldset>
+
+        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={onClose} disabled={submitting} className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+            キャンセル
+          </button>
+          <button type="button" onClick={save} disabled={submitting} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-gray-300">
+            {submitting ? "保存中..." : "保存"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -360,18 +505,27 @@ export function AdminUsersManager({
 /** 招待ダイアログ(氏名・メール・権限すべて必須。二重送信防止) */
 function InviteDialog({
   currentRole,
+  businessOptions,
   onClose,
   onSuccess,
 }: {
   currentRole: "admin" | "master";
+  businessOptions: BusinessOption[];
   onClose: () => void;
   onSuccess: () => void;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"admin" | "master">("admin");
+  const [bizIds, setBizIds] = useState<string[]>([]);
+  const [push, setPush] = useState(true);
+  const [mail, setMail] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isMaster = currentRole === "master";
+  const toggleBiz = (id: string) =>
+    setBizIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -384,7 +538,19 @@ function InviteDialog({
       const res = await fetch("/api/admin/admin-users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ display_name: name.trim(), email: email.trim(), role }),
+        body: JSON.stringify({
+          display_name: name.trim(),
+          email: email.trim(),
+          role,
+          // 担当事業・通知は master のみ送信(サーバーでも master を検証)
+          ...(isMaster
+            ? {
+                form_type_ids: bizIds,
+                push_notify_enabled: push,
+                email_notify_enabled: mail,
+              }
+            : {}),
+        }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok) {
@@ -429,6 +595,41 @@ function InviteDialog({
               <p className="mt-1 text-xs text-gray-500">マスター権限の付与はマスターのみ可能です。</p>
             )}
           </div>
+
+          {isMaster && (
+            <>
+              <fieldset>
+                <legend className="text-sm font-medium text-gray-700">担当事業</legend>
+                <div className="mt-2 space-y-1.5">
+                  {businessOptions.map((b) => (
+                    <label key={b.id} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={bizIds.includes(b.id)}
+                        onChange={() => toggleBiz(b.id)}
+                        className="h-4 w-4 accent-blue-600"
+                      />
+                      {b.name}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <fieldset>
+                <legend className="text-sm font-medium text-gray-700">通知設定</legend>
+                <div className="mt-2 space-y-1.5">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={push} onChange={(e) => setPush(e.target.checked)} className="h-4 w-4 accent-blue-600" />
+                    プッシュ通知を受け取る
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={mail} onChange={(e) => setMail(e.target.checked)} className="h-4 w-4 accent-blue-600" />
+                    メール通知を受け取る
+                  </label>
+                </div>
+              </fieldset>
+            </>
+          )}
+
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="mt-4 flex justify-end gap-2">
             <button type="button" onClick={onClose} disabled={submitting} className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
