@@ -103,12 +103,38 @@ export async function POST(req: NextRequest) {
   const supabase = createAdminClient();
 
   // 種別の解決(公開中=is_active のもののみ。無効種別はサーバー側で拒否)
-  const { data: formType } = await supabase
+  let { data: formType } = await supabase
     .from("form_types")
     .select("id, name, version, parser_config, kintone_app_id")
     .eq("id", form_type_id)
     .eq("is_active", true)
     .maybeSingle();
+
+  // 【非公開テスト用バイパス(ローカル開発限定)】
+  // オールマイト(App10)を本番未公開(is_active=false / ALLMIGHT_PUBLIC=false)のまま、
+  // ローカルでのみテスト申請できるようにする。次を「すべて」満たす場合のみ許可:
+  //   (1) NODE_ENV === "development"(本番 Vercel は "production" のため常に不許可)
+  //   (2) ALLOW_INACTIVE_FORM_TYPE_IDS(.env.local)に対象 form_type_id が含まれる
+  //   (3) 対象種別が実際にオールマイト(kintone_app_id === 10)である
+  // バイパスするのは「種別の有効判定(is_active)」のみ。必須チェック・FMT解析・保存・
+  // 通知などは以降の通常処理をそのまま実行する。てずくーる(App49)には一切影響しない。
+  if (!formType && process.env.NODE_ENV === "development") {
+    const allowIds = (process.env.ALLOW_INACTIVE_FORM_TYPE_IDS ?? "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (allowIds.includes(form_type_id)) {
+      const { data: inactive } = await supabase
+        .from("form_types")
+        .select("id, name, version, parser_config, kintone_app_id")
+        .eq("id", form_type_id)
+        .maybeSingle();
+      // オールマイト(App10)のみ許可。他事業の未公開種別は許可しない。
+      if (inactive && (inactive.kintone_app_id as number) === 10) {
+        formType = inactive;
+      }
+    }
+  }
 
   if (!formType) {
     return NextResponse.json({ errors: ["申請種別が正しくありません。"] }, { status: 400 });
@@ -261,13 +287,15 @@ export async function POST(req: NextRequest) {
 
   // 管理者/担当者への新規申請通知(事業別Push + 管理者メール + 担当者メール)。
   // 失敗しても申請保存は成功のまま(notifyNewRequest 内で try/catch 済み)。
+  // イベントブース名のラベルは事業で異なる(てずくーる=「イベントブース名」/ オールマイト=「イベントブース」)
+  const boothName = result.data["イベントブース名"] ?? result.data["イベントブース"] ?? "";
   const baseUrl = (process.env.APP_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
   await notifyNewRequest({
     formTypeId: formType.id,
     formTypeName: formType.name,
     applicantName: applicant_name,
     agencyName: result.data["取次店名"] ?? "",
-    boothName: result.data["イベントブース名"] ?? "",
+    boothName,
     deliveryDate: result.data["配送日付"] ?? "",
     pickupDate: result.data["集荷日付"] ?? "",
     submittedAt: request.created_at,
@@ -284,7 +312,7 @@ export async function POST(req: NextRequest) {
       applicant_email,
       management_no: null, // 管理番号は承認時に採番
       formTypeName: formType.name,
-      boothName: result.data["イベントブース名"] ?? "",
+      boothName,
       agencyName: result.data["取次店名"] ?? "",
       parsedData: result.data,
       staffName: company_staff_name || null, // 申請時点は申請入力(確定は承認時)

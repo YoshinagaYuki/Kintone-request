@@ -124,6 +124,9 @@ export function ApplyForm({
   const [pickupHandover, setPickupHandover] = useState("");
   const [pickupContact, setPickupContact] = useState("");
 
+  // 「配送情報と同じ」(集荷の 郵便番号/住所/引渡者/連絡先 を配送から反映。日付は連動しない)
+  const [sameAsDelivery, setSameAsDelivery] = useState(false);
+
   // 伝票番号連絡先 / 緊急時責任者
   const [slipTo, setSlipTo] = useState("");
   const [slipCc, setSlipCc] = useState("");
@@ -142,6 +145,13 @@ export function ApplyForm({
   const showPlanSelect = usesRentalPlan && rentalStatus === "new_rental";
   // てずくーる限定項目(SNS宣伝)の表示判定。表示名ではなく is_tezukuru(App49)で判定
   const isTezukuru = Boolean(selected?.is_tezukuru);
+
+  // 集荷の実効値(「配送情報と同じ」時は配送の値を使用。個別入力値 pickup* は保持し、
+  // チェック解除で元の入力が消えない)。日付は対象外(独立入力)。
+  const effPickupPostal = sameAsDelivery ? deliveryPostal : pickupPostal;
+  const effPickupAddress = sameAsDelivery ? deliveryAddress : pickupAddress;
+  const effPickupHandover = sameAsDelivery ? deliveryReceiver : pickupHandover;
+  const effPickupContact = sameAsDelivery ? deliveryContact : pickupContact;
 
   /** スロット番号(行番号=idx+1)で選択可能な商品名(除外スロットを反映) */
   function slotOptions(slot: number): string[] {
@@ -218,10 +228,10 @@ export function ApplyForm({
 
     // 集荷(必須)
     if (!pickupDate.trim()) errs.push("集荷日付を入力してください。");
-    if (!pickupPostal.trim()) errs.push("集荷郵便番号を入力してください。");
-    if (!pickupAddress.trim()) errs.push("集荷住所を入力してください。");
-    if (!pickupHandover.trim()) errs.push("当日引渡者氏名を入力してください。");
-    if (!pickupContact.trim()) errs.push("集荷連絡先を入力してください。");
+    if (!effPickupPostal.trim()) errs.push("集荷郵便番号を入力してください。");
+    if (!effPickupAddress.trim()) errs.push("集荷住所を入力してください。");
+    if (!effPickupHandover.trim()) errs.push("当日引渡者氏名を入力してください。");
+    if (!effPickupContact.trim()) errs.push("集荷連絡先を入力してください。");
 
     // SNS宣伝(てずくーるのみ必須)
     if (isTezukuru && snsPromotion === "") {
@@ -258,10 +268,11 @@ export function ApplyForm({
       deliveryReceiver,
       deliveryContact,
       pickupDate,
-      pickupPostal,
-      pickupAddress,
-      pickupHandover,
-      pickupContact,
+      // 集荷は実効値(「配送情報と同じ」時はコピー後の実際の値をFMTへ含める)
+      pickupPostal: effPickupPostal,
+      pickupAddress: effPickupAddress,
+      pickupHandover: effPickupHandover,
+      pickupContact: effPickupContact,
       slipTo,
       slipCc,
       emergencyName,
@@ -332,6 +343,8 @@ export function ApplyForm({
 
   const inputClass =
     "mt-1 w-full rounded-md border border-gray-300 bg-white p-2.5 text-sm focus:border-blue-500 focus:outline-none";
+  const roInputClass =
+    "mt-1 w-full rounded-md border border-gray-200 bg-gray-100 p-2.5 text-sm text-gray-600";
   const labelClass = "block text-sm font-medium text-gray-700";
   const req = <span className="text-red-600">*</span>;
   const filledProductCount = validProducts(products).length;
@@ -662,26 +675,38 @@ export function ApplyForm({
           {/* 集荷 */}
           <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-gray-800">集荷</h2>
+
+            <label className="mt-3 flex cursor-pointer items-center gap-2 rounded-md border border-blue-200 bg-blue-50 p-2.5 text-sm font-medium text-blue-800">
+              <input
+                type="checkbox"
+                checked={sameAsDelivery}
+                onChange={(e) => setSameAsDelivery(e.target.checked)}
+                className="h-4 w-4 accent-blue-600"
+              />
+              配送情報と同じ(郵便番号・住所・引渡者氏名・連絡先を配送からコピー)
+            </label>
+
             <div className="mt-3 space-y-3">
               <div>
                 <label className={labelClass}>集荷日付 {req}</label>
+                {/* 集荷日付は「配送情報と同じ」の対象外(独立入力) */}
                 <input type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>郵便番号 {req}</label>
-                <input type="text" value={pickupPostal} onChange={(e) => setPickupPostal(e.target.value)} maxLength={10} inputMode="numeric" placeholder="123-4567" className={inputClass} />
+                <input type="text" value={effPickupPostal} onChange={(e) => setPickupPostal(e.target.value)} readOnly={sameAsDelivery} maxLength={10} inputMode="numeric" placeholder="123-4567" className={sameAsDelivery ? roInputClass : inputClass} />
               </div>
               <div>
                 <label className={labelClass}>住所 {req}</label>
-                <input type="text" value={pickupAddress} onChange={(e) => setPickupAddress(e.target.value)} maxLength={300} placeholder="東京都〇〇区〇〇 1-2-3" className={inputClass} />
+                <input type="text" value={effPickupAddress} onChange={(e) => setPickupAddress(e.target.value)} readOnly={sameAsDelivery} maxLength={300} placeholder="東京都〇〇区〇〇 1-2-3" className={sameAsDelivery ? roInputClass : inputClass} />
               </div>
               <div>
                 <label className={labelClass}>当日引渡者氏名 {req}</label>
-                <input type="text" value={pickupHandover} onChange={(e) => setPickupHandover(e.target.value)} maxLength={100} placeholder="当日の引き渡し担当者" className={inputClass} />
+                <input type="text" value={effPickupHandover} onChange={(e) => setPickupHandover(e.target.value)} readOnly={sameAsDelivery} maxLength={100} placeholder="当日の引き渡し担当者" className={sameAsDelivery ? roInputClass : inputClass} />
               </div>
               <div>
                 <label className={labelClass}>連絡先 {req}</label>
-                <input type="tel" value={pickupContact} onChange={(e) => setPickupContact(e.target.value)} maxLength={30} inputMode="tel" placeholder="090-1234-5678" className={inputClass} />
+                <input type="tel" value={effPickupContact} onChange={(e) => setPickupContact(e.target.value)} readOnly={sameAsDelivery} maxLength={30} inputMode="tel" placeholder="090-1234-5678" className={sameAsDelivery ? roInputClass : inputClass} />
               </div>
             </div>
           </section>

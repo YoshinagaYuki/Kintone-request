@@ -41,6 +41,35 @@ export const ROLE_LABELS: Record<AdminRole, string> = {
 };
 
 /**
+ * マスター管理者の固定メールアドレス(この2名のみマスター)。
+ * ・昇格/降格は禁止。削除も禁止(本人・他マスター問わず)。
+ * ・権限判定はメール一致だけで完結させず、必ずログイン済みユーザー+DBの role と併せて確認する。
+ */
+export const MASTER_EMAILS = [
+  "y-yoshinaga@unity-corp.jp",
+  "m-furuki@unity-corp.jp",
+] as const;
+
+/** メールが固定マスターのものか(大文字小文字無視) */
+export function isMasterEmail(email: string | null | undefined): boolean {
+  const e = (email ?? "").trim().toLowerCase();
+  return (MASTER_EMAILS as readonly string[]).includes(e);
+}
+
+/**
+ * この管理者が「マスター」か。DBの role=master かつ 指定メールの両方を満たす場合のみ true。
+ * (role列のドリフトやメール偽装の双方に耐える二重判定)
+ */
+export function isMaster(admin: AdminUser | null): admin is AdminUser {
+  return !!admin && admin.role === "master" && isMasterEmail(admin.email);
+}
+
+/** 削除・降格から保護すべきマスター対象か(role か メールのいずれかが該当すれば保護) */
+export function isProtectedMaster(admin: Pick<AdminUser, "role" | "email">): boolean {
+  return admin.role === "master" || isMasterEmail(admin.email);
+}
+
+/**
  * ログイン中ユーザーに対応する admin_users を返す(無ければ null)。
  * 認証済みのユーザー権限クライアント(server client)を渡すこと。
  */

@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getCurrentAdmin } from "@/lib/admin-users";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { ApproveActions } from "@/components/admin/approve-actions";
+import { ArrangementEditor } from "@/components/admin/arrangement-editor";
 import { buildKintoneRecord, type FieldMapping } from "@/lib/kintone/mapper";
 import { getVersionedConfig, isKintoneReady } from "@/lib/form-types";
 import { suggestItemName, type ItemMasterEntry } from "@/lib/item-normalizer";
@@ -44,6 +47,11 @@ type Detail = {
   is_structured: boolean | null;
   sns_promotion_requested: boolean | null;
   billing_type: string | null;
+  allmight_delivery_arrangement: string | null;
+  allmight_pickup_arrangement: string | null;
+  allmight_delivery_time: string | null;
+  allmight_pickup_time: string | null;
+  allmight_arrangement_sync_failed: boolean | null;
   company_staff_name_input: string | null;
   approved_staff_name: string | null;
   application_email_sent_at: string | null;
@@ -73,6 +81,9 @@ const HISTORY_DOT: Partial<Record<HistoryAction, string>> = {
   kintone_registered: "bg-green-500",
   numbered: "bg-green-500",
   shipping_synced: "bg-green-500",
+  arrangement_synced: "bg-green-500",
+  arrangement_sync_failed: "bg-red-500",
+  arrangement_changed: "bg-blue-400",
 };
 
 function formatDateTime(iso: string): string {
@@ -113,13 +124,29 @@ export default async function RequestDetailPage({
   const { data } = await supabase
     .from("requests")
     .select(
-      "id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, approved_contents, is_structured, sns_promotion_requested, billing_type, company_staff_name_input, approved_staff_name, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
+      "id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, approved_contents, is_structured, sns_promotion_requested, billing_type, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, allmight_arrangement_sync_failed, company_staff_name_input, approved_staff_name, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
     )
     .eq("id", id)
     .maybeSingle();
 
   if (!data) notFound();
   const request = data as unknown as Detail;
+
+  // 手配種別(オールマイト=App10のみ)。編集は「オールマイト担当の管理者」に限定。
+  const isAllmight = request.form_types?.kintone_app_id === 10;
+  let canEditArrangement = false;
+  if (isAllmight) {
+    const me = await getCurrentAdmin(supabase);
+    if (me && me.status === "active") {
+      const { data: bizRow } = await createAdminClient()
+        .from("admin_user_businesses")
+        .select("form_type_id")
+        .eq("admin_user_id", me.id)
+        .eq("form_type_id", request.form_type_id)
+        .maybeSingle();
+      canEditArrangement = !!bizRow;
+    }
+  }
 
   const { data: historiesData } = await supabase
     .from("request_histories")
@@ -259,6 +286,21 @@ export default async function RequestDetailPage({
     previewParsed["レンタルプラン"] =
       approvedPlanName ?? requestedPlanName ?? "(承認時に選択)";
   }
+  // 承認プレビューの弊社担当者を補完する。
+  // 【条件】field_mapping が「担当者」を required としている種別(= オールマイト)でのみ補完する。
+  //   kintone_app_id の値ではなく「マッピングが担当者を必須にしているか」で判定するため堅牢。
+  //   てずくーるは担当者を必須にしていない → 補完されず、承認プレビュー・処理に影響しない。
+  // 【決定ルール】実際の承認処理と同じ既定値 staffSuggested(= 承認済み確定値があればそれ、
+  //   無ければ担当者マスターの自動照合結果)を使用。自動選択されていればプレビューに反映される。
+  // 【未確定時】staffSuggested が空ならプレースホルダでプレビュー自体は通すが、実際の承認は
+  //   ApproveActions の staffUnselected ゲート(担当者未選択なら承認ボタン無効)が拒否するため
+  //   「担当者未確定では承認不可」は維持される(レンタルプラン・コンテンツ選択と同じ方式)。
+  const requiresStaffField =
+    Array.isArray(fieldMapping?.mappings) &&
+    fieldMapping!.mappings.some((m) => m.fmt_label === "担当者" && m.required === true);
+  if (requiresStaffField && staffInputRaw && !previewParsed["担当者"]) {
+    previewParsed["担当者"] = staffSuggested || "(承認時に選択)";
+  }
   const preview =
     showPreview && fieldMapping
       ? buildKintoneRecord(previewParsed, fieldMapping)
@@ -269,6 +311,19 @@ export default async function RequestDetailPage({
     ...confirmLabelWarnings,
     ...(preview?.ok ? preview.warnings : []),
   ];
+
+  // オールマイト: ハイフンの無い電話番号を管理画面で警告する(承認は妨げない。てずくーるは対象外)。
+  const allmightPhoneFields = isAllmight
+    ? [
+        { label: "入力者 電話番号", value: request.applicant_phone ?? "" },
+        { label: FMT_LABELS.deliveryContact, value: parsed[FMT_LABELS.deliveryContact] ?? "" },
+        { label: FMT_LABELS.pickupContact, value: parsed[FMT_LABELS.pickupContact] ?? "" },
+        { label: FMT_LABELS.emergencyPhone, value: parsed[FMT_LABELS.emergencyPhone] ?? "" },
+      ]
+    : [];
+  const phoneHyphenWarnings = allmightPhoneFields
+    .filter((f) => f.value.trim() !== "" && !/[-‐-―ー－−]/.test(f.value))
+    .map((f) => f.label);
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:py-10">
@@ -412,6 +467,19 @@ export default async function RequestDetailPage({
           </div>
         )}
 
+      {/* 電話番号ハイフン警告(オールマイトのみ。承認は妨げない) */}
+      {phoneHyphenWarnings.length > 0 && (
+        <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+          <p className="font-semibold">電話番号にハイフンがありません。入力内容を確認してください。</p>
+          <ul className="mt-2 list-disc pl-5">
+            {phoneHyphenWarnings.map((l) => (
+              <li key={l}>{l}</li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs">この警告は承認を妨げません。</p>
+        </div>
+      )}
+
       {/* 入力者情報 */}
       <SectionCard title="入力者情報">
         <table className="w-full text-sm">
@@ -429,7 +497,8 @@ export default async function RequestDetailPage({
               <td className="px-4 py-2">
                 {request.applicant_phone ? (
                   <a href={`tel:${request.applicant_phone}`} className="text-blue-600 hover:underline">
-                    {formatPhoneNumber(request.applicant_phone)}
+                    {/* オールマイトは自動整形せず入力値のまま表示(てずくーるは従来どおり整形) */}
+                    {isAllmight ? request.applicant_phone : formatPhoneNumber(request.applicant_phone)}
                   </a>
                 ) : (
                   "-"
@@ -548,6 +617,22 @@ export default async function RequestDetailPage({
         </table>
       </SectionCard>
 
+      {/* 手配種別(オールマイト=App10のみ。配送/集荷を独立編集。てずくーるでは非表示) */}
+      {isAllmight && (
+        <SectionCard title="手配種別(配送 / 集荷)">
+          <ArrangementEditor
+            requestId={request.id}
+            deliveryDefault={request.allmight_delivery_arrangement}
+            pickupDefault={request.allmight_pickup_arrangement}
+            deliveryTimeDefault={request.allmight_delivery_time}
+            pickupTimeDefault={request.allmight_pickup_time}
+            canEdit={canEditArrangement}
+            kintoneRegistered={Boolean(request.kintone_record_id)}
+            syncFailed={request.allmight_arrangement_sync_failed === true}
+          />
+        </SectionCard>
+      )}
+
       {/* お客様からの要望(承認画面でも表示・改行保持) */}
       {request.customer_requests && (
         <SectionCard title="お客様からの要望">
@@ -587,8 +672,11 @@ export default async function RequestDetailPage({
                   [FMT_LABELS.pickupContact]: parsed[FMT_LABELS.pickupAddress] ?? "",
                   [FMT_LABELS.emergencyPhone]: parsed[FMT_LABELS.deliveryAddress] ?? "",
                 };
+                // オールマイトは電話番号を自動整形せず入力値のまま表示する(てずくーるは従来どおり)。
                 const shown =
-                  label in phoneAddr ? formatPhoneNumber(value, phoneAddr[label]) : value;
+                  !isAllmight && label in phoneAddr
+                    ? formatPhoneNumber(value, phoneAddr[label])
+                    : value;
                 return (
                   <tr key={label}>
                     <th className="w-36 bg-gray-50 px-4 py-2 text-left align-top font-medium text-gray-600 sm:w-48">

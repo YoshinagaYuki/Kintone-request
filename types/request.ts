@@ -27,7 +27,10 @@ export type HistoryAction =
   | "notified"
   | "notify_failed"
   | "email_sent"
-  | "email_failed";
+  | "email_failed"
+  | "arrangement_changed"
+  | "arrangement_synced"
+  | "arrangement_sync_failed";
 
 export const ACTION_LABELS: Record<HistoryAction, string> = {
   submitted: "申請",
@@ -41,6 +44,9 @@ export const ACTION_LABELS: Record<HistoryAction, string> = {
   notify_failed: "通知失敗",
   email_sent: "メール送信",
   email_failed: "メール送信失敗",
+  arrangement_changed: "手配種別の変更",
+  arrangement_synced: "手配種別の再同期",
+  arrangement_sync_failed: "手配種別の同期失敗",
 };
 
 /** レンタル状況(てずくーる) */

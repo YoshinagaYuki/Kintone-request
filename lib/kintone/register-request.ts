@@ -23,6 +23,15 @@ import { upsertShippingRecord } from "./shipping";
 import { notifyApproved } from "../lineworks/client";
 import { getVersionedConfig, isKintoneReady } from "../form-types";
 import { applyAllmightPricing } from "../allmight/pricing";
+import {
+  normalizeArrangement,
+  arrangementToKintone,
+  arrangementTimeToKintone,
+  KINTONE_DELIVERY_ARRANGEMENT_CODE,
+  KINTONE_PICKUP_ARRANGEMENT_CODE,
+  KINTONE_DELIVERY_TIME_CODE,
+  KINTONE_PICKUP_TIME_CODE,
+} from "../allmight-arrangement";
 import { normalizeRecordItems } from "../item-normalizer";
 import { sendApprovalMail } from "../mail/application-mails";
 import { notifyRegistration, registrationDedupKey } from "../notify/registration";
@@ -43,7 +52,7 @@ export async function registerRequestToKintone(
   const { data: request, error: fetchError } = await supabase
     .from("requests")
     .select(
-      "id, parsed_data, status, kintone_record_id, form_type_id, form_type_version, applicant_name, applicant_email, approved_rental_plan_id, requested_rental_plan_id, approved_contents, company_staff_name_input, approved_staff_name, customer_requests, billing_type, form_types(name, kintone_app_id, field_mapping)"
+      "id, parsed_data, status, kintone_record_id, form_type_id, form_type_version, applicant_name, applicant_email, approved_rental_plan_id, requested_rental_plan_id, approved_contents, company_staff_name_input, approved_staff_name, customer_requests, billing_type, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, form_types(name, kintone_app_id, field_mapping)"
     )
     .eq("id", requestId)
     .maybeSingle();
@@ -194,6 +203,37 @@ export async function registerRequestToKintone(
       };
     }
 
+    // 手配種別(配送/集荷)をオールマイト(App10)のレコードへ反映。
+    // 申請者は常に通常配送。管理者が申請詳細で変更した値(DB)を正として登録する。
+    // 既存マッピングの定数があっても上書き(通常配送 / チャーター便)。
+    if (appId === 10) {
+      const deliveryArr = normalizeArrangement(
+        request.allmight_delivery_arrangement as string | null
+      );
+      const pickupArr = normalizeArrangement(
+        request.allmight_pickup_arrangement as string | null
+      );
+      mapped.record[KINTONE_DELIVERY_ARRANGEMENT_CODE] = {
+        value: arrangementToKintone(deliveryArr),
+      };
+      mapped.record[KINTONE_PICKUP_ARRANGEMENT_CODE] = {
+        value: arrangementToKintone(pickupArr),
+      };
+      // チャーター便の時刻。通常配送は "" で登録(空=時刻なし)。
+      mapped.record[KINTONE_DELIVERY_TIME_CODE] = {
+        value: arrangementTimeToKintone(
+          deliveryArr,
+          request.allmight_delivery_time as string | null
+        ),
+      };
+      mapped.record[KINTONE_PICKUP_TIME_CODE] = {
+        value: arrangementTimeToKintone(
+          pickupArr,
+          request.allmight_pickup_time as string | null
+        ),
+      };
+    }
+
     // オールマイトのみ: API登録ではkintone JSが発火しないため、
     // 利用日数・利用金額①〜⑤をサーバー側で計算して補完(計算/配送費/調整額には触れない)
     let pricingWarnings: string[] = [];
@@ -310,7 +350,8 @@ export async function registerRequestToKintone(
         applicant_email: (request.applicant_email as string | null) ?? null,
         management_no: managementNo,
         formTypeName: formType.name,
-        boothName: parsedData["イベントブース名"] ?? "",
+        // ラベルは事業で異なる(てずくーる=「イベントブース名」/ オールマイト=「イベントブース」)
+        boothName: parsedData["イベントブース名"] ?? parsedData["イベントブース"] ?? "",
         agencyName: parsedData["取次店名"] ?? "",
         parsedData,
         staffName: parsedData["担当者"] ?? null, // 承認時に確定した正式名称

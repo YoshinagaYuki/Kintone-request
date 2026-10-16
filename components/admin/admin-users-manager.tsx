@@ -38,6 +38,12 @@ const ROLE_LABEL: Record<AdminUserRow["role"], string> = {
   master: "マスター",
 };
 
+// 固定マスターのメール(UI表示判定用。サーバー側でも必ず検証する)
+const MASTER_EMAILS = ["y-yoshinaga@unity-corp.jp", "m-furuki@unity-corp.jp"];
+function isMasterEmailClient(email: string): boolean {
+  return MASTER_EMAILS.includes((email ?? "").trim().toLowerCase());
+}
+
 export function AdminUsersManager({
   users,
   businessOptions,
@@ -76,6 +82,9 @@ export function AdminUsersManager({
 
   // 担当事業・通知設定の編集ダイアログ(master のみ)
   const [bizEditUser, setBizEditUser] = useState<AdminUserRow | null>(null);
+
+  // 削除確認ダイアログ(master のみ・対象は一般管理者)
+  const [deleteTarget, setDeleteTarget] = useState<AdminUserRow | null>(null);
 
   const businessName = (id: string) =>
     businessOptions.find((b) => b.id === id)?.name ?? "(不明)";
@@ -266,25 +275,8 @@ export function AdminUsersManager({
                     )}
                   </td>
 
-                  {/* 権限(masterのみ変更可) */}
-                  <td className="px-4 py-2">
-                    {currentRole === "master" && !isSelf ? (
-                      <select
-                        value={u.role}
-                        disabled={busy || (u.role === "master" && protectMaster)}
-                        onChange={(e) =>
-                          call(`/api/admin/admin-users/${u.id}`, "PATCH", { role: e.target.value }, "権限を変更しました。")
-                        }
-                        title={u.role === "master" && protectMaster ? "最後のマスターは降格できません" : undefined}
-                        className="rounded-md border border-gray-300 p-1 text-xs disabled:opacity-60"
-                      >
-                        <option value="admin">管理者</option>
-                        <option value="master">マスター</option>
-                      </select>
-                    ) : (
-                      ROLE_LABEL[u.role]
-                    )}
-                  </td>
+                  {/* 権限(表示のみ。マスターは指定2名で固定・変更不可) */}
+                  <td className="px-4 py-2">{ROLE_LABEL[u.role]}</td>
 
                   {/* 担当事業 */}
                   <td className="px-4 py-2 text-xs">
@@ -367,6 +359,16 @@ export function AdminUsersManager({
                         利用停止
                       </button>
                     )}
+                    {/* 削除: マスターのみ表示、かつ対象が一般管理者(マスターは削除不可) */}
+                    {currentRole === "master" && u.role !== "master" && !isMasterEmailClient(u.email) && (
+                      <button
+                        onClick={() => setDeleteTarget(u)}
+                        disabled={busy}
+                        className="ml-2 font-medium text-red-700 hover:underline"
+                      >
+                        削除
+                      </button>
+                    )}
                   </td>
                 </tr>
               );
@@ -405,6 +407,76 @@ export function AdminUsersManager({
           }}
         />
       )}
+
+      {deleteTarget && (
+        <DeleteDialog
+          user={deleteTarget}
+          busy={busy}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={async () => {
+            const ok = await call(
+              `/api/admin/admin-users/${deleteTarget.id}`,
+              "DELETE",
+              undefined,
+              "管理者を削除しました。"
+            );
+            if (ok) setDeleteTarget(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/** 削除確認ダイアログ(対象の氏名・メールを表示) */
+function DeleteDialog({
+  user,
+  busy,
+  onClose,
+  onConfirm,
+}: {
+  user: AdminUserRow;
+  busy: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true">
+      <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl">
+        <h2 className="text-base font-semibold text-gray-800">管理者を削除します</h2>
+        <p className="mt-2 text-sm text-gray-600">
+          以下の管理者を削除します。削除すると管理画面にログインできなくなり、通知対象からも外れます。
+          申請・承認・監査などの履歴は削除されません。
+        </p>
+        <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">
+          <div>
+            <span className="text-gray-500">氏名: </span>
+            <span className="font-medium text-gray-800">{user.display_name || "(未設定)"}</span>
+          </div>
+          <div className="break-all">
+            <span className="text-gray-500">メール: </span>
+            <span className="font-medium text-gray-800">{user.email}</span>
+          </div>
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={busy}
+            className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            キャンセル
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={busy}
+            className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:bg-gray-300"
+          >
+            {busy ? "削除中..." : "削除する"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -516,7 +588,6 @@ function InviteDialog({
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"admin" | "master">("admin");
   const [bizIds, setBizIds] = useState<string[]>([]);
   const [push, setPush] = useState(true);
   const [mail, setMail] = useState(true);
@@ -541,7 +612,8 @@ function InviteDialog({
         body: JSON.stringify({
           display_name: name.trim(),
           email: email.trim(),
-          role,
+          // 新規招待は一般管理者で固定(サーバーでも admin 固定・master付与は拒否)
+          role: "admin",
           // 担当事業・通知は master のみ送信(サーバーでも master を検証)
           ...(isMaster
             ? {
@@ -582,18 +654,13 @@ function InviteDialog({
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} placeholder="new-admin@unity-corp.jp" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">権限 <span className="text-red-600">*</span></label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as "admin" | "master")}
-              className={inputClass}
-            >
-              <option value="admin">管理者</option>
-              {currentRole === "master" && <option value="master">マスター</option>}
-            </select>
-            {currentRole !== "master" && (
-              <p className="mt-1 text-xs text-gray-500">マスター権限の付与はマスターのみ可能です。</p>
-            )}
+            <label className="block text-sm font-medium text-gray-700">権限</label>
+            <p className="mt-1 rounded-md border border-gray-200 bg-gray-50 p-2 text-sm text-gray-700">
+              一般管理者(固定)
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              マスターは指定2名で固定のため、新規はすべて一般管理者として招待されます。
+            </p>
           </div>
 
           {isMaster && (

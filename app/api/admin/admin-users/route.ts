@@ -12,6 +12,28 @@ import { getSetPasswordUrl } from "@/lib/site-url";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/**
+ * 既存 auth ユーザーをメールで検索(service_role)。
+ * 削除済み管理者(admin_users 行は無いが auth.users は残る)の再招待で、既存IDを得るために使う。
+ * listUsers をページングして照合(上限ページで打ち切り)。見つからなければ null。
+ */
+async function findAuthUserByEmail(
+  admin: ReturnType<typeof createAdminClient>,
+  email: string
+): Promise<{ id: string } | null> {
+  const target = email.trim().toLowerCase();
+  const perPage = 200;
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error) return null;
+    const users = data?.users ?? [];
+    const hit = users.find((u) => (u.email ?? "").toLowerCase() === target);
+    if (hit) return { id: hit.id };
+    if (users.length < perPage) break; // 最終ページ
+  }
+  return null;
+}
+
 /** 管理者一覧(active管理者のみ閲覧) */
 export async function GET() {
   const supabase = await createClient();
@@ -72,22 +94,20 @@ export async function POST(req: NextRequest) {
 
   const email = (body.email ?? "").trim().toLowerCase();
   const displayName = (body.display_name ?? "").trim();
-  const role = body.role === "master" ? "master" : "admin";
   if (!displayName) {
     return NextResponse.json({ error: "氏名を入力してください" }, { status: 400 });
   }
   if (!EMAIL_RE.test(email)) {
     return NextResponse.json({ error: "メールアドレスの形式が正しくありません" }, { status: 400 });
   }
-  if (body.role !== "admin" && body.role !== "master") {
-    return NextResponse.json({ error: "権限の値が不正です" }, { status: 400 });
-  }
-  if (role === "master" && me!.role !== "master") {
+  // 新規招待の権限は常に一般管理者(admin)に固定。master 付与は不可(マスターは指定2名で固定)。
+  if (body.role === "master") {
     return NextResponse.json(
-      { error: "master 権限の付与は master のみ可能です" },
+      { error: "マスター権限を付与することはできません(新規は一般管理者で固定)" },
       { status: 403 }
     );
   }
+  const role = "admin" as const;
 
   // 担当事業・通知設定は master のみ設定可能(クライアント値を信用せずサーバーで判定)
   const wantsBusinessOrNotify =
@@ -130,23 +150,44 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Supabase Auth: 招待メール送信(アカウント作成 + メール送信)
+  // Supabase Auth: 招待メール送信(アカウント作成 + メール送信)。
+  // 過去に削除された管理者(admin_users 行は削除済みだが auth.users は残存)の再招待にも対応する:
+  //   inviteUserByEmail が「既に登録済み」で失敗した場合は、既存 auth ユーザーを探し、
+  //   パスワード設定(回復)リンクを送って admin_users 行を作り直す。
+  let authUserId: string;
   const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
     email,
     { redirectTo: getSetPasswordUrl(), data: displayName ? { name: displayName } : undefined }
   );
-  if (inviteError || !invited?.user) {
-    return NextResponse.json(
-      { error: `招待メールの送信に失敗しました: ${inviteError?.message ?? "不明なエラー"}` },
-      { status: 502 }
-    );
+  if (!inviteError && invited?.user) {
+    authUserId = invited.user.id;
+  } else {
+    // 既存 auth ユーザーを検索(ページング)
+    const existingAuthUser = await findAuthUserByEmail(admin, email);
+    if (!existingAuthUser) {
+      return NextResponse.json(
+        { error: `招待メールの送信に失敗しました: ${inviteError?.message ?? "不明なエラー"}` },
+        { status: 502 }
+      );
+    }
+    authUserId = existingAuthUser.id;
+    // 本人がパスワードを再設定して有効化できるよう、回復リンクを送る
+    const { error: recoverError } = await admin.auth.resetPasswordForEmail(email, {
+      redirectTo: getSetPasswordUrl(),
+    });
+    if (recoverError) {
+      return NextResponse.json(
+        { error: `再招待メールの送信に失敗しました: ${recoverError.message}` },
+        { status: 502 }
+      );
+    }
   }
 
   const { data: createdRow, error: upsertError } = await admin
     .from("admin_users")
     .upsert(
       {
-        auth_user_id: invited.user.id,
+        auth_user_id: authUserId,
         email,
         display_name: displayName,
         role,
@@ -186,7 +227,7 @@ export async function POST(req: NextRequest) {
     if (!bizResult.ok) {
       await recordAdminAudit(admin, {
         actorUserId: me!.auth_user_id,
-        targetUserId: invited.user.id,
+        targetUserId: authUserId,
         action: "invite_business_failed",
         metadata: { error: bizResult.error },
       });
@@ -202,7 +243,7 @@ export async function POST(req: NextRequest) {
 
   await recordAdminAudit(admin, {
     actorUserId: me!.auth_user_id,
-    targetUserId: invited.user.id,
+    targetUserId: authUserId,
     action: "invite",
     metadata: {
       email,

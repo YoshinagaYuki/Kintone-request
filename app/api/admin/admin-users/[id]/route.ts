@@ -4,6 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   getCurrentAdmin,
   isActiveAdmin,
+  isMaster,
+  isProtectedMaster,
   recordAdminAudit,
   countActiveMasters,
   findInvalidFormTypeIds,
@@ -80,22 +82,13 @@ export async function PATCH(
     }
   }
 
-  // 権限変更(master のみ実行可)
-  if (body.role === "admin" || body.role === "master") {
-    if (me!.role !== "master") {
-      return NextResponse.json({ error: "権限変更は master のみ可能です" }, { status: 403 });
-    }
-    // 最後の active master の降格を防ぐ
-    if (
-      target.role === "master" &&
-      body.role === "admin" &&
-      target.status === "active" &&
-      (await countActiveMasters(admin, target.id)) === 0
-    ) {
-      return NextResponse.json({ error: "最後の master は降格できません" }, { status: 400 });
-    }
-    update.role = body.role;
-    audits.push({ action: "update_role", metadata: { role: body.role } });
+  // 権限(role)の変更は一切許可しない。
+  // マスターは指定2名で固定(昇格・降格ともに禁止)。クライアントが role を送っても拒否する。
+  if (typeof body.role === "string") {
+    return NextResponse.json(
+      { error: "権限(マスター/管理者)の変更はできません" },
+      { status: 403 }
+    );
   }
 
   // 氏名(表示名)の変更
@@ -193,6 +186,85 @@ export async function PATCH(
       action: a.action,
       metadata: a.metadata,
     });
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
+/**
+ * 管理者の削除(マスターのみ実行可)。
+ * ・マスター(role=master または 指定メール)は削除不可(本人・他マスター問わず)。
+ * ・削除対象は admin_users の対象レコードのみ(admin_user_businesses はFKのCASCADEで自動削除)。
+ *   auth.users・申請/承認履歴・監査ログ・請求アプリ関連は削除しない。
+ * ・削除前に監査ログを記録し、監査ログ保存に失敗した場合は削除しない。
+ * ・削除後は middleware により対象者の管理画面ログインが遮断される。
+ *   auth.users は残すため、同じメールでの将来の再招待にも対応できる(招待API側で処理)。
+ */
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const supabase = await createClient();
+  const me = await getCurrentAdmin(supabase);
+  if (!isActiveAdmin(me)) {
+    return NextResponse.json({ error: "権限がありません" }, { status: 403 });
+  }
+  // 削除は「マスター(DBのrole=master かつ 指定メール)」のみ。メール一致だけでは許可しない。
+  if (!isMaster(me)) {
+    return NextResponse.json(
+      { error: "管理者の削除はマスター管理者のみ可能です" },
+      { status: 403 }
+    );
+  }
+
+  const admin = createAdminClient();
+  const { data: target } = await admin
+    .from("admin_users")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle<AdminUser>();
+  if (!target) {
+    return NextResponse.json({ error: "対象の管理者が見つかりません" }, { status: 404 });
+  }
+
+  // マスターは削除不可(本人・他マスターを含む)。role か 指定メールのいずれか該当で保護。
+  if (isProtectedMaster(target)) {
+    return NextResponse.json(
+      { error: "マスター管理者は削除できません" },
+      { status: 403 }
+    );
+  }
+  // 念のため自己削除も明示ブロック(マスターは上で弾かれるが二重防御)
+  if (target.auth_user_id === me!.auth_user_id) {
+    return NextResponse.json({ error: "自分自身は削除できません" }, { status: 400 });
+  }
+
+  // 監査ログを先に記録。失敗した場合は削除を実行しない。
+  const { error: auditError } = await admin.from("admin_user_audit_logs").insert({
+    actor_user_id: me!.auth_user_id,
+    target_user_id: target.auth_user_id,
+    action: "delete",
+    metadata: {
+      email: target.email,
+      display_name: target.display_name,
+      role: target.role,
+    },
+  });
+  if (auditError) {
+    return NextResponse.json(
+      { error: "監査ログの記録に失敗したため削除を中止しました" },
+      { status: 500 }
+    );
+  }
+
+  // admin_users の対象行のみ削除(admin_user_businesses はCASCADE)。auth.users は削除しない。
+  const { error: delError } = await admin.from("admin_users").delete().eq("id", id);
+  if (delError) {
+    return NextResponse.json(
+      { error: `削除に失敗しました: ${delError.message}` },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ ok: true });
