@@ -13,8 +13,8 @@ export const dynamic = "force-dynamic";
  * ・ロゴ画像は public/images 配下を使用(縦横比維持・object-contain)。
  */
 
-// オールマイトは第6段階(専用フォーム+App10連携)完成までは公開しない。
-const ALLMIGHT_PUBLIC = false;
+// オールマイトの公開可否は Vercel 環境変数 ALLMIGHT_PUBLIC("true" で公開)で制御する。
+const ALLMIGHT_PUBLIC = process.env.ALLMIGHT_PUBLIC === "true";
 
 export default async function ApplyTopPage() {
   const supabase = createAdminClient();
