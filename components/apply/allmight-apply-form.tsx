@@ -583,6 +583,20 @@ export function AllmightApplyForm({
         <p className="mt-1 text-right text-xs text-gray-400">{customerRequests.length} / {MAX_CUSTOMER_REQUESTS}</p>
       </div>
 
+      {/* 配送時の注意事項(オールマイト申請のみ。同意操作なしの告知表示) */}
+      <div className="rounded-md border border-red-300 bg-red-50 p-4 text-red-600">
+        <p className="text-sm font-bold sm:text-base">【重要】商品の引き渡しについて</p>
+        <p className="mt-2 text-sm leading-relaxed">
+          建物の搬入ルールや、店舗常設ではないイベント会場等への配送の場合、ドライバーが到着後、ご登録いただいた電話番号へご連絡し、搬入口等で商品をお引き渡しする場合がございます。
+        </p>
+        <p className="mt-2 text-sm leading-relaxed">
+          その際、お電話がつながらない場合は商品の引き渡しができず、翌日以降の再配達となる可能性がございます。
+        </p>
+        <p className="mt-2 text-sm leading-relaxed">
+          配送当日は必ず連絡が取れる電話番号をご登録いただき、ドライバーからの着信にご対応いただきますようお願いいたします。
+        </p>
+      </div>
+
       <button
         type="submit"
         disabled={submitting}
