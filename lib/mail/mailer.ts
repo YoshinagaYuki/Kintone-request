@@ -29,6 +29,11 @@ export type MailInput = {
    * 注意: これはサーバー側で組み立てた値のみを渡すこと(外部リクエスト値をそのまま渡さない)。
    */
   cc?: string | string[];
+  /**
+   * true のとき常時CC(system_settings)を合流しない(input.cc のみ使用)。
+   * 管理者・担当者向け通知メールで使用(常時CCは申請者向けメール専用のため)。
+   */
+  skipAlwaysCc?: boolean;
 };
 
 export type MailResult =
@@ -52,7 +57,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  */
 async function buildCcList(
   existingCc: string | string[] | undefined,
-  to: string
+  to: string,
+  skipAlwaysCc: boolean
 ): Promise<string[]> {
   const existing = Array.isArray(existingCc)
     ? existingCc
@@ -61,11 +67,13 @@ async function buildCcList(
       : [];
 
   let always: string[] = [];
-  try {
-    always = await getAlwaysCcEmails(createAdminClient());
-  } catch (err) {
-    console.error("[mail] 常時CC設定の取得に失敗しました(Toへの送信は継続):", err);
-    always = [];
+  if (!skipAlwaysCc) {
+    try {
+      always = await getAlwaysCcEmails(createAdminClient());
+    } catch (err) {
+      console.error("[mail] 常時CC設定の取得に失敗しました(Toへの送信は継続):", err);
+      always = [];
+    }
   }
 
   const toKey = sanitizeHeader(to).toLowerCase();
@@ -114,7 +122,7 @@ export async function sendMail(input: MailInput): Promise<MailResult> {
   // CC合流: 既存CC(呼び出し側) + 常時CC(system_settings)。
   // ・大文字小文字を無視して重複排除。To と同一のアドレスもCCから除外。
   // ・常時CCの取得失敗はログのみで、To への送信は継続する(安全側)。
-  const cc = await buildCcList(input.cc, to);
+  const cc = await buildCcList(input.cc, to, input.skipAlwaysCc === true);
 
   try {
     await transporter.sendMail({ from, to, subject, text, ...(cc.length ? { cc } : {}) });

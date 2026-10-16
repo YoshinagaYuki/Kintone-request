@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-/** 担当者マスターの更新(氏名・所属・表示順・公開フラグ) */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** 担当者マスターの更新(氏名・所属・表示順・公開フラグ・メール・メール通知) */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -21,6 +23,8 @@ export async function PATCH(
     company?: string;
     sort_order?: number;
     is_active?: boolean;
+    email?: string;
+    email_notify_enabled?: boolean;
   };
   try {
     body = await req.json();
@@ -37,6 +41,16 @@ export async function PATCH(
   if (typeof body.company === "string") update.company = body.company.trim();
   if (Number.isInteger(body.sort_order)) update.sort_order = body.sort_order;
   if (typeof body.is_active === "boolean") update.is_active = body.is_active;
+  if (typeof body.email === "string") {
+    const email = body.email.trim();
+    if (email && !EMAIL_RE.test(email)) {
+      return NextResponse.json({ error: "メールアドレスの形式が正しくありません" }, { status: 400 });
+    }
+    update.email = email;
+  }
+  if (typeof body.email_notify_enabled === "boolean") {
+    update.email_notify_enabled = body.email_notify_enabled;
+  }
 
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: "更新項目がありません" }, { status: 400 });

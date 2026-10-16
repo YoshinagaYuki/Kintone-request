@@ -259,15 +259,20 @@ export async function POST(req: NextRequest) {
     actor: "surely",
   });
 
-  // 担当者向けPush通知(既存)。失敗しても申請保存は成功のまま
+  // 管理者/担当者への新規申請通知(事業別Push + 管理者メール + 担当者メール)。
+  // 失敗しても申請保存は成功のまま(notifyNewRequest 内で try/catch 済み)。
   const baseUrl = (process.env.APP_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
   await notifyNewRequest({
+    formTypeId: formType.id,
     formTypeName: formType.name,
+    applicantName: applicant_name,
     agencyName: result.data["取次店名"] ?? "",
     boothName: result.data["イベントブース名"] ?? "",
     deliveryDate: result.data["配送日付"] ?? "",
     pickupDate: result.data["集荷日付"] ?? "",
+    submittedAt: request.created_at,
     adminUrl: `${baseUrl}/admin/requests/${request.id}`,
+    staffNameInput: company_staff_name,
   });
 
   // 申請完了メール(入力者宛)。送信失敗でも申請は成功のまま

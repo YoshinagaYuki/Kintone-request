@@ -9,6 +9,8 @@ export type StaffRow = {
   company: string;
   sort_order: number;
   is_active: boolean;
+  email: string;
+  email_notify_enabled: boolean;
 };
 
 /** 担当者マスターのCRUD(管理画面) */
@@ -21,6 +23,8 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
   const [newName, setNewName] = useState("");
   const [newCompany, setNewCompany] = useState("");
   const [newOrder, setNewOrder] = useState(0);
+  const [newEmail, setNewEmail] = useState("");
+  const [newEmailNotify, setNewEmailNotify] = useState(false);
 
   // 行編集(1行ずつ)
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -28,10 +32,14 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
     name: string;
     company: string;
     sort_order: number;
+    email: string;
+    email_notify_enabled: boolean;
   }>({
     name: "",
     company: "",
     sort_order: 0,
+    email: "",
+    email_notify_enabled: false,
   });
 
   async function call(path: string, method: string, body?: unknown): Promise<boolean> {
@@ -64,11 +72,15 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
       name: newName,
       company: newCompany,
       sort_order: newOrder,
+      email: newEmail,
+      email_notify_enabled: newEmailNotify,
     });
     if (ok) {
       setNewName("");
       setNewCompany("");
       setNewOrder(0);
+      setNewEmail("");
+      setNewEmailNotify(false);
     }
   }
 
@@ -85,6 +97,8 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
     if (!window.confirm(`「${row.name}」を削除します。よろしいですか?`)) return;
     await call(`/api/admin/staff/${row.id}`, "DELETE");
   }
+
+  const cell = "mt-1 rounded-md border border-gray-300 p-2 text-sm";
 
   return (
     <div className="mt-6">
@@ -105,7 +119,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             required
-            className="mt-1 rounded-md border border-gray-300 p-2 text-sm"
+            className={cell}
             placeholder="吉永 勇樹"
           />
         </div>
@@ -114,17 +128,36 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
           <input
             value={newCompany}
             onChange={(e) => setNewCompany(e.target.value)}
-            className="mt-1 rounded-md border border-gray-300 p-2 text-sm"
+            className={cell}
             placeholder="株式会社ユニティ"
           />
         </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600">メールアドレス</label>
+          <input
+            type="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            className={`${cell} w-56`}
+            placeholder="staff@unity-corp.jp"
+          />
+        </div>
+        <label className="flex items-center gap-1.5 pb-2 text-xs font-medium text-gray-600">
+          <input
+            type="checkbox"
+            checked={newEmailNotify}
+            onChange={(e) => setNewEmailNotify(e.target.checked)}
+            className="h-4 w-4 accent-blue-600"
+          />
+          メール通知
+        </label>
         <div>
           <label className="block text-xs font-medium text-gray-600">表示順</label>
           <input
             type="number"
             value={newOrder}
             onChange={(e) => setNewOrder(Number(e.target.value))}
-            className="mt-1 w-20 rounded-md border border-gray-300 p-2 text-sm"
+            className={`${cell} w-20`}
           />
         </div>
         <button
@@ -143,6 +176,8 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
             <tr>
               <th className="px-4 py-2">氏名</th>
               <th className="px-4 py-2">所属会社</th>
+              <th className="px-4 py-2">メール</th>
+              <th className="px-4 py-2">メール通知</th>
               <th className="px-4 py-2">表示順</th>
               <th className="px-4 py-2">公開</th>
               <th className="px-4 py-2"><span className="sr-only">操作</span></th>
@@ -151,7 +186,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
           <tbody className="divide-y divide-gray-100">
             {staff.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                   担当者が登録されていません
                 </td>
               </tr>
@@ -171,6 +206,25 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
                       value={edit.company}
                       onChange={(e) => setEdit({ ...edit, company: e.target.value })}
                       className="w-full rounded-md border border-gray-300 p-1.5 text-sm"
+                    />
+                  </td>
+                  <td className="px-4 py-2">
+                    <input
+                      type="email"
+                      value={edit.email}
+                      onChange={(e) => setEdit({ ...edit, email: e.target.value })}
+                      placeholder="staff@unity-corp.jp"
+                      className="w-full rounded-md border border-gray-300 p-1.5 text-sm"
+                    />
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    <input
+                      type="checkbox"
+                      checked={edit.email_notify_enabled}
+                      onChange={(e) =>
+                        setEdit({ ...edit, email_notify_enabled: e.target.checked })
+                      }
+                      className="h-4 w-4 accent-blue-600"
                     />
                   </td>
                   <td className="px-4 py-2">
@@ -204,6 +258,18 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
                 <tr key={row.id} className={row.is_active ? "" : "bg-gray-50 text-gray-400"}>
                   <td className="px-4 py-2">{row.name}</td>
                   <td className="px-4 py-2">{row.company || "-"}</td>
+                  <td className="break-all px-4 py-2">{row.email || "-"}</td>
+                  <td className="px-4 py-2">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        row.email_notify_enabled
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-200 text-gray-600"
+                      }`}
+                    >
+                      {row.email_notify_enabled ? "ON" : "OFF"}
+                    </span>
+                  </td>
                   <td className="px-4 py-2">{row.sort_order}</td>
                   <td className="px-4 py-2">
                     <button
@@ -226,6 +292,8 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
                           name: row.name,
                           company: row.company,
                           sort_order: row.sort_order,
+                          email: row.email,
+                          email_notify_enabled: row.email_notify_enabled,
                         });
                       }}
                       className="mr-2 font-medium text-blue-600 hover:underline"
@@ -250,6 +318,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
       <p className="mt-3 text-xs text-gray-500">
         公開中の担当者が申請画面のプルダウンに表示順で表示されます(表示例: 氏名（所属会社）)。
         選択された氏名は「担当者:氏名」としてFMTに自動追加され、kintoneの担当者フィールドへ登録されます。
+        メール通知がONかつメールアドレスが登録されている担当者は、申請の弊社担当者名が氏名と完全一致したとき(1名のみ)に新規申請メールを受け取ります。
       </p>
     </div>
   );
