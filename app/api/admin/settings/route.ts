@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentAdmin, isActiveAdmin } from "@/lib/admin-users";
 import {
   SETTING_KEYS,
   EMAIL_RE,
@@ -16,14 +17,17 @@ import {
  */
 export async function PATCH(req: NextRequest) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+  // ログインだけでなく「有効(active)な管理者」であることを必須にする。
+  // 停止中(disabled)・招待中(invited)・admin_users 未登録の認証ユーザーは拒否する。
+  const me = await getCurrentAdmin(supabase);
+  if (!isActiveAdmin(me)) {
+    return NextResponse.json({ error: "権限がありません" }, { status: 403 });
+  }
 
   let body: {
     minimum_order_quantity?: number | string;
     manual_drive_url?: string;
+    manual_drive_url_allmight?: string;
     always_cc_emails?: string[] | string;
   };
   try {
@@ -54,6 +58,17 @@ export async function PATCH(req: NextRequest) {
       );
     }
     rows.push({ key: SETTING_KEYS.manualDriveUrl, value: url });
+  }
+
+  if (body.manual_drive_url_allmight !== undefined) {
+    const url = String(body.manual_drive_url_allmight).trim();
+    if (url && !/^https?:\/\//i.test(url)) {
+      return NextResponse.json(
+        { error: "共有リンク(オールマイト)は http:// または https:// で始まるURLを入力してください" },
+        { status: 400 }
+      );
+    }
+    rows.push({ key: SETTING_KEYS.manualDriveUrlAllmight, value: url });
   }
 
   if (body.always_cc_emails !== undefined) {

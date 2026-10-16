@@ -1,4 +1,5 @@
 import { contentLabel, quantityLabel, FMT_LABELS, MAX_PRODUCTS } from "../tezukuru-fmt";
+import { equipmentLabel, ALLMIGHT_MAX_EQUIPMENT, ALLMIGHT_FMT_LABELS } from "../allmight-fmt";
 import { formatPhoneNumber } from "../phone";
 
 /**
@@ -17,15 +18,29 @@ export type OrderDetailsInput = {
   customerRequests?: string | null;
   /** 料金区分(てずくーる承認時)。'paid'|'free'|null。null は表示しない */
   billingType?: string | null;
+  /** 事業判定(kintone_app_id)。10=オールマイト / 49=てずくーる。未指定・不明はてずくーる扱い */
+  kintoneAppId?: number | null;
 };
 
 function val(data: Record<string, string>, label: string): string {
   return (data[label] ?? "").trim();
 }
 
-/** 商品行「・{正式名称} × {数量}」を最大10組ぶん(スロット位置は保持) */
-function productLines(data: Record<string, string>): string[] {
+/**
+ * 商品行を返す。
+ * ・てずくーる(49/不明): コンテンツ①〜⑩ × 数量①〜⑩(スロット位置保持・従来どおり)。
+ * ・オールマイト(10): 機器商品①〜⑤(数量なし)。空欄はスキップ。数量補完なし。重複排除しない。
+ */
+function productLines(data: Record<string, string>, isAllmight: boolean): string[] {
   const lines: string[] = [];
+  if (isAllmight) {
+    for (let i = 1; i <= ALLMIGHT_MAX_EQUIPMENT; i++) {
+      const name = val(data, equipmentLabel(i));
+      if (!name) continue; // 空欄はスキップ。数量は補完しない。重複もそのまま。
+      lines.push(`・${name}`);
+    }
+    return lines;
+  }
   for (let i = 1; i <= MAX_PRODUCTS; i++) {
     const name = val(data, contentLabel(i));
     if (!name) continue;
@@ -41,14 +56,16 @@ function productLines(data: Record<string, string>): string[] {
  */
 export function buildOrderDetails(input: OrderDetailsInput): string {
   const d = input.parsedData ?? {};
+  // 事業判定: 10=オールマイトのみ true。不明なIDをオールマイトと誤判定しない(=てずくーる扱い)。
+  const isAllmight = input.kintoneAppId === 10;
   const out: string[] = [];
   const add = (label: string, value: string) => {
     const v = (value ?? "").trim();
     if (v) out.push(`${label}: ${v}`);
   };
 
-  // 商品名・数量
-  const products = productLines(d);
+  // 商品名(・数量)
+  const products = productLines(d, isAllmight);
   if (products.length > 0) {
     out.push("【商品】");
     out.push(...products);
@@ -59,7 +76,8 @@ export function buildOrderDetails(input: OrderDetailsInput): string {
   add("取次店名", val(d, FMT_LABELS.agencyName));
   add("イベントブース名", val(d, FMT_LABELS.boothName));
   add("請求月", val(d, FMT_LABELS.billingMonth));
-  add("配送料", val(d, FMT_LABELS.shippingFee));
+  // 配送料ラベルは事業別(てずくーる=「配送料」/ オールマイト=「内）配送料」)
+  add("配送料", val(d, isAllmight ? ALLMIGHT_FMT_LABELS.shippingFee : FMT_LABELS.shippingFee));
 
   // 配送
   add("配送日", val(d, FMT_LABELS.deliveryDate));

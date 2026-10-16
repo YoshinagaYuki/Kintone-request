@@ -10,15 +10,18 @@ import { useRouter } from "next/navigation";
 export function SettingsEditor({
   minimumOrderQuantity,
   manualDriveUrl,
+  manualDriveUrlAllmight = "",
   alwaysCcEmails = [],
 }: {
   minimumOrderQuantity: number;
   manualDriveUrl: string;
+  manualDriveUrlAllmight?: string;
   alwaysCcEmails?: string[];
 }) {
   const router = useRouter();
   const [minQty, setMinQty] = useState(String(minimumOrderQuantity));
   const [driveUrl, setDriveUrl] = useState(manualDriveUrl);
+  const [driveUrlAllmight, setDriveUrlAllmight] = useState(manualDriveUrlAllmight);
   // 常時CC(1アドレス1行の管理UI)。最低1行の空欄を表示
   const [ccEmails, setCcEmails] = useState<string[]>(
     alwaysCcEmails.length > 0 ? alwaysCcEmails : [""]
@@ -52,6 +55,7 @@ export function SettingsEditor({
         body: JSON.stringify({
           minimum_order_quantity: minQty,
           manual_drive_url: driveUrl,
+          manual_drive_url_allmight: driveUrlAllmight,
           always_cc_emails: ccEmails.map((e) => e.trim()).filter((e) => e.length > 0),
         }),
       });
@@ -100,7 +104,7 @@ export function SettingsEditor({
 
       <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <label className="block text-sm font-medium text-gray-700">
-          Google Drive 共有リンク
+          Google Drive 共有リンク(てずくーる)
         </label>
         <input
           type="url"
@@ -110,7 +114,23 @@ export function SettingsEditor({
           className={inputClass}
         />
         <p className="mt-1 text-xs text-gray-500">
-          承認完了メールの {"{{manual_drive_url}}"} に差し込まれます。空欄も可。
+          てずくーるの承認完了メールの {"{{manual_drive_url}}"} に差し込まれます。空欄も可。
+        </p>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <label className="block text-sm font-medium text-gray-700">
+          Google Drive 共有リンク(オールマイト)
+        </label>
+        <input
+          type="url"
+          value={driveUrlAllmight}
+          onChange={(e) => setDriveUrlAllmight(e.target.value)}
+          placeholder="https://drive.google.com/..."
+          className={inputClass}
+        />
+        <p className="mt-1 text-xs text-gray-500">
+          オールマイトの承認完了メールの {"{{manual_drive_url}}"} に差し込まれます。空欄の場合、てずくーるのリンクは使われません(未設定として扱われます)。
         </p>
       </div>
 

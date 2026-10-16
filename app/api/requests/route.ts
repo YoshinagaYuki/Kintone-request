@@ -317,6 +317,7 @@ export async function POST(req: NextRequest) {
       parsedData: result.data,
       staffName: company_staff_name || null, // 申請時点は申請入力(確定は承認時)
       customerRequests: customer_requests.trim() || null,
+      kintoneAppId: formType.kintone_app_id as number, // 事業別メール判定
     },
     request.created_at
   );

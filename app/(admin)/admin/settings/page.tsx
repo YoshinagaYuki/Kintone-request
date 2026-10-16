@@ -16,11 +16,13 @@ export const dynamic = "force-dynamic";
  */
 export default async function SettingsPage() {
   const supabase = await createClient();
-  const [minimumOrderQuantity, manualDriveUrl, alwaysCcEmails] = await Promise.all([
-    getMinimumOrderQuantity(supabase),
-    getManualDriveUrl(supabase),
-    getAlwaysCcEmails(supabase),
-  ]);
+  const [minimumOrderQuantity, manualDriveUrl, manualDriveUrlAllmight, alwaysCcEmails] =
+    await Promise.all([
+      getMinimumOrderQuantity(supabase),
+      getManualDriveUrl(supabase),
+      getManualDriveUrl(supabase, { allmight: true }),
+      getAlwaysCcEmails(supabase),
+    ]);
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:py-10">
@@ -32,6 +34,7 @@ export default async function SettingsPage() {
       <SettingsEditor
         minimumOrderQuantity={minimumOrderQuantity}
         manualDriveUrl={manualDriveUrl}
+        manualDriveUrlAllmight={manualDriveUrlAllmight}
         alwaysCcEmails={alwaysCcEmails}
       />
     </main>

@@ -10,7 +10,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const SETTING_KEYS = {
   minimumOrderQuantity: "minimum_order_quantity",
-  manualDriveUrl: "manual_drive_url",
+  manualDriveUrl: "manual_drive_url", // てずくーる(既存・共通)
+  manualDriveUrlAllmight: "manual_drive_url_allmight", // オールマイト専用
   alwaysCcEmails: "always_cc_emails",
 } as const;
 
@@ -18,6 +19,7 @@ export const SETTING_KEYS = {
 export const SETTING_FALLBACKS = {
   minimum_order_quantity: 100,
   manual_drive_url: "",
+  manual_drive_url_allmight: "",
   always_cc_emails: "",
 } as const;
 
@@ -69,16 +71,26 @@ export async function getMinimumOrderQuantity(
   return Number.isInteger(n) && n > 0 ? n : SETTING_FALLBACKS.minimum_order_quantity;
 }
 
-/** Google Drive 共有リンク。未設定は空文字 */
+/**
+ * Google Drive 共有リンク。未設定は空文字。
+ * ・事業別: オールマイト(opts.allmight=true)は manual_drive_url_allmight を使用。
+ *   未設定なら空文字を返す(誤っててずくーるのURLを使わない)。
+ * ・てずくーる/未指定は従来の manual_drive_url。
+ */
 export async function getManualDriveUrl(
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  opts?: { allmight?: boolean }
 ): Promise<string> {
+  const key = opts?.allmight
+    ? SETTING_KEYS.manualDriveUrlAllmight
+    : SETTING_KEYS.manualDriveUrl;
   const { data } = await supabase
     .from("system_settings")
     .select("value")
-    .eq("key", SETTING_KEYS.manualDriveUrl)
+    .eq("key", key)
     .maybeSingle();
-  return (data?.value ?? SETTING_FALLBACKS.manual_drive_url).toString().trim();
+  // オールマイト未設定時はてずくーる値へフォールバックせず空文字(事業混在を防ぐ)
+  return (data?.value ?? "").toString().trim();
 }
 
 /**

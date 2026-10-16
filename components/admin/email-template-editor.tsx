@@ -4,6 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export type EmailTemplateRow = { key: "application" | "approval"; subject: string; body: string };
+export type BusinessKey = "tezukuru" | "allmight";
+
+export type EmailTemplatesByBusiness = Record<BusinessKey, EmailTemplateRow[]>;
+
+const BUSINESS_TABS: { key: BusinessKey; label: string }[] = [
+  { key: "tezukuru", label: "てずくーる" },
+  { key: "allmight", label: "オールマイト" },
+];
 
 const TABS: { key: EmailTemplateRow["key"]; label: string }[] = [
   { key: "application", label: "申請完了メール" },
@@ -22,22 +30,34 @@ const PLACEHOLDERS = [
   "{{manual_drive_url}}",
 ];
 
-/** メールテンプレート編集(タブ: 申請完了 / 承認完了)。本文はDB保存 */
-export function EmailTemplateEditor({ templates }: { templates: EmailTemplateRow[] }) {
+/** メールテンプレート編集(事業切替: てずくーる/オールマイト × 申請完了/承認完了)。本文はDB保存 */
+export function EmailTemplateEditor({ templates }: { templates: EmailTemplatesByBusiness }) {
   const router = useRouter();
+  const [business, setBusiness] = useState<BusinessKey>("tezukuru");
   const [active, setActive] = useState<EmailTemplateRow["key"]>("application");
-  const [drafts, setDrafts] = useState<Record<string, { subject: string; body: string }>>(() =>
-    Object.fromEntries(templates.map((t) => [t.key, { subject: t.subject, body: t.body }]))
-  );
+  const [drafts, setDrafts] = useState<Record<string, { subject: string; body: string }>>(() => {
+    const d: Record<string, { subject: string; body: string }> = {};
+    (Object.keys(templates) as BusinessKey[]).forEach((b) => {
+      templates[b].forEach((t) => {
+        d[`${b}:${t.key}`] = { subject: t.subject, body: t.body };
+      });
+    });
+    return d;
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const current = drafts[active] ?? { subject: "", body: "" };
+  const slot = `${business}:${active}`;
+  const current = drafts[slot] ?? { subject: "", body: "" };
 
   function update(patch: Partial<{ subject: string; body: string }>) {
-    setDrafts((prev) => ({ ...prev, [active]: { ...prev[active], ...patch } }));
+    setDrafts((prev) => ({ ...prev, [slot]: { ...prev[slot], ...patch } }));
     setSaved(false);
+  }
+  function resetMsg() {
+    setSaved(false);
+    setError(null);
   }
 
   async function save() {
@@ -48,7 +68,7 @@ export function EmailTemplateEditor({ templates }: { templates: EmailTemplateRow
       const res = await fetch("/api/admin/email-templates", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key: active, subject: current.subject, body: current.body }),
+        body: JSON.stringify({ key: active, business, subject: current.subject, body: current.body }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
@@ -66,15 +86,40 @@ export function EmailTemplateEditor({ templates }: { templates: EmailTemplateRow
 
   return (
     <div className="mt-6">
-      {/* タブ */}
-      <div className="flex gap-2 border-b border-gray-200">
+      {/* 事業切替 */}
+      <div className="flex flex-wrap gap-2">
+        {BUSINESS_TABS.map((b) => (
+          <button
+            key={b.key}
+            onClick={() => {
+              setBusiness(b.key);
+              resetMsg();
+            }}
+            className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
+              business === b.key
+                ? "border-blue-600 bg-blue-600 text-white"
+                : "border-gray-300 bg-white text-gray-700 hover:bg-gray-100"
+            }`}
+          >
+            {b.label}
+          </button>
+        ))}
+      </div>
+
+      {business === "allmight" && (
+        <p className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-2.5 text-xs text-blue-800">
+          オールマイト専用テンプレートです。未入力のままだと汎用の既定文面で送信されます(てずくーるの文面は使われません)。
+        </p>
+      )}
+
+      {/* テンプレ種別タブ */}
+      <div className="mt-4 flex gap-2 border-b border-gray-200">
         {TABS.map((t) => (
           <button
             key={t.key}
             onClick={() => {
               setActive(t.key);
-              setSaved(false);
-              setError(null);
+              resetMsg();
             }}
             className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${
               active === t.key
@@ -126,8 +171,8 @@ export function EmailTemplateEditor({ templates }: { templates: EmailTemplateRow
             ))}
           </div>
           <p className="mt-2 text-xs text-gray-500">
-            {"{{order_details}}"} は商品・数量・配送先・配送日・担当者・電話番号・住所を自動展開します。
-            {"{{manual_drive_url}}"} は承認完了メールで有効です(システム設定のリンク)。
+            {"{{order_details}}"} は商品・数量・配送先・配送日・担当者・電話番号・住所を自動展開します(事業別)。
+            {"{{manual_drive_url}}"} は承認完了メールで有効です(事業別のシステム設定リンク)。
           </p>
         </div>
 

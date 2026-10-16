@@ -31,6 +31,8 @@ type ApplicantContext = {
   customerRequests?: string | null;
   /** 料金区分(てずくーる承認時)。'paid'|'free'|null。注文内容へ表示 */
   billingType?: string | null;
+  /** 事業判定(kintone_app_id)。10=オールマイト / 49=てずくーる。テンプレ・Drive URL・注文内容の事業別化に使用 */
+  kintoneAppId?: number | null;
 };
 
 function formatDateTime(iso: string): string {
@@ -64,6 +66,7 @@ function baseVars(ctx: ApplicantContext, dateVarName: string, isoDate: string) {
     staffName: ctx.staffName ?? null,
     customerRequests: ctx.customerRequests ?? null,
     billingType: ctx.billingType ?? null,
+    kintoneAppId: ctx.kintoneAppId ?? null,
   });
   return {
     applicant_name: ctx.applicant_name ?? "ご担当者",
@@ -95,7 +98,8 @@ export async function sendApplicationMail(
     .maybeSingle();
   if (current?.application_email_sent_at) return { sent: false, skipped: true };
 
-  const template = await getEmailTemplate(supabase, "application");
+  const isAllmight = ctx.kintoneAppId === 10;
+  const template = await getEmailTemplate(supabase, "application", { allmight: isAllmight });
   const vars = baseVars(ctx, "submitted_at", submittedAt);
   const subject = renderTemplate(template.subject, vars);
   const text = renderTemplate(template.body, vars);
@@ -140,9 +144,10 @@ export async function sendApprovalMail(
     .maybeSingle();
   if (current?.approval_email_sent_at) return { sent: false, skipped: true };
 
-  const template = await getEmailTemplate(supabase, "approval");
+  const isAllmight = ctx.kintoneAppId === 10;
+  const template = await getEmailTemplate(supabase, "approval", { allmight: isAllmight });
   const vars = baseVars(ctx, "approved_at", approvedAt);
-  vars.manual_drive_url = await getManualDriveUrl(supabase);
+  vars.manual_drive_url = await getManualDriveUrl(supabase, { allmight: isAllmight });
   const subject = renderTemplate(template.subject, vars);
   const text = renderTemplate(template.body, vars);
 

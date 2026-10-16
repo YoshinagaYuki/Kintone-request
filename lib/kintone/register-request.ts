@@ -357,6 +357,7 @@ export async function registerRequestToKintone(
         staffName: parsedData["担当者"] ?? null, // 承認時に確定した正式名称
         customerRequests: (request.customer_requests as string | null) ?? null,
         billingType: (request.billing_type as string | null) ?? null, // 料金区分(てずくーる)
+        kintoneAppId: appId, // 事業別メール(テンプレ/Drive URL/注文内容)の判定
       },
       new Date().toISOString()
     );

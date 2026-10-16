@@ -27,12 +27,16 @@ const FALLBACK: Record<EmailTemplateKey, EmailTemplate> = {
 
 export async function getEmailTemplate(
   supabase: SupabaseClient,
-  key: EmailTemplateKey
+  key: EmailTemplateKey,
+  opts?: { allmight?: boolean }
 ): Promise<EmailTemplate> {
+  // 事業別: オールマイトは `${key}_allmight` を参照。未設定時は「汎用フォールバック(コード内)」を使い、
+  // てずくーるのDB本文には絶対にフォールバックしない(事業ごとに本文を独立させる)。
+  const dbKey = opts?.allmight ? `${key}_allmight` : key;
   const { data } = await supabase
     .from("email_templates")
     .select("subject, body")
-    .eq("key", key)
+    .eq("key", dbKey)
     .maybeSingle();
   const subject = (data?.subject ?? "").toString();
   const body = (data?.body ?? "").toString();

@@ -1,31 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentAdmin, isActiveAdmin } from "@/lib/admin-users";
 
 /**
- * メールテンプレートの更新(管理者のみ。RLSで保護)。
- * body: { key: 'application'|'approval'; subject: string; body: string }
+ * メールテンプレートの更新(有効な管理者のみ。RLSでも保護)。
+ * body: { key: 'application'|'approval'; business?: 'tezukuru'|'allmight'; subject; body }
+ * ・business='allmight' のときは実キー `${key}_allmight` に保存(てずくーるは従来キー)。
  * ・本文はDB保存(コード直書きしない)。差込プレースホルダは保存時に検証しない(自由記述)。
  */
-const VALID_KEYS = new Set(["application", "approval"]);
+const VALID_BASE_KEYS = new Set(["application", "approval"]);
+const VALID_BUSINESS = new Set(["tezukuru", "allmight"]);
 
 export async function PATCH(req: NextRequest) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
+  // ログインだけでなく「有効(active)な管理者」であることを必須にする。
+  // 停止中(disabled)・招待中(invited)・admin_users 未登録の認証ユーザーは拒否する。
+  const me = await getCurrentAdmin(supabase);
+  if (!isActiveAdmin(me)) {
+    return NextResponse.json({ error: "権限がありません" }, { status: 403 });
+  }
 
-  let body: { key?: string; subject?: string; body?: string };
+  let body: { key?: string; business?: string; subject?: string; body?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "不正なリクエストです" }, { status: 400 });
   }
 
-  const key = (body.key ?? "").trim();
-  if (!VALID_KEYS.has(key)) {
+  const baseKey = (body.key ?? "").trim();
+  const business = (body.business ?? "tezukuru").trim();
+  if (!VALID_BASE_KEYS.has(baseKey)) {
     return NextResponse.json({ error: "テンプレート種別が不正です" }, { status: 400 });
   }
+  if (!VALID_BUSINESS.has(business)) {
+    return NextResponse.json({ error: "事業区分が不正です" }, { status: 400 });
+  }
+  const key = business === "allmight" ? `${baseKey}_allmight` : baseKey;
   const subject = (body.subject ?? "").toString();
   const templateBody = (body.body ?? "").toString();
   if (!subject.trim()) {

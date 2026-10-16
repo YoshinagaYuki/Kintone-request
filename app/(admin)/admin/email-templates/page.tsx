@@ -2,12 +2,12 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import {
   EmailTemplateEditor,
-  type EmailTemplateRow,
+  type EmailTemplatesByBusiness,
 } from "@/components/admin/email-template-editor";
 
 export const dynamic = "force-dynamic";
 
-/** メールテンプレート編集(申請完了/承認完了)。middleware により認証必須 */
+/** メールテンプレート編集(事業別: てずくーる/オールマイト × 申請完了/承認完了)。認証必須 */
 export default async function EmailTemplatesPage() {
   const supabase = await createClient();
   const { data } = await supabase
@@ -15,11 +15,20 @@ export default async function EmailTemplatesPage() {
     .select("key, subject, body");
 
   const byKey = new Map((data ?? []).map((r) => [r.key as string, r]));
-  const templates: EmailTemplateRow[] = (["application", "approval"] as const).map((key) => ({
-    key,
-    subject: (byKey.get(key)?.subject as string) ?? "",
-    body: (byKey.get(key)?.body as string) ?? "",
-  }));
+  const row = (k: string) => ({
+    subject: (byKey.get(k)?.subject as string) ?? "",
+    body: (byKey.get(k)?.body as string) ?? "",
+  });
+  const templates: EmailTemplatesByBusiness = {
+    tezukuru: [
+      { key: "application", ...row("application") },
+      { key: "approval", ...row("approval") },
+    ],
+    allmight: [
+      { key: "application", ...row("application_allmight") },
+      { key: "approval", ...row("approval_allmight") },
+    ],
+  };
 
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:py-10">
