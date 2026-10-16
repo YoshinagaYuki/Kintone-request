@@ -70,6 +70,7 @@ export async function DELETE(
   const { count } = await supabase
     .from("requests")
     .select("id", { count: "exact", head: true })
+    .is("deleted_at", null) // 削除済み(ゴミ箱)の申請は参照チェックから除外
     .or(`requested_rental_plan_id.eq.${id},approved_rental_plan_id.eq.${id}`);
 
   if ((count ?? 0) > 0) {

@@ -30,7 +30,11 @@ export type HistoryAction =
   | "email_failed"
   | "arrangement_changed"
   | "arrangement_synced"
-  | "arrangement_sync_failed";
+  | "arrangement_sync_failed"
+  | "edited"
+  | "deleted"
+  | "restored"
+  | "processing_cleared";
 
 export const ACTION_LABELS: Record<HistoryAction, string> = {
   submitted: "申請",
@@ -47,6 +51,10 @@ export const ACTION_LABELS: Record<HistoryAction, string> = {
   arrangement_changed: "手配種別の変更",
   arrangement_synced: "手配種別の再同期",
   arrangement_sync_failed: "手配種別の同期失敗",
+  edited: "申請内容の編集",
+  deleted: "削除(ゴミ箱へ移動)",
+  restored: "復元",
+  processing_cleared: "処理状態の解除",
 };
 
 /** レンタル状況(てずくーる) */

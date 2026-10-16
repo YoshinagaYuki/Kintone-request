@@ -6,6 +6,8 @@ import { getCurrentAdmin } from "@/lib/admin-users";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { ApproveActions } from "@/components/admin/approve-actions";
 import { ArrangementEditor } from "@/components/admin/arrangement-editor";
+import { RestoreButton } from "@/components/admin/restore-button";
+import { ClearProcessingButton } from "@/components/admin/clear-processing-button";
 import { buildKintoneRecord, type FieldMapping } from "@/lib/kintone/mapper";
 import { getVersionedConfig, isKintoneReady } from "@/lib/form-types";
 import { suggestItemName, type ItemMasterEntry } from "@/lib/item-normalizer";
@@ -52,6 +54,9 @@ type Detail = {
   allmight_delivery_time: string | null;
   allmight_pickup_time: string | null;
   allmight_arrangement_sync_failed: boolean | null;
+  deleted_at: string | null;
+  deleted_by: string | null;
+  processing_at: string | null;
   company_staff_name_input: string | null;
   approved_staff_name: string | null;
   application_email_sent_at: string | null;
@@ -84,6 +89,9 @@ const HISTORY_DOT: Partial<Record<HistoryAction, string>> = {
   arrangement_synced: "bg-green-500",
   arrangement_sync_failed: "bg-red-500",
   arrangement_changed: "bg-blue-400",
+  edited: "bg-purple-500",
+  deleted: "bg-red-500",
+  restored: "bg-green-500",
 };
 
 function formatDateTime(iso: string): string {
@@ -124,7 +132,7 @@ export default async function RequestDetailPage({
   const { data } = await supabase
     .from("requests")
     .select(
-      "id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, approved_contents, is_structured, sns_promotion_requested, billing_type, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, allmight_arrangement_sync_failed, company_staff_name_input, approved_staff_name, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
+      "id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, approved_contents, is_structured, sns_promotion_requested, billing_type, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, allmight_arrangement_sync_failed, deleted_at, deleted_by, processing_at, company_staff_name_input, approved_staff_name, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
     )
     .eq("id", id)
     .maybeSingle();
@@ -145,6 +153,27 @@ export default async function RequestDetailPage({
         .eq("form_type_id", request.form_type_id)
         .maybeSingle();
       canEditArrangement = !!bizRow;
+    }
+  }
+
+  // 削除状態と、この申請を操作(復元)できる管理者か(担当事業の利用中管理者)
+  const isDeleted = !!request.deleted_at;
+  // 処理中(連携中)。15分以上経過は「異常終了の疑い=要確認」(自動解除はしない)
+  const isProcessing = !!request.processing_at;
+  const processingStale =
+    isProcessing &&
+    Date.now() - new Date(request.processing_at as string).getTime() > 15 * 60 * 1000;
+  let canManage = false;
+  {
+    const me = await getCurrentAdmin(supabase);
+    if (me && me.status === "active") {
+      const { data: bizRow } = await createAdminClient()
+        .from("admin_user_businesses")
+        .select("form_type_id")
+        .eq("admin_user_id", me.id)
+        .eq("form_type_id", request.form_type_id)
+        .maybeSingle();
+      canManage = !!bizRow;
     }
   }
 
@@ -340,7 +369,53 @@ export default async function RequestDetailPage({
           申請詳細({request.form_types?.name ?? "-"})
         </h1>
         <StatusBadge status={request.status} />
+        {/* 申請内容を編集(未承認かつ kintone未登録・未削除のときのみ) */}
+        {request.status === "pending" && !request.kintone_record_id && !isDeleted && (
+          <Link
+            href={`/admin/requests/${request.id}/edit`}
+            className="ml-auto rounded-md border border-blue-300 bg-white px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-50"
+          >
+            申請内容を編集
+          </Link>
+        )}
       </div>
+
+      {/* 削除済み(ゴミ箱)バナー + 復元 */}
+      {isDeleted && (
+        <div className="mt-4 rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800">
+          <p className="font-semibold">🗑 この申請は削除済み(ゴミ箱)です</p>
+          <p className="mt-1">
+            削除日時: {request.deleted_at ? formatDateTime(request.deleted_at) : "-"}。
+            承認・編集・手配種別の操作はできません。通常の一覧には表示されません。
+          </p>
+          {canManage && (
+            <div className="mt-2">
+              <RestoreButton requestId={request.id} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 処理中(連携中/異常終了未解除)バナー + 手動解除 */}
+      {!isDeleted && isProcessing && (
+        <div className="mt-4 rounded-lg border border-orange-300 bg-orange-50 p-4 text-sm text-orange-900">
+          <p className="font-semibold">
+            ⏳ この申請は処理中(kintone連携中)です{processingStale ? " — 処理状態の確認が必要" : ""}
+          </p>
+          <p className="mt-1">
+            処理中は削除・編集できません。
+            {processingStale
+              ? "処理開始から時間が経過しています。異常終了が疑われる場合は、連携が実際に停止していることを確認のうえ、処理状態を手動で解除してください(自動解除はされません)。"
+              : "処理が完了すると自動的に解除されます。"}
+            {request.processing_at ? ` 処理開始: ${formatDateTime(request.processing_at)}` : ""}
+          </p>
+          {canManage && processingStale && (
+            <div className="mt-2">
+              <ClearProcessingButton requestId={request.id} />
+            </div>
+          )}
+        </div>
+      )}
       <p className="mt-1 text-sm text-gray-500">
         申請日時: {formatDateTime(request.created_at)}
         <span className="ml-3">定義Version: {request.form_type_version}</span>
@@ -626,7 +701,7 @@ export default async function RequestDetailPage({
             pickupDefault={request.allmight_pickup_arrangement}
             deliveryTimeDefault={request.allmight_delivery_time}
             pickupTimeDefault={request.allmight_pickup_time}
-            canEdit={canEditArrangement}
+            canEdit={canEditArrangement && !isDeleted}
             kintoneRegistered={Boolean(request.kintone_record_id)}
             syncFailed={request.allmight_arrangement_sync_failed === true}
           />
@@ -732,8 +807,8 @@ export default async function RequestDetailPage({
         </SectionCard>
       )}
 
-      {/* kintone登録が未設定の種別(例: てずくーる)は承認操作を無効化 */}
-      {!kintoneReady &&
+      {/* 削除済みは承認・再実行などの操作を一切表示しない(復元後に操作) */}
+      {isDeleted ? null : !kintoneReady &&
       (request.status === "pending" || request.status === "register_failed") ? (
         <div className="mt-6 rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-800">
           <p className="font-semibold">kintone登録は未設定</p>

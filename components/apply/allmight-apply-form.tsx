@@ -22,59 +22,104 @@ const MAX_CUSTOMER_REQUESTS = 2000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BILLING_MONTHS = Array.from({ length: 12 }, (_, i) => `${i + 1}月分`);
 
+/** 編集モードの初期値(申請詳細から parsed_data + 申請者情報を詰めて渡す) */
+export type AllmightInitialValues = {
+  applicantName?: string;
+  applicantPhone?: string;
+  applicantEmail?: string;
+  companyStaffName?: string;
+  agencyName?: string;
+  eventBooth?: string;
+  billingMonth?: string;
+  shippingFee?: string;
+  usageStart?: string;
+  usageEnd?: string;
+  equipments?: string[];
+  deliveryDate?: string;
+  deliveryPostal?: string;
+  deliveryAddress?: string;
+  deliveryReceiver?: string;
+  deliveryContact?: string;
+  pickupDate?: string;
+  pickupPostal?: string;
+  pickupAddress?: string;
+  pickupReceiver?: string;
+  pickupContact?: string;
+  slipTo?: string;
+  slipCc?: string;
+  emergencyName?: string;
+  emergencyPhone?: string;
+  customerRequests?: string;
+};
+
 export function AllmightApplyForm({
   formTypeId,
   productOptions,
+  mode = "create",
+  requestId,
+  initialValues,
+  baseUpdatedAt,
 }: {
   formTypeId: string;
   /** 機器商品の選択肢(オールマイト商品マスターの正式名称) */
   productOptions: string[];
+  /** "create"=新規申請(/apply) / "edit"=管理者編集(申請詳細) */
+  mode?: "create" | "edit";
+  /** 編集対象の申請ID(mode="edit" で必須) */
+  requestId?: string;
+  /** 編集時の初期値 */
+  initialValues?: AllmightInitialValues;
+  /** 編集開始時の updated_at(楽観ロック用。mode="edit" で渡す) */
+  baseUpdatedAt?: string;
 }) {
   const router = useRouter();
+  const iv = initialValues ?? {};
 
   // 入力者情報
-  const [applicantName, setApplicantName] = useState("");
-  const [applicantPhone, setApplicantPhone] = useState("");
-  const [applicantEmail, setApplicantEmail] = useState("");
-  const [companyStaffName, setCompanyStaffName] = useState("");
+  const [applicantName, setApplicantName] = useState(iv.applicantName ?? "");
+  const [applicantPhone, setApplicantPhone] = useState(iv.applicantPhone ?? "");
+  const [applicantEmail, setApplicantEmail] = useState(iv.applicantEmail ?? "");
+  const [companyStaffName, setCompanyStaffName] = useState(iv.companyStaffName ?? "");
 
   // 基本情報
-  const [agencyName, setAgencyName] = useState("");
-  const [eventBooth, setEventBooth] = useState("");
-  const [billingMonth, setBillingMonth] = useState("");
-  const [shippingFee, setShippingFee] = useState("");
+  const [agencyName, setAgencyName] = useState(iv.agencyName ?? "");
+  const [eventBooth, setEventBooth] = useState(iv.eventBooth ?? "");
+  const [billingMonth, setBillingMonth] = useState(iv.billingMonth ?? "");
+  const [shippingFee, setShippingFee] = useState(iv.shippingFee ?? "");
 
   // 利用期間
-  const [usageStart, setUsageStart] = useState("");
-  const [usageEnd, setUsageEnd] = useState("");
+  const [usageStart, setUsageStart] = useState(iv.usageStart ?? "");
+  const [usageEnd, setUsageEnd] = useState(iv.usageEnd ?? "");
 
   // 機器商品(最初は1枠・最大5枠)
-  const [equipments, setEquipments] = useState<string[]>([""]);
+  const [equipments, setEquipments] = useState<string[]>(
+    iv.equipments && iv.equipments.length > 0 ? iv.equipments : [""]
+  );
 
   // 配送
-  const [deliveryDate, setDeliveryDate] = useState("");
-  const [deliveryPostal, setDeliveryPostal] = useState("");
-  const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [deliveryReceiver, setDeliveryReceiver] = useState("");
-  const [deliveryContact, setDeliveryContact] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState(iv.deliveryDate ?? "");
+  const [deliveryPostal, setDeliveryPostal] = useState(iv.deliveryPostal ?? "");
+  const [deliveryAddress, setDeliveryAddress] = useState(iv.deliveryAddress ?? "");
+  const [deliveryReceiver, setDeliveryReceiver] = useState(iv.deliveryReceiver ?? "");
+  const [deliveryContact, setDeliveryContact] = useState(iv.deliveryContact ?? "");
 
   // 集荷
-  const [pickupDate, setPickupDate] = useState("");
-  const [pickupPostal, setPickupPostal] = useState("");
-  const [pickupAddress, setPickupAddress] = useState("");
-  const [pickupReceiver, setPickupReceiver] = useState("");
-  const [pickupContact, setPickupContact] = useState("");
+  const [pickupDate, setPickupDate] = useState(iv.pickupDate ?? "");
+  const [pickupPostal, setPickupPostal] = useState(iv.pickupPostal ?? "");
+  const [pickupAddress, setPickupAddress] = useState(iv.pickupAddress ?? "");
+  const [pickupReceiver, setPickupReceiver] = useState(iv.pickupReceiver ?? "");
+  const [pickupContact, setPickupContact] = useState(iv.pickupContact ?? "");
 
   // 「配送情報と同じ」(集荷の 郵便番号/住所/受領者/連絡先 を配送から反映。日付は連動しない)
   const [sameAsDelivery, setSameAsDelivery] = useState(false);
 
   // 伝票番号連絡先 / 緊急時責任者(任意)
-  const [slipTo, setSlipTo] = useState("");
-  const [slipCc, setSlipCc] = useState("");
-  const [emergencyName, setEmergencyName] = useState("");
-  const [emergencyPhone, setEmergencyPhone] = useState("");
+  const [slipTo, setSlipTo] = useState(iv.slipTo ?? "");
+  const [slipCc, setSlipCc] = useState(iv.slipCc ?? "");
+  const [emergencyName, setEmergencyName] = useState(iv.emergencyName ?? "");
+  const [emergencyPhone, setEmergencyPhone] = useState(iv.emergencyPhone ?? "");
 
-  const [customerRequests, setCustomerRequests] = useState("");
+  const [customerRequests, setCustomerRequests] = useState(iv.customerRequests ?? "");
   const [errors, setErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -107,6 +152,12 @@ export function AllmightApplyForm({
   }
   function handleBack() {
     if (submitting) return;
+    // 編集モードは申請詳細へ戻る(新規は事業選択へ)
+    if (mode === "edit") {
+      if (!window.confirm("編集内容は保存されません。申請詳細に戻りますか?")) return;
+      router.push(`/admin/requests/${requestId}`);
+      return;
+    }
     if (hasAnyInput() && !window.confirm("入力内容は保存されません。事業選択に戻りますか?")) return;
     router.push("/apply");
   }
@@ -205,23 +256,44 @@ export function AllmightApplyForm({
       emergencyPhone,
     });
 
+    const payload = {
+      form_type_id: formTypeId,
+      raw_text: rawText,
+      structured: true,
+      applicant_name: applicantName.trim(),
+      applicant_phone: applicantPhone.trim(),
+      applicant_email: applicantEmail.trim(),
+      company_staff_name: companyStaffName.trim(),
+      rental_status: null,
+      rental_plan_id: null,
+      customer_requests: customerRequests.trim() || null,
+      sns_promotion_requested: null,
+      expected_updated_at: baseUpdatedAt ?? null,
+    };
+
     try {
+      // 編集モード: 管理者編集API(PATCH)。成功時は申請詳細へ戻る(メール再送なし)。
+      if (mode === "edit" && requestId) {
+        const res = await fetch(`/api/admin/requests/${requestId}/edit`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const body = await res.json().catch(() => null);
+        if (res.ok) {
+          router.push(`/admin/requests/${requestId}`);
+          router.refresh();
+          return;
+        }
+        setErrors(body?.errors ?? ["保存に失敗しました。"]);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
       const res = await fetch("/api/requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          form_type_id: formTypeId,
-          raw_text: rawText,
-          structured: true,
-          applicant_name: applicantName.trim(),
-          applicant_phone: applicantPhone.trim(),
-          applicant_email: applicantEmail.trim(),
-          company_staff_name: companyStaffName.trim(),
-          rental_status: null,
-          rental_plan_id: null,
-          customer_requests: customerRequests.trim() || null,
-          sns_promotion_requested: null,
-        }),
+        body: JSON.stringify(payload),
       });
       const body = await res.json().catch(() => null);
       if (res.ok) {
@@ -253,8 +325,13 @@ export function AllmightApplyForm({
         onClick={handleBack}
         className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
       >
-        ← 事業選択に戻る
+        ← {mode === "edit" ? "申請詳細に戻る" : "事業選択に戻る"}
       </button>
+      {mode === "edit" && (
+        <p className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+          管理者による申請内容の編集です。保存しても申請完了メール・承認完了メールは再送されません。
+        </p>
+      )}
 
       {errors.length > 0 && (
         <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
@@ -511,7 +588,9 @@ export function AllmightApplyForm({
         disabled={submitting}
         className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
       >
-        {submitting ? "送信中..." : "申請する"}
+        {submitting
+          ? (mode === "edit" ? "保存中..." : "送信中...")
+          : (mode === "edit" ? "編集内容を保存" : "申請する")}
       </button>
     </form>
   );

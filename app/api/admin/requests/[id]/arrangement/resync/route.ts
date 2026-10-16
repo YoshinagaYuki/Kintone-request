@@ -38,12 +38,18 @@ export async function POST(
   const { data: request } = await admin
     .from("requests")
     .select(
-      "id, form_type_id, kintone_record_id, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, form_types(kintone_app_id)"
+      "id, form_type_id, kintone_record_id, deleted_at, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, form_types(kintone_app_id)"
     )
     .eq("id", id)
     .maybeSingle();
   if (!request) {
     return NextResponse.json({ error: "申請が見つかりません" }, { status: 404 });
+  }
+  if (request.deleted_at) {
+    return NextResponse.json(
+      { error: "この申請は削除済みです。復元してから操作してください。" },
+      { status: 409 }
+    );
   }
 
   const appId = (request.form_types as unknown as { kintone_app_id?: number } | null)

@@ -66,12 +66,47 @@ export type ProductItem = {
   excludedSlots: number[];
 };
 
+/** 編集モードの初期値(申請詳細から parsed_data + 申請者情報を詰めて渡す) */
+export type TezukuruInitialValues = {
+  applicantName?: string;
+  applicantPhone?: string;
+  applicantEmail?: string;
+  companyStaffName?: string;
+  rentalStatus?: RentalStatus | "";
+  rentalPlanId?: string;
+  agencyName?: string;
+  boothName?: string;
+  billingMonth?: string;
+  shippingFee?: string;
+  products?: ProductRow[];
+  deliveryDate?: string;
+  deliveryPostal?: string;
+  deliveryAddress?: string;
+  deliveryReceiver?: string;
+  deliveryContact?: string;
+  pickupDate?: string;
+  pickupPostal?: string;
+  pickupAddress?: string;
+  pickupHandover?: string;
+  pickupContact?: string;
+  slipTo?: string;
+  slipCc?: string;
+  emergencyName?: string;
+  emergencyPhone?: string;
+  snsPromotion?: "" | "yes" | "no";
+  customerRequests?: string;
+};
+
 export function ApplyForm({
   formTypes,
   rentalPlans,
   productItems,
   minimumOrderQuantity,
   backHref = "/apply",
+  mode = "create",
+  requestId,
+  initialValues,
+  baseUpdatedAt,
 }: {
   formTypes: ApplyFormType[];
   rentalPlans: RentalPlan[];
@@ -81,62 +116,71 @@ export function ApplyForm({
   minimumOrderQuantity: number;
   /** 「事業選択に戻る」ボタンの遷移先(既定: /apply) */
   backHref?: string;
+  /** "create"=新規申請 / "edit"=管理者編集 */
+  mode?: "create" | "edit";
+  /** 編集対象の申請ID(mode="edit" で必須) */
+  requestId?: string;
+  /** 編集時の初期値 */
+  initialValues?: TezukuruInitialValues;
+  /** 編集開始時の updated_at(楽観ロック用。mode="edit" で渡す) */
+  baseUpdatedAt?: string;
 }) {
   const router = useRouter();
+  const iv = initialValues ?? {};
   const [selectedId, setSelectedId] = useState(
     formTypes.length === 1 ? formTypes[0].id : ""
   );
 
   // 入力者情報
-  const [applicantName, setApplicantName] = useState("");
-  const [applicantPhone, setApplicantPhone] = useState("");
-  const [applicantEmail, setApplicantEmail] = useState("");
-  const [companyStaffName, setCompanyStaffName] = useState("");
+  const [applicantName, setApplicantName] = useState(iv.applicantName ?? "");
+  const [applicantPhone, setApplicantPhone] = useState(iv.applicantPhone ?? "");
+  const [applicantEmail, setApplicantEmail] = useState(iv.applicantEmail ?? "");
+  const [companyStaffName, setCompanyStaffName] = useState(iv.companyStaffName ?? "");
 
   // レンタル
-  const [rentalStatus, setRentalStatus] = useState<RentalStatus | "">("");
-  const [rentalPlanId, setRentalPlanId] = useState("");
+  const [rentalStatus, setRentalStatus] = useState<RentalStatus | "">(iv.rentalStatus ?? "");
+  const [rentalPlanId, setRentalPlanId] = useState(iv.rentalPlanId ?? "");
 
   // 基本情報
-  const [agencyName, setAgencyName] = useState("");
-  const [boothName, setBoothName] = useState("");
-  const [billingMonth, setBillingMonth] = useState("");
-  const [shippingFee, setShippingFee] = useState("");
+  const [agencyName, setAgencyName] = useState(iv.agencyName ?? "");
+  const [boothName, setBoothName] = useState(iv.boothName ?? "");
+  const [billingMonth, setBillingMonth] = useState(iv.billingMonth ?? "");
+  const [shippingFee, setShippingFee] = useState(iv.shippingFee ?? "");
 
   // 商品(最初は3行。最大10行まで追加可能)
-  const [products, setProducts] = useState<ProductRow[]>([
-    emptyProduct(),
-    emptyProduct(),
-    emptyProduct(),
-  ]);
+  const [products, setProducts] = useState<ProductRow[]>(
+    iv.products && iv.products.length > 0
+      ? iv.products
+      : [emptyProduct(), emptyProduct(), emptyProduct()]
+  );
 
   // 配送
-  const [deliveryDate, setDeliveryDate] = useState("");
-  const [deliveryPostal, setDeliveryPostal] = useState("");
-  const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [deliveryReceiver, setDeliveryReceiver] = useState("");
-  const [deliveryContact, setDeliveryContact] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState(iv.deliveryDate ?? "");
+  const [deliveryPostal, setDeliveryPostal] = useState(iv.deliveryPostal ?? "");
+  const [deliveryAddress, setDeliveryAddress] = useState(iv.deliveryAddress ?? "");
+  const [deliveryReceiver, setDeliveryReceiver] = useState(iv.deliveryReceiver ?? "");
+  const [deliveryContact, setDeliveryContact] = useState(iv.deliveryContact ?? "");
 
   // 集荷
-  const [pickupDate, setPickupDate] = useState("");
-  const [pickupPostal, setPickupPostal] = useState("");
-  const [pickupAddress, setPickupAddress] = useState("");
-  const [pickupHandover, setPickupHandover] = useState("");
-  const [pickupContact, setPickupContact] = useState("");
+  const [pickupDate, setPickupDate] = useState(iv.pickupDate ?? "");
+  const [pickupPostal, setPickupPostal] = useState(iv.pickupPostal ?? "");
+  const [pickupAddress, setPickupAddress] = useState(iv.pickupAddress ?? "");
+  const [pickupHandover, setPickupHandover] = useState(iv.pickupHandover ?? "");
+  const [pickupContact, setPickupContact] = useState(iv.pickupContact ?? "");
 
   // 「配送情報と同じ」(集荷の 郵便番号/住所/引渡者/連絡先 を配送から反映。日付は連動しない)
   const [sameAsDelivery, setSameAsDelivery] = useState(false);
 
   // 伝票番号連絡先 / 緊急時責任者
-  const [slipTo, setSlipTo] = useState("");
-  const [slipCc, setSlipCc] = useState("");
-  const [emergencyName, setEmergencyName] = useState("");
-  const [emergencyPhone, setEmergencyPhone] = useState("");
+  const [slipTo, setSlipTo] = useState(iv.slipTo ?? "");
+  const [slipCc, setSlipCc] = useState(iv.slipCc ?? "");
+  const [emergencyName, setEmergencyName] = useState(iv.emergencyName ?? "");
+  const [emergencyPhone, setEmergencyPhone] = useState(iv.emergencyPhone ?? "");
 
   // SNS宣伝(てずくーるのみ・必須)。"" = 未選択 / "yes" / "no"
-  const [snsPromotion, setSnsPromotion] = useState<"" | "yes" | "no">("");
+  const [snsPromotion, setSnsPromotion] = useState<"" | "yes" | "no">(iv.snsPromotion ?? "");
 
-  const [customerRequests, setCustomerRequests] = useState("");
+  const [customerRequests, setCustomerRequests] = useState(iv.customerRequests ?? "");
   const [errors, setErrors] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -285,24 +329,44 @@ export function ApplyForm({
             : "",
     });
 
+    const payload = {
+      form_type_id: selected.id,
+      raw_text: rawText,
+      structured: true,
+      applicant_name: applicantName.trim(),
+      applicant_phone: applicantPhone.trim(),
+      applicant_email: applicantEmail.trim(),
+      company_staff_name: companyStaffName.trim(),
+      rental_status: usesRentalPlan ? rentalStatus : null,
+      rental_plan_id: rentalStatus === "new_rental" ? rentalPlanId : null,
+      customer_requests: customerRequests.trim() || null,
+      sns_promotion_requested: snsPromotion === "" ? null : snsPromotion === "yes",
+      expected_updated_at: baseUpdatedAt ?? null,
+    };
+
     try {
+      // 編集モード: 管理者編集API(PATCH)。成功時は申請詳細へ戻る(メール再送なし)。
+      if (mode === "edit" && requestId) {
+        const res = await fetch(`/api/admin/requests/${requestId}/edit`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const body = await res.json().catch(() => null);
+        if (res.ok) {
+          router.push(`/admin/requests/${requestId}`);
+          router.refresh();
+          return;
+        }
+        setErrors(body?.errors ?? ["保存に失敗しました。"]);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+
       const res = await fetch("/api/requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          form_type_id: selected.id,
-          raw_text: rawText,
-          structured: true,
-          applicant_name: applicantName.trim(),
-          applicant_phone: applicantPhone.trim(),
-          applicant_email: applicantEmail.trim(),
-          company_staff_name: companyStaffName.trim(),
-          rental_status: usesRentalPlan ? rentalStatus : null,
-          rental_plan_id: rentalStatus === "new_rental" ? rentalPlanId : null,
-          customer_requests: customerRequests.trim() || null,
-          sns_promotion_requested:
-            snsPromotion === "" ? null : snsPromotion === "yes",
-        }),
+        body: JSON.stringify(payload),
       });
       const body = await res.json().catch(() => null);
       if (res.ok) {
@@ -335,6 +399,11 @@ export function ApplyForm({
   /** 事業選択へ戻る。入力があれば確認してからブラウザ履歴に依存せず遷移 */
   function handleBack() {
     if (submitting) return;
+    if (mode === "edit") {
+      if (!window.confirm("編集内容は保存されません。申請詳細に戻りますか?")) return;
+      router.push(`/admin/requests/${requestId}`);
+      return;
+    }
     if (hasAnyInput() && !window.confirm("入力内容は保存されません。事業選択に戻りますか?")) {
       return;
     }
@@ -356,8 +425,13 @@ export function ApplyForm({
         onClick={handleBack}
         className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
       >
-        ← 事業選択に戻る
+        ← {mode === "edit" ? "申請詳細に戻る" : "事業選択に戻る"}
       </button>
+      {mode === "edit" && (
+        <p className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+          管理者による申請内容の編集です。保存しても申請完了メール・承認完了メールは再送されません。
+        </p>
+      )}
 
       {errors.length > 0 && (
         <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
@@ -816,7 +890,9 @@ export function ApplyForm({
         disabled={submitting || !selected}
         className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300"
       >
-        {submitting ? "送信中..." : "申請する"}
+        {submitting
+          ? (mode === "edit" ? "保存中..." : "送信中...")
+          : (mode === "edit" ? "編集内容を保存" : "申請する")}
       </button>
     </form>
   );

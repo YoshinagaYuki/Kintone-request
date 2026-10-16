@@ -41,6 +41,7 @@ export default async function RequestsPage({
     .select(
       "id, status, management_no, created_at, applicant_name, applicant_phone, applicant_email, form_types(name)"
     )
+    .is("deleted_at", null) // 削除済み(ゴミ箱)は通常一覧に表示しない
     .order("created_at", { ascending: false })
     .limit(100);
 
@@ -66,6 +67,9 @@ export default async function RequestsPage({
       <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="text-xl font-bold sm:text-2xl">申請一覧</h1>
         <div className="flex flex-wrap items-baseline gap-3">
+          <Link href="/admin/requests/trash" className="text-sm font-medium text-gray-600 hover:underline">
+            🗑 ゴミ箱
+          </Link>
           <PushTestButton />
           <p className="text-sm text-gray-500">
             {statusFilter ? `${STATUS_LABELS[statusFilter]}: ` : ""}

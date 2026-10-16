@@ -44,13 +44,20 @@ export async function POST(
   const { data: request } = await supabase
     .from("requests")
     .select(
-      "id, status, form_type_id, form_type_version, parsed_data, requested_rental_plan_id, approved_rental_plan_id, company_staff_name_input, form_types(field_mapping, parser_config, kintone_app_id)"
+      "id, status, deleted_at, form_type_id, form_type_version, parsed_data, requested_rental_plan_id, approved_rental_plan_id, company_staff_name_input, form_types(field_mapping, parser_config, kintone_app_id)"
     )
     .eq("id", id)
     .maybeSingle();
 
   if (!request) {
     return NextResponse.json({ error: "申請が見つかりません" }, { status: 404 });
+  }
+  // 削除済み(ゴミ箱)は承認不可
+  if (request.deleted_at) {
+    return NextResponse.json(
+      { error: "この申請は削除済みです。復元してから承認してください。" },
+      { status: 409 }
+    );
   }
   if (request.status !== "pending") {
     return NextResponse.json(
@@ -185,20 +192,39 @@ export async function POST(
       .eq("id", id);
   }
 
-  // 承認を記録
-  const { error: updateError } = await supabase
+  // 連携処理の所有トークン(解除は自処理のみ=他処理のロックを誤って解除しない)
+  const processingToken = crypto.randomUUID();
+
+  // 承認を記録(競合防止: pending かつ 未削除 のときだけ approved に遷移する。
+  // 削除と承認が同時に起きても、削除が先に確定していればここで 0 件更新となり、
+  // kintone 登録へ進まない=削除済みの申請が登録されることを防ぐ)。
+  const { data: approvedRow, error: updateError } = await supabase
     .from("requests")
     .update({
       status: "approved",
       approved_by: user.id,
       approved_at: new Date().toISOString(),
+      processing_at: new Date().toISOString(), // 連携中=削除不可の目印(登録完了/失敗で自処理が解除)
+      processing_token: processingToken, // 自処理の所有トークン(他処理が誤解除しないため)
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("status", "pending")
+    .is("deleted_at", null)
+    .is("processing_at", null) // 既に処理中なら承認しない(二重処理防止)
+    .select("id")
+    .maybeSingle();
 
   if (updateError) {
     return NextResponse.json(
       { error: `承認の記録に失敗しました: ${updateError.message}` },
       { status: 500 }
+    );
+  }
+  if (!approvedRow) {
+    // pending でない or 削除済みに変化 → 承認を中止(kintone登録へ進まない)
+    return NextResponse.json(
+      { error: "承認できませんでした。申請の状態が変わっています(削除済み/承認済みの可能性)。画面を更新してください。" },
+      { status: 409 }
     );
   }
 
@@ -211,6 +237,14 @@ export async function POST(
 
   // kintone登録(共通処理。成功時に承認完了メールも送信される)
   const result = await registerRequestToKintone(supabase, id, user.id);
+
+  // 連携処理の終了(成功/失敗問わず)で processing_at を解除。自処理のトークン一致時のみ解除する
+  // (他処理が設定したロックを誤解除しない)。
+  await supabase
+    .from("requests")
+    .update({ processing_at: null, processing_token: null })
+    .eq("id", id)
+    .eq("processing_token", processingToken);
 
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 502 });

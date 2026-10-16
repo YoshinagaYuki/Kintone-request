@@ -21,12 +21,18 @@ export async function POST(
 
   const { data: request } = await supabase
     .from("requests")
-    .select("id, status, form_type_id, form_type_version, form_types(field_mapping)")
+    .select("id, status, deleted_at, form_type_id, form_type_version, form_types(field_mapping)")
     .eq("id", id)
     .maybeSingle();
 
   if (!request) {
     return NextResponse.json({ error: "申請が見つかりません" }, { status: 404 });
+  }
+  if (request.deleted_at) {
+    return NextResponse.json(
+      { error: "この申請は削除済みです。復元してから操作してください。" },
+      { status: 409 }
+    );
   }
   if (request.status !== "register_failed") {
     return NextResponse.json(
@@ -51,7 +57,37 @@ export async function POST(
     );
   }
 
+  // 連携中マーク(競合防止)。register_failed かつ 未処理中(processing_at が NULL)のときだけ
+  // 自処理トークンで processing_at を立てられる。立てられなければ別処理が進行中/異常終了で未解除/
+  // 状態変化 → 中止(自動解除はしない。異常終了時は管理者が手動で解除してから再実行)。
+  const processingToken = crypto.randomUUID();
+  const { data: locked } = await supabase
+    .from("requests")
+    .update({ processing_at: new Date().toISOString(), processing_token: processingToken })
+    .eq("id", id)
+    .eq("status", "register_failed")
+    .is("deleted_at", null)
+    .is("processing_at", null)
+    .select("id")
+    .maybeSingle();
+  if (!locked) {
+    return NextResponse.json(
+      {
+        error:
+          "再実行できませんでした。別の処理が進行中、または処理状態が未解除の可能性があります。処理状態を確認・解除してからお試しください。",
+      },
+      { status: 409 }
+    );
+  }
+
   const result = await registerRequestToKintone(supabase, id, user.id);
+
+  // 連携終了で processing_at を解除(自処理トークン一致時のみ)
+  await supabase
+    .from("requests")
+    .update({ processing_at: null, processing_token: null })
+    .eq("id", id)
+    .eq("processing_token", processingToken);
 
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 502 });

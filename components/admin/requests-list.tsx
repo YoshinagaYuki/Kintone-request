@@ -28,7 +28,7 @@ function formatDateTime(iso: string): string {
 }
 
 const CONFIRM_MESSAGE =
-  "選択した申請を削除して大丈夫ですか？この操作は元に戻せません。";
+  "選択した申請をゴミ箱へ移動します。よろしいですか？(ゴミ箱から復元できます)";
 
 /** 申請一覧(チェックボックス選択+一括削除つき)。表示・詳細リンクは従来どおり */
 export function RequestsList({ rows }: { rows: RequestListRow[] }) {
