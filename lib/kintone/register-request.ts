@@ -52,7 +52,7 @@ export async function registerRequestToKintone(
   const { data: request, error: fetchError } = await supabase
     .from("requests")
     .select(
-      "id, parsed_data, status, kintone_record_id, form_type_id, form_type_version, applicant_name, applicant_email, approved_rental_plan_id, requested_rental_plan_id, approved_contents, company_staff_name_input, approved_staff_name, customer_requests, billing_type, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, form_types(name, kintone_app_id, field_mapping)"
+      "id, parsed_data, status, kintone_record_id, form_type_id, form_type_version, applicant_name, applicant_email, approved_rental_plan_id, requested_rental_plan_id, approved_contents, company_staff_name_input, approved_staff_name, customer_requests, billing_type, dsp_handover_note, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, form_types(name, kintone_app_id, field_mapping)"
     )
     .eq("id", requestId)
     .maybeSingle();
@@ -194,6 +194,17 @@ export async function registerRequestToKintone(
     const normalized = await normalizeRecordItems(supabase, formType.name, mapped.record);
     normalized.warnings.forEach((w) => console.warn("[item-normalize]", w));
     normalized.corrections.forEach((c) => console.info("[item-normalize]", c));
+
+    // DSP様共有事項 → kintone「補足欄」(App49/App10 共通のフィールドコード)。
+    // ・管理者が承認時に入力した値(DB保存済み)を登録。改行はそのまま保持。
+    // ・入力が空のときは「補足欄」を送らない(既存値を意図せず上書きしない)。
+    // ・レコード新規作成時(!recordId)のみ設定。登録成功後の再実行ではこのブロックを通らない。
+    {
+      const dspNote = ((request.dsp_handover_note as string | null) ?? "").trim();
+      if (dspNote) {
+        mapped.record["補足欄"] = { value: dspNote };
+      }
+    }
 
     // イベント種類(有償/無償)をてずくーる(App49)のレコードへ反映。
     // 既存マッピングで設定済みでも、承認時に管理者が選んだ値を正として上書きする(二重設定・競合防止)。

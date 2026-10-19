@@ -34,6 +34,8 @@ export async function POST(
     staff_name?: string | null;
     /** 料金区分(てずくーるのみ): 'paid'|'free' */
     billing_type?: string | null;
+    /** DSP様共有事項(倉庫への引き継ぎ)。任意。改行保持。空欄も可 */
+    dsp_handover_note?: string | null;
   } = {};
   try {
     body = await req.json();
@@ -189,6 +191,18 @@ export async function POST(
     await supabase
       .from("requests")
       .update({ approved_staff_name: staff.name })
+      .eq("id", id);
+  }
+
+  // DSP様共有事項(倉庫への引き継ぎ)。任意。両事業共通。
+  // ・kintone 登録「前」にこの列へ保存するため、登録が失敗しても失われず再実行で再利用される。
+  // ・改行はそのまま保持(前後の空白のみ除去)。空欄は null 保存(register 側で「補足欄」を送らない=既存値を上書きしない)。
+  {
+    const note =
+      typeof body.dsp_handover_note === "string" ? body.dsp_handover_note.trim() : "";
+    await supabase
+      .from("requests")
+      .update({ dsp_handover_note: note ? note : null })
       .eq("id", id);
   }
 

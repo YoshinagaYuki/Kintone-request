@@ -39,6 +39,7 @@ export function ApproveActions({
   staffOptions = [],
   requireBillingType = false,
   billingTypeDefault = "",
+  dspHandoverNoteDefault = "",
 }: {
   requestId: string;
   status: RequestStatus;
@@ -76,6 +77,8 @@ export function ApproveActions({
   requireBillingType?: boolean;
   /** 料金区分の初期値(承認済みなら 'paid'|'free'、未確定は '') */
   billingTypeDefault?: "" | "paid" | "free";
+  /** DSP様共有事項の初期値(保存済みがあれば再利用表示。通常は空) */
+  dspHandoverNoteDefault?: string;
 }) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -99,6 +102,14 @@ export function ApproveActions({
   /** 料金区分(てずくーるのみ・初期未選択)。未選択では承認不可 */
   const [billingType, setBillingType] = useState<"" | "paid" | "free">(billingTypeDefault);
   const billingUnselected = requireBillingType && !billingType;
+
+  /** DSP様共有事項(倉庫への引き継ぎ)。任意。改行保持。両事業共通 */
+  const [dspNote, setDspNote] = useState(dspHandoverNoteDefault);
+  /** textarea の高さを内容に合わせて自動拡張(2行分から拡張) */
+  function autoGrow(el: HTMLTextAreaElement) {
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }
 
   async function post(
     action: "approve" | "retry",
@@ -176,6 +187,7 @@ export function ApproveActions({
         contents,
         staff_name: staffName,
         ...(requireBillingType ? { billing_type: billingType } : {}),
+        dsp_handover_note: dspNote,
       });
       return;
     }
@@ -185,6 +197,7 @@ export function ApproveActions({
       contents,
       staff_name: staffName,
       ...(requireBillingType ? { billing_type: billingType } : {}),
+      dsp_handover_note: dspNote,
     });
   }
 
@@ -360,6 +373,28 @@ export function ApproveActions({
               </label>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* DSP様共有事項(倉庫への引き継ぎ)。任意。承認ボタン直上。両事業共通 */}
+      {status === "pending" && (
+        <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <label htmlFor="dsp-handover-note" className="text-sm font-semibold text-gray-800">
+            DSP様共有事項(倉庫への引き継ぎ)
+            <span className="ml-2 text-xs font-normal text-gray-500">(任意)</span>
+          </label>
+          <textarea
+            id="dsp-handover-note"
+            value={dspNote}
+            onChange={(e) => {
+              setDspNote(e.target.value);
+              autoGrow(e.currentTarget);
+            }}
+            onInput={(e) => autoGrow(e.currentTarget)}
+            rows={2}
+            placeholder="倉庫への引き継ぎ事項があれば入力してください(任意)"
+            className="mt-1 w-full resize-none overflow-hidden rounded-md border border-gray-300 bg-white p-2.5 text-sm leading-relaxed focus:border-blue-500 focus:outline-none"
+          />
         </div>
       )}
 
