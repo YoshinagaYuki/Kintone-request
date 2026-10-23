@@ -43,7 +43,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
   const visible = entries.filter(e => e && e.to >= start && e.from <= end);
   return <main className="mx-auto w-full max-w-[1600px] px-4 py-8">
     <h1 className="text-2xl font-bold">オールマイト 在庫管理表</h1>
-    <p className="mt-2 text-sm text-gray-600">既存申請の参照表示です。在庫数・仮押さえは設定完了後に表示します。日別残数は参考表示です。延長は申請詳細から登録できます。利用期間は配送・集荷を含む在庫拘束期間とは異なります。</p>
+    <p className="mt-2 text-sm text-gray-600">申請・仮押さえと配送・集荷予定を表示します。延長は申請詳細から登録できます。日別残数はシステム登録分に基づく参考値です。</p>
     <form className="my-5 flex flex-wrap items-end gap-3">
       <label>開始日<input className="block rounded border p-2" type="date" name="start" defaultValue={start} required /></label>
       <label>表示期間<select className="block rounded border p-2" name="period" defaultValue={period}>{Object.entries(PRESETS).map(([key, [label]]) => <option key={key} value={key}>{label}</option>)}</select></label>
@@ -55,7 +55,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
     {failed || rows.length > 5000 ? <p role="alert" className="rounded bg-red-50 p-4 text-red-800">{failed ? "申請を取得できませんでした。再読み込みしてください。" : "申請が5,000件を超えたため表示を停止しました。期間検索の拡張が必要です。"}</p> : <>
       {invalid > 0 && <p role="status" className="mb-3 text-amber-800">利用日付または商品が未設定・不正の申請 {invalid} 件は表示できません。申請一覧で確認してください。</p>}
       <div className="overflow-auto rounded border">
-        <table className="w-full border-collapse text-xs"><caption className="p-2 text-left">{start} 〜 {end}（商品・申請の各枠ごとに表示。台数・残数は未集計）</caption>
+        <table className="w-full border-collapse text-xs"><caption className="p-2 text-left">{start} 〜 {end}（商品・申請の各機器枠を表示）</caption>
           <thead><tr><th className="sticky left-0 z-10 min-w-64 border bg-gray-100 p-2">商品 / 管理番号・店舗・担当者</th>{dates.map(date => <th className="min-w-16 border bg-gray-100 p-2" key={date}>{date.slice(5)}</th>)}</tr></thead>
           <tbody>{visible.flatMap(entry => entry ? entry.items.map((item, i) => <tr key={`${entry.id}-${i}`}>
             <th className="sticky left-0 z-10 border bg-white p-2 text-left font-normal"><strong>{entry.inventory_parent_request_id ? "延長：" : ""}{item}</strong><br/><Link className="text-blue-700 underline" href={`/admin/requests/${entry.id}`}>{entry.management_no || "番号未発行"}：{entry.store}</Link><br/>{entry.staff}</th>

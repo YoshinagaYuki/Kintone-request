@@ -23,8 +23,9 @@ export async function executeExtension(plan: ExtensionPlan, ports: ExtensionPort
     if (rows.length > 1) throw new Error("同じ連携キーのkintoneレコードが複数あります。内容確認が必要です");
     return rows[0] ? value(rows[0], "$id") : null;
   };
-  const checkedUpdate = async (app: 10 | 11, id: string, key: string, expected: string, fields: KintoneRecord) => {
+  const checkedUpdate = async (app: 10 | 11, id: string, key: string, expected: string, fields: KintoneRecord, sourceDates?: Record<string,string>) => {
     const r = await ports.get(app, id);
+    if(sourceDates && Object.entries(sourceDates).some(([field,date])=>value(r,field)!==date)) throw new Error("元案件の日付が変更されています。内容を確認してください");
     if (value(r, key) !== expected) throw new Error("kintoneの管理番号または連携キーが一致しません");
     if (Object.entries(fields).every(([k, v]) => value(r, k) === v.value)) return;
     await ports.update(app, id, fields, value(r, "$revision"));
@@ -72,8 +73,8 @@ export async function executeExtension(plan: ExtensionPlan, ports: ExtensionPort
   if (value(parentShipping, "集荷_日付") !== plan.parentPickupDate) throw new Error("元案件の配送管理で集荷日が変更されています");
   const carrierCancellationRequired = Boolean(value(parentShipping, "tracking_no_pickup")) || value(parentShipping, "ドロップダウン") === "集荷手配済み";
   await checkpoint({ carrierCancellationRequired });
-  await checkedUpdate(10, plan.parentRecordId, "管理番号", plan.parentNumber, { "集荷_手配種別": { value: "手配不要" } });
-  await checkedUpdate(11, parentShippingId, "管理番号", plan.parentNumber, { "集荷_手配種別": { value: "手配不要" } });
+  await checkedUpdate(10, plan.parentRecordId, "管理番号", plan.parentNumber, { "集荷_手配種別": { value: "手配不要" } }, {"日付_1":plan.parentUsageEnd,"集荷_日付":plan.parentPickupDate});
+  await checkedUpdate(11, parentShippingId, "管理番号", plan.parentNumber, { "集荷_手配種別": { value: "手配不要" } }, {"集荷_日付":plan.parentPickupDate});
   await checkpoint({ oldPickupCancelled: true });
   const pickup = { "集荷_手配種別": { value: "通常配送" }, "集荷_日付": { value: plan.pickupDate }, "手配種別": { value: "手配不要" } };
   await checkedUpdate(10, recordId, "external_project_id", marker, pickup);
