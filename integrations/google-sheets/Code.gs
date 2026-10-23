@@ -46,11 +46,11 @@ function syncInventory() {
    sheet.setHiddenGridlines(true);sheet.setFrozenRows(4);sheet.setFrozenColumns(2);
    sheet.setColumnWidth(1,36);sheet.setColumnWidth(2,88);sheet.setColumnWidths(3,31,46);
    area.setFontFamily('Arial').setFontSize(10).setFontColor('#334155').setVerticalAlignment('middle').setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
-   sheet.getRange(1,1,1,33).merge().setValue(data.product+'　在庫管理表').setBackground('#0f172a').setFontColor('#ffffff').setFontSize(14).setFontWeight('bold');sheet.setRowHeight(1,38);
+   sheet.getRange(1,1,1,2).merge().setValue('在庫管理表').setBackground('#0f172a').setFontColor('#ffffff').setFontSize(10);sheet.getRange(1,3,1,31).merge().setValue(data.product).setBackground('#0f172a').setFontColor('#ffffff').setFontSize(14).setFontWeight('bold');sheet.setRowHeight(1,38);
    const stamp=Utilities.formatDate(new Date(),'Asia/Tokyo','MM/dd HH:mm:ss');
-   sheet.getRange(2,1,1,33).merge().setValue('自動更新 '+stamp+'　／　閲覧用（入力は管理画面から）　／　'+data.from+' 〜 '+data.to).setBackground('#f8fafc').setFontSize(10);sheet.setRowHeight(2,26);
+   sheet.getRange(2,1,1,2).merge().setValue('自動更新').setBackground('#f8fafc');sheet.getRange(2,3,1,31).merge().setValue(stamp+'　／　閲覧用（入力は管理画面から）　／　'+data.from+' 〜 '+data.to).setBackground('#f8fafc').setFontSize(10);sheet.setRowHeight(2,26);
    const legend=[['登録完了','#d1fae5'],['仮押さえ','#fef3c7'],['申請待ち','#dbeafe'],['延長','#ede9fe'],['予備','#e2e8f0']];
-   legend.forEach(([label,color],i)=>sheet.getRange(3,1+i*4,1,4).merge().setValue(label).setBackground(color).setHorizontalAlignment('center'));sheet.setRowHeight(3,24);sheet.setRowHeight(4,8);
+   legend.forEach(([label,color],i)=>sheet.getRange(3,3+i*4,1,4).merge().setValue(label).setBackground(color).setHorizontalAlignment('center'));sheet.setRowHeight(3,24);sheet.setRowHeight(4,8);
    const values=data.values.map(row=>row.map(value=>/^[=+@\-\t\r]/.test(value)?"'"+value:value));
    const grid=sheet.getRange(5,1,values.length,33);grid.setNumberFormat('@').setValues(values).setBackgrounds(data.backgrounds).setNotes(data.notes).setBorder(true,true,true,true,true,false,'#e2e8f0',SpreadsheetApp.BorderStyle.SOLID);
    sheet.setRowHeights(5,values.length,24);sheet.getRange(5,1,values.length,2).setHorizontalAlignment('center').setFontSize(9);
