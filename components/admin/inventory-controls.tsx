@@ -27,7 +27,7 @@ export function InventoryControls({ items, staff, stocks, includeHolds = true }:
   }
   return <section className="my-6 rounded border bg-white p-4">
     <h2 className="text-lg font-bold">{includeHolds ? "在庫数・仮押さえの登録" : "在庫数・内予備数"}</h2>
-    {includeHolds && <p className="my-2 text-sm text-amber-800">仮押さえは利用期間を記録します。申請との紐付け・残数判定は未対応のため、在庫確保の可否は別途確認してください。</p>}
+    {includeHolds && <p className="my-2 text-sm text-amber-800">仮押さえは利用期間を記録します。申請詳細で既存申請との紐付けができます。日別残数は参考値のため、在庫確保の可否は別途確認してください。</p>}
     {error && <p role="alert" className="my-2 text-red-700">{error}</p>}{message && <p role="status" className="my-2 text-green-700">{message}</p>}
     <details><summary className="cursor-pointer py-2 font-medium">商品ごとの在庫数・内予備数</summary>
       <form className="grid gap-3 sm:grid-cols-4" onSubmit={async e => { e.preventDefault(); await submit("/api/admin/inventory/stock", "PUT", { item_id: stockId, total_count: Number(total), reserve_count: Number(reserve) }); }}>

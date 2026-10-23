@@ -1,0 +1,58 @@
+// Optional local integration test: install @electric-sql/pglite in a disposable
+// directory and set PGLITE_MODULE to its dist/index.js absolute path.
+const { PGlite } = await import(process.env.PGLITE_MODULE || '@electric-sql/pglite');
+import { readFile } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const db = new PGlite();
+await db.exec(`
+create role anon; create role authenticated;
+create schema auth;
+create table auth.users(id uuid primary key);
+create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+create table public.admin_users(auth_user_id uuid primary key, status text);
+create table public.item_name_master(id uuid primary key, category text, is_active boolean);
+create table public.staff_members(id uuid primary key, is_active boolean);
+grant usage on schema auth, public to authenticated;
+grant execute on function auth.uid() to authenticated;
+grant select on public.admin_users, public.item_name_master, public.staff_members to authenticated;
+insert into auth.users values ('11111111-1111-4111-8111-111111111111'),('22222222-2222-4222-8222-222222222222');
+insert into public.admin_users values ('11111111-1111-4111-8111-111111111111','active'),('22222222-2222-4222-8222-222222222222','disabled');
+insert into public.item_name_master values ('33333333-3333-4333-8333-333333333333','allmight',true),('44444444-4444-4444-8444-444444444444','tezukuru',true);
+insert into public.staff_members values ('55555555-5555-4555-8555-555555555555',true);
+`);
+await db.exec(await readFile(new URL('../../supabase/migrations/20261023090000_inventory_phase2.sql', import.meta.url), 'utf8'));
+await db.exec(`
+alter table public.item_name_master add column name text, add column aliases jsonb default '[]'::jsonb;
+update public.item_name_master set name='JET Cola' where category='allmight';
+create table public.form_types(id uuid primary key,kintone_app_id integer);
+create table public.requests(id uuid primary key,form_type_id uuid,parsed_data jsonb,status text,deleted_at timestamptz,processing_at timestamptz);
+insert into public.form_types values ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',10);
+insert into public.requests values ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','{"機器商品①":"JET Cola","機器商品②":"JET Cola"}','pending',null,null),('cccccccc-cccc-4ccc-8ccc-cccccccccccc','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','{"機器商品①":"JET Cola","機器商品②":"JET Cola"}','pending',null,null);
+`);
+await db.exec(await readFile(new URL('../../supabase/migrations/20261023093000_inventory_hold_links.sql',import.meta.url),'utf8'));
+await db.exec(`set role authenticated; select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false)`);
+const hold='66666666-6666-4666-8666-666666666666';
+const request='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+await db.exec(`insert into public.inventory_holds(id,item_id,staff_id,store_name,start_date,end_date,quantity,created_by) values ('${hold}','33333333-3333-4333-8333-333333333333','55555555-5555-4555-8555-555555555555','店舗A','2026-10-23','2026-10-25',2,'11111111-1111-4111-8111-111111111111')`);
+const link=(r=request,ids=`array['${hold}']::uuid[]`)=>`select public.set_inventory_hold_links('${r}',${ids})`;
+await db.exec(link());
+assert.equal((await db.query('select count(*)::int n from public.inventory_hold_links')).rows[0].n,1);
+await assert.rejects(db.exec(link('cccccccc-cccc-4ccc-8ccc-cccccccccccc')),/hold already linked/);
+await assert.rejects(db.exec(`update public.inventory_holds set cancelled_at=now() where id='${hold}'`),/unlink request/);
+await assert.rejects(db.exec(link(request,"array['77777777-7777-4777-8777-777777777777']::uuid[]")),/hold unavailable/);
+assert.equal((await db.query('select count(*)::int n from public.inventory_hold_links')).rows[0].n,1);
+await db.exec('reset role');
+await db.exec(`update public.requests set parsed_data='{"機器商品①":"JET Cola"}' where id='${request}'`);
+await db.exec('set role authenticated');
+await assert.rejects(db.exec(link()),/quantity exceeds/);
+assert.equal((await db.query('select count(*)::int n from public.inventory_hold_links')).rows[0].n,1);
+await db.exec(link(request,"'{}'::uuid[]"));
+assert.equal((await db.query('select count(*)::int n from public.inventory_hold_links')).rows[0].n,0);
+await db.exec(`update public.inventory_holds set cancelled_at=now() where id='${hold}'`);
+await assert.rejects(db.exec(link()),/hold unavailable/);
+await db.exec(`select set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',false)`);
+await assert.rejects(db.exec(link(request,"'{}'::uuid[]")),/active administrator/);
+await db.exec('reset role; set role anon');
+await assert.rejects(db.exec(link(request,"'{}'::uuid[]")),/permission denied/);
+console.log('PASS: atomic linking, cross-request conflict, linked-cancel prevention, unknown/cancelled hold, quantities, rollback preservation, none/unlink, disabled/anonymous permissions.');
+await db.close();

@@ -40,14 +40,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
   const visible = entries.filter(e => e && e.to >= start && e.from <= end);
   return <main className="mx-auto w-full max-w-[1600px] px-4 py-8">
     <h1 className="text-2xl font-bold">オールマイト 在庫管理表</h1>
-    <p className="mt-2 text-sm text-gray-600">既存申請の参照表示です。在庫数・仮押さえは設定完了後に表示します。残数判定・申請紐付け・延長は準備中です。利用期間は配送・集荷を含む在庫拘束期間とは異なります。</p>
+    <p className="mt-2 text-sm text-gray-600">既存申請の参照表示です。在庫数・仮押さえは設定完了後に表示します。日別残数は参考表示です。延長・シート同期は準備中です。利用期間は配送・集荷を含む在庫拘束期間とは異なります。</p>
     <form className="my-5 flex flex-wrap items-end gap-3">
       <label>開始日<input className="block rounded border p-2" type="date" name="start" defaultValue={start} required /></label>
       <label>表示期間<select className="block rounded border p-2" name="period" defaultValue={period}>{Object.entries(PRESETS).map(([key, [label]]) => <option key={key} value={key}>{label}</option>)}</select></label>
       <label>終了日（任意・優先）<input className="block rounded border p-2" type="date" name="end" defaultValue={validDate(params.end) ? params.end : ""} /></label>
       <button className="rounded bg-blue-600 px-4 py-2 text-white">表示</button>
     </form>
-    <InventoryWorkspace start={start} end={end} dates={dates} />
+    <InventoryWorkspace start={start} end={end} dates={dates} requests={entries.filter((e): e is NonNullable<typeof e> => e !== null)} incomplete={failed || rows.length > 5000 || invalid > 0} />
     <p className="mb-3 text-sm">青：申請待ち　緑：登録完了　黄：承認済み・連携確認　配：配送日　集：集荷日</p>
     {failed || rows.length > 5000 ? <p role="alert" className="rounded bg-red-50 p-4 text-red-800">{failed ? "申請を取得できませんでした。再読み込みしてください。" : "申請が5,000件を超えたため表示を停止しました。期間検索の拡張が必要です。"}</p> : <>
       {invalid > 0 && <p role="status" className="mb-3 text-amber-800">利用日付または商品が未設定・不正の申請 {invalid} 件は表示できません。申請一覧で確認してください。</p>}
