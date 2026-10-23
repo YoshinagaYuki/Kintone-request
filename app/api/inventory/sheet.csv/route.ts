@@ -1,3 +1,4 @@
+import { importedBookings,type ImportedEntry } from "@/lib/inventory/sheet-import";
 import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -15,12 +16,13 @@ export async function GET(req:NextRequest){
   const db=createAdminClient();const rows:InventoryRequest[]=[];
   for(let offset=0;offset<=5000;offset+=500){const r=await db.from("requests").select("id,inventory_parent_request_id,status,management_no,parsed_data,approved_staff_name,company_staff_name_input,form_types!inner(kintone_app_id)").eq("form_types.kintone_app_id",10).is("deleted_at",null).neq("status","rejected").order("id").range(offset,Math.min(offset+499,5000));if(r.error)throw new Error("requests");rows.push(...(r.data??[]) as InventoryRequest[]);if((r.data?.length??0)<500)break;}
   if(rows.length>5000)throw new Error("too many requests");
-  const [extensions,items,holds]=await Promise.all([
+  const [extensions,items,holds,imported]=await Promise.all([
    db.from("inventory_extensions").select("parent_request_id,child_request_id,state").limit(1000),
    db.from("item_name_master").select("id,name,aliases").eq("category","allmight").limit(1000),
    db.from("inventory_holds").select("id,store_name,quantity,start_date,end_date,item_name_master(name),staff_members(name),inventory_hold_links(request_id,requests(status,deleted_at))").is("cancelled_at",null).limit(1000),
+   db.from("inventory_sheet_entries").select("source_key,source_tab,source_cell,staff_name,store_name,management_no,start_date,end_date,request_id,item_id,state").limit(1000),
   ]);
-  if([extensions,items,holds].some(r=>r.error||(r.data?.length??0)>=1000))throw new Error("incomplete export");
+  if([extensions,items,holds,imported].some(r=>r.error||(r.data?.length??0)>=1000))throw new Error("incomplete export");
   const entries:SheetEntry[]=[];const status:Record<string,string>={pending:"申請待ち",approved:"承認済み",registered:"登録完了",register_failed:"連携失敗"};
   const base=(process.env.APP_BASE_URL||req.nextUrl.origin).replace(/\/$/,"");
   for(const row of extensionView(rows,extensions.data??[])){
@@ -30,6 +32,7 @@ export async function GET(req:NextRequest){
   type Link={requests:{status:string;deleted_at:string|null}|null};
   type Hold={id:string;store_name:string;quantity:number;start_date:string;end_date:string;item_name_master:{name:string}|null;staff_members:{name:string}|null;inventory_hold_links:Link|Link[]|null};
   for(const h of (holds.data??[]) as unknown as Hold[]){const links=Array.isArray(h.inventory_hold_links)?h.inventory_hold_links:h.inventory_hold_links?[h.inventory_hold_links]:[];if(links.some(l=>l.requests&&!l.requests.deleted_at&&l.requests.status!=="rejected"))continue;entries.push({product:h.item_name_master?.name??"商品不明",staff:h.staff_members?.name??"担当者不明",store:h.store_name,managementNo:"",start:h.start_date,end:h.end_date,delivery:"",pickup:"",status:"仮押さえ",quantity:h.quantity,requestUrl:`${base}/admin/inventory/allmight`});}
+  for(const b of importedBookings((imported.data??[]) as ImportedEntry[])){const source=(imported.data??[]).find(e=>e.source_key===b.id)!;entries.push({product:(items.data??[]).find(i=>i.id===source.item_id)?.name??"商品不明",staff:b.staff,store:b.store,managementNo:"",start:b.start,end:b.end,delivery:"",pickup:"",status:b.status==="blocked"?"返却・利用不可":"仮押さえ",quantity:1,requestUrl:b.href});}
   entries.sort((a,b)=>a.start.localeCompare(b.start)||a.product.localeCompare(b.product)||a.store.localeCompare(b.store));
   const product=req.nextUrl.searchParams.get("product");
   const month=req.nextUrl.searchParams.get("month")||new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date()).slice(0,7);

@@ -1,5 +1,5 @@
 import type { CapacityItem } from "./availability";
-export type BoardBooking = { extension?:boolean; id:string; group:string; kind:"request"|"hold"; staff:string; store:string; managementNo:string; status:string; from:string; to:string; start:string; end:string; delivery:string; pickup:string; href:string };
+export type BoardBooking = { extension?:boolean; id:string; group:string; source?:string; kind:"request"|"hold"|"imported"; staff:string; store:string; managementNo:string; status:string; from:string; to:string; start:string; end:string; delivery:string; pickup:string; href:string };
 export type BoardLane = { key:string; number:number; kind:"normal"|"reserve"|"overflow"|"unconfigured"; bookings:BoardBooking[] };
 export function stockOn(item:CapacityItem,date:string){
  const plan=item.schedule?.filter(p=>p.effective_date<=date).sort((a,b)=>b.effective_date.localeCompare(a.effective_date))[0];

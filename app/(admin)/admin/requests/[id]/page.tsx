@@ -1,4 +1,5 @@
 import Link from "next/link";
+import {InventoryImportLinks} from "@/components/admin/inventory-import-links";
 import { InventoryExtensionPanel } from "@/components/admin/inventory-extension-panel";
 import { InventoryMatch } from "@/components/admin/inventory-match";
 import { notFound } from "next/navigation";
@@ -699,6 +700,7 @@ export default async function RequestDetailPage({
 
       {isAllmight && <InventoryExtensionPanel request={request} canManage={canManage} />}
       {/* 手配種別(オールマイト=App10のみ。配送/集荷を独立編集。てずくーるでは非表示) */}
+      {isAllmight && <InventoryImportLinks requestId={request.id}/>}
       {isAllmight && !request.processing_at && <InventoryMatch request={request} />}
       {isAllmight && (
         <SectionCard title="手配種別(配送 / 集荷)">
