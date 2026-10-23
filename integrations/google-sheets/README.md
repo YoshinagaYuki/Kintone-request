@@ -1,6 +1,6 @@
-# Existing workbook writer (prepared, not enabled)
+# Existing workbook writer (enabled 2026-10-23)
 
-The existing IMPORTDATA feed remains live. It is not realtime.
+The eight Allmight tabs now use the authenticated writer. The old IMPORTDATA formulas were replaced after the user approved Google access. See docs/inventory-sheet-import.md for live verification. The following steps describe setup or recovery.
 
 The proposed writer updates only A251:AH1150 in the eight Allmight tabs and the D250 update label. Original manual rows 1–249 remain intact. It pulls the minimal inventory CSV; contacts, addresses, prices, kintone credentials and Supabase credentials are never sent to Google.
 
