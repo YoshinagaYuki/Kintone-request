@@ -1,0 +1,46 @@
+// Optional local integration test: install @electric-sql/pglite in a disposable
+// directory and set PGLITE_MODULE to its dist/index.js absolute path.
+const { PGlite } = await import(process.env.PGLITE_MODULE || '@electric-sql/pglite');
+import { readFile } from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const db = new PGlite();
+await db.exec(`
+create role anon; create role authenticated;
+create schema auth;
+create table auth.users(id uuid primary key);
+create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
+create table public.admin_users(auth_user_id uuid primary key, status text);
+create table public.item_name_master(id uuid primary key, category text, is_active boolean);
+create table public.staff_members(id uuid primary key, is_active boolean);
+grant usage on schema auth, public to authenticated;
+grant execute on function auth.uid() to authenticated;
+grant select on public.admin_users, public.item_name_master, public.staff_members to authenticated;
+insert into auth.users values ('11111111-1111-4111-8111-111111111111'),('22222222-2222-4222-8222-222222222222');
+insert into public.admin_users values ('11111111-1111-4111-8111-111111111111','active'),('22222222-2222-4222-8222-222222222222','disabled');
+insert into public.item_name_master values ('33333333-3333-4333-8333-333333333333','allmight',true),('44444444-4444-4444-8444-444444444444','tezukuru',true);
+insert into public.staff_members values ('55555555-5555-4555-8555-555555555555',true);
+`);
+await db.exec(await readFile(new URL('../../docs/sql/inventory-phase2.draft.sql', import.meta.url), 'utf8'));
+await db.exec(`set role authenticated; select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false)`);
+const rejected = async (sql, pattern) => { await assert.rejects(db.exec(sql), pattern); };
+await db.exec(`insert into public.inventory_stock(item_id,total_count,reserve_count) values ('33333333-3333-4333-8333-333333333333',5,1)`);
+await rejected(`update public.inventory_stock set reserve_count=6`,/check constraint/);
+await rejected(`insert into public.inventory_stock values ('44444444-4444-4444-8444-444444444444',2,0,now())`,/active allmight/);
+const insertHold = (id, actor='11111111-1111-4111-8111-111111111111',start='2026-10-23',end='2026-10-25') => `insert into public.inventory_holds(id,item_id,staff_id,store_name,start_date,end_date,quantity,created_by) values ('${id}','33333333-3333-4333-8333-333333333333','55555555-5555-4555-8555-555555555555','店舗A','${start}','${end}',2,'${actor}')`;
+const id='66666666-6666-4666-8666-666666666666';
+await db.exec(insertHold(id));
+await rejected(insertHold(id), /duplicate key/);
+await rejected(insertHold('77777777-7777-4777-8777-777777777777','22222222-2222-4222-8222-222222222222'),/invalid actor/);
+await rejected(insertHold('88888888-8888-4888-8888-888888888888',undefined,'2026-10-25','2026-10-23'),/check constraint/);
+await rejected(`update public.inventory_holds set quantity=9 where id='${id}'`,/permission denied/);
+await db.exec(`update public.inventory_holds set cancelled_at=now() where id='${id}'`);
+await rejected(`delete from public.inventory_holds where id='${id}'`,/permission denied/);
+await rejected(`insert into public.inventory_audit_logs(table_name,record_id,action) values ('x','x','x')`,/permission denied/);
+assert.equal((await db.query('select count(*)::int n from public.inventory_audit_logs')).rows[0].n,3);
+await db.exec(`select set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',false)`);
+assert.equal((await db.query('select count(*)::int n from public.inventory_holds')).rows[0].n,0);
+await rejected(insertHold('99999999-9999-4999-8999-999999999999','22222222-2222-4222-8222-222222222222'),/active administrator/);
+await db.exec('reset role; set role anon');
+await rejected('select * from public.inventory_stock',/permission denied/);
+console.log('PASS: SQL applies; stock constraints; business validation; hold creation; duplicate ID; actor spoofing; date ordering; field permissions; cancellation; delete protection; audit integrity; disabled admin; anonymous access. Local in-memory database only.');
+await db.close();

@@ -8,7 +8,8 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "fetch:kintone-fields": "tsx scripts/fetch-kintone-fields.ts",
-    "test:kintone-register": "tsx scripts/test-kintone-register.ts"
+    "test:kintone-register": "tsx scripts/test-kintone-register.ts",
+    "test:inventory": "tsx --test tests/inventory-*.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",

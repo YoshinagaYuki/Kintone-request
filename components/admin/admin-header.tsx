@@ -29,9 +29,16 @@ export function AdminHeader() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-5xl flex-nowrap items-center justify-between gap-1.5 px-2 sm:gap-3 sm:px-4">
+      <div className="mx-auto flex min-h-14 max-w-[1600px] flex-wrap items-center justify-between gap-1.5 px-2 sm:gap-3 sm:px-4">
         {/* 左: 画面ナビ */}
-        <nav className="flex flex-nowrap items-center gap-1 sm:gap-2" aria-label="管理メニュー">
+        <nav className="flex min-w-0 flex-wrap items-center gap-1 sm:gap-2" aria-label="管理メニュー">
+          <details className="group relative shrink-0" onMouseEnter={(e) => { e.currentTarget.open = true; }} onMouseLeave={(e) => { if (!e.currentTarget.contains(document.activeElement)) e.currentTarget.open = false; }} onKeyDown={(e) => { if (e.key === "Escape") { e.currentTarget.open = false; e.currentTarget.querySelector("summary")?.focus(); } }}>
+            <summary className={`cursor-pointer list-none whitespace-nowrap rounded-md p-2 text-sm font-medium ${pathname.startsWith("/admin/inventory/") ? "bg-blue-600 text-white" : "text-gray-700 hover:bg-blue-50"}`}>在庫管理表 ▾</summary>
+            <div className="absolute left-0 top-full w-44 rounded border bg-white p-2 shadow-lg">
+              <Link className="block rounded p-2 text-sm text-gray-700 hover:bg-blue-50" href="/admin/inventory/allmight">オールマイト</Link>
+              <Link className="block rounded p-2 text-sm text-gray-700 hover:bg-blue-50" href="/admin/inventory/tezukuru">てずくーる!!</Link>
+            </div>
+          </details>
           {NAV_ITEMS.map((item) => {
             const active =
               pathname === item.href || pathname.startsWith(`${item.href}/`);
