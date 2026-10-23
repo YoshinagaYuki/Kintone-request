@@ -1,4 +1,5 @@
 import Link from "next/link";
+import {shiftMonth} from "@/lib/inventory/calendar";
 import { extensionView, type ExtensionEdge } from "@/lib/inventory/extension-view";
 import { InventoryWorkspace } from "@/components/admin/inventory-workspace";
 import { createClient } from "@/lib/supabase/server";
@@ -22,7 +23,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
   const end = validDate(params.end) ? params.end : defaultEnd;
   const count = Math.round((Date.parse(end) - Date.parse(start)) / 86400000) + 1;
   if (count < 1 || count > 366) return <main className="p-8"><p>表示期間は開始日以降、最大366日で指定してください。</p><Link href="/admin/inventory/allmight">期間をリセット</Link></main>;
-  const dates = Array.from({ length: count }, (_, i) => addDays(start, i));
+  const scrollStart=shiftMonth(start,-1);
+  const historyDays=Math.round((Date.parse(start)-Date.parse(scrollStart))/86400000);
+  const dates = Array.from({ length: count+historyDays }, (_, i) => addDays(scrollStart, i));
   const db = await createClient();
   // PostgRESTの既定上限で黙って欠落しないよう、明示した上限+1件までページ取得する。
   const rows: InventoryRequest[] = [];
@@ -41,15 +44,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
   const entries = extensionView(rows, (extensionRows.data ?? []) as ExtensionEdge[]).map(ganttEntry);
   const invalid = entries.filter(e => !e || !e.items.length).length;
   return <main className="mx-auto w-full max-w-[1900px] px-4 py-4 sm:px-6">
-    <h1 className="text-xl font-bold tracking-tight text-slate-900">オールマイト 在庫管理表</h1>
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-xl font-bold tracking-tight text-slate-900">オールマイト 在庫管理表</h1>
     <p className="mt-1 text-xs text-slate-500">商品タブごとに、1台ずつの利用予定を確認できます。担当者の下段にイベント場所を表示します。</p>
-    <form className="my-3 flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-sm">
+    </div><form className=" flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-white p-2 text-xs shadow-sm">
       {params.product&&<input type="hidden" name="product" value={params.product}/>}
       <label>開始日<input className="mt-1 block h-9 rounded-lg border px-2.5 text-sm" type="date" name="start" defaultValue={start} required /></label>
       <label>表示期間<select className="mt-1 block h-9 rounded-lg border px-2.5 text-sm" name="period" defaultValue={period}>{Object.entries(PRESETS).map(([key, [label]]) => <option key={key} value={key}>{label}</option>)}</select></label>
       <label>終了日（任意・優先）<input className="mt-1 block h-9 rounded-lg border px-2.5 text-sm" type="date" name="end" defaultValue={validDate(params.end) ? params.end : ""} /></label>
       <button className="h-9 rounded-lg bg-slate-900 px-5 text-sm font-medium text-white hover:bg-slate-700">表示</button>
-    </form>
+    </form></div>
     {failed||rows.length>5000?<p role="alert" className="rounded bg-red-50 p-4 text-red-800">申請を完全に取得できなかったため表示を停止しました。再読み込みしてください。</p>:<InventoryWorkspace start={start} end={end} dates={dates} requests={entries.filter((e): e is NonNullable<typeof e> => e !== null)} incomplete={invalid>0} product={params.product} period={period} customEnd={validDate(params.end)?params.end:undefined} />}
     {invalid>0&&<p role="status" className="mt-3 text-sm text-amber-800">日付または商品が未設定・不正の申請 {invalid} 件は表示できません。申請一覧で確認してください。</p>}
   </main>;

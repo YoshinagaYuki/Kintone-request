@@ -1,0 +1,2 @@
+/** Calendar-month navigation clamps the day to the last real day of the target month. */
+export function shiftMonth(date:string,months:number){const d=new Date(`${date}T00:00:00Z`),day=d.getUTCDate();d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+months);const last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();d.setUTCDate(Math.min(day,last));return d.toISOString().slice(0,10);}

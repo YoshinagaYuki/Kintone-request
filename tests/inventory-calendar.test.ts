@@ -1,0 +1,2 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {shiftMonth} from '../lib/inventory/calendar';
+test('history starts one calendar month before the anchor, across year and leap-day boundaries',()=>{assert.equal(shiftMonth('2026-10-23',-1),'2026-09-23');assert.equal(shiftMonth('2026-03-31',-1),'2026-02-28');assert.equal(shiftMonth('2024-03-31',-1),'2024-02-29');assert.equal(shiftMonth('2026-01-01',-1),'2025-12-01');});

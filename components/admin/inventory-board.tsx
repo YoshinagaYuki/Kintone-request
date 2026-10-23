@@ -1,5 +1,5 @@
 "use client";
-import {useState,Fragment} from "react";
+import {useState,useRef,useLayoutEffect,Fragment} from "react";
 import Link from "next/link";
 import {useRouter} from "next/navigation";
 import {bookingOn,type BoardBooking,type BoardLane} from "@/lib/inventory/board";
@@ -7,25 +7,29 @@ import type {CapacityItem} from "@/lib/inventory/availability";
 import {InventoryCancel} from "./inventory-cancel";
 import {boardColor,boardSegments,laneLocked,bookingLabel} from "@/lib/inventory/presentation";
 const DENSITIES={compact:46,standard:64,wide:88} as const;
-export function InventoryBoard({item,dates,lanes,staff}:{item:CapacityItem;dates:string[];lanes:BoardLane[];staff:{id:string;name:string}[]}){
+export function InventoryBoard({item,dates,anchor,lanes,staff}:{item:CapacityItem;dates:string[];anchor:string;lanes:BoardLane[];staff:{id:string;name:string}[]}){
  const [density,setDensity]=useState<keyof typeof DENSITIES>("compact");const DAY=DENSITIES[density];
+ const scrollRef=useRef<HTMLDivElement>(null);
+ const anchorOffset=Math.max(0,dates.indexOf(anchor))*DAY;
+ useLayoutEffect(()=>{if(scrollRef.current)scrollRef.current.scrollLeft=anchorOffset;},[anchorOffset,dates[0]]);
  const today=new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date());
  const router=useRouter();const [selection,setSelection]=useState<{date:string;booking?:BoardBooking}|null>(null);const [busy,setBusy]=useState(false);const [error,setError]=useState("");const [operationId,setOperationId]=useState("");
  const normalCount=lanes.filter(l=>l.kind==="normal").length;
  const locked=(lane:BoardLane,index:number,date:string)=>laneLocked(item,lane,index,normalCount,date);
  function open(date:string,booking?:BoardBooking){setSelection({date,booking});setError("");setOperationId(crypto.randomUUID());}
  return <>
-  <div className="mb-2 flex items-center justify-between gap-2 text-xs text-slate-500"><span>日付と左の見出しを固定して表示</span><div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5" role="group" aria-label="マスのサイズ">{([["compact","コンパクト"],["standard","標準"],["wide","ゆったり"]] as const).map(([key,label])=><button key={key} onClick={()=>setDensity(key)} aria-pressed={density===key} className={`rounded-md px-2.5 py-1.5 font-medium transition ${density===key?"bg-slate-900 text-white shadow-sm":"hover:bg-slate-100"}`}>{label}</button>)}</div></div>
-  <div className="inventory-grid overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm" style={{maxHeight:"calc(100dvh - 290px)",minHeight:320}}>
+  <div className="mb-2 flex items-center justify-between gap-2 text-xs text-slate-500"><div className="flex items-center gap-3"><span>左へスクロールすると過去1ヶ月を確認できます</span><button className="rounded-md border bg-white px-2 py-1 text-slate-700" onClick={()=>scrollRef.current?.scrollTo({left:anchorOffset,behavior:"auto"})}>開始日に戻る</button></div><div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5" role="group" aria-label="マスのサイズ">{([["compact","コンパクト"],["standard","標準"],["wide","ゆったり"]] as const).map(([key,label])=><button key={key} onClick={()=>setDensity(key)} aria-pressed={density===key} className={`rounded-md px-2.5 py-1.5 font-medium transition ${density===key?"bg-slate-900 text-white shadow-sm":"hover:bg-slate-100"}`}>{label}</button>)}</div></div>
+  <div ref={scrollRef} className="inventory-grid overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm" style={{maxHeight:"calc(100dvh - 340px)",minHeight:320}}>
    <table className="border-separate border-spacing-0 text-sm" style={{width:120+dates.length*DAY,tableLayout:"fixed"}} aria-label={`${item.name} 台数別の在庫管理表`}>
     <colgroup><col style={{width:36}}/><col style={{width:84}}/>{dates.map(d=><col key={d} style={{width:DAY}}/>)}</colgroup>
     <thead className="sticky top-0 z-30"><tr><th className="sticky left-0 z-40 border-b border-r border-slate-200 bg-slate-50 py-2 text-xs">枠</th><th className="sticky left-9 z-40 border-b border-r border-slate-200 bg-slate-50 px-1 text-[11px]">{item.name}</th>{dates.map(d=>{const day=new Date(`${d}T00:00:00Z`).getUTCDay();return <th key={d} aria-current={d===today?"date":undefined} className={`border-b border-r py-1.5 text-[10px] font-medium ${d===today?"border-t-2 border-t-blue-600 bg-blue-50 text-blue-700":day===0?"bg-rose-50 text-rose-600":day===6?"bg-sky-50 text-sky-700":"bg-slate-50 text-slate-600"}`}><span className="block font-semibold">{Number(d.slice(5,7))}/{Number(d.slice(8))}</span><span className="block text-[9px]">{"日月火水木金土"[day]}</span></th>;})}</tr></thead>
     <tbody>{lanes.map((lane,index)=>{
      const reserve=lane.kind==="reserve",extra=lane.kind==="overflow",unconfigured=lane.kind==="unconfigured";
      const labelBg=reserve?"bg-slate-200":extra?"bg-rose-100":"bg-white";
-     const segments=boardSegments(lane,dates,d=>locked(lane,index,d));
+     const segments=boardSegments(lane,dates,d=>locked(lane,index,d),{breakAt:anchor});
+     const staffSegments=boardSegments(lane,dates,d=>locked(lane,index,d),{splitPhases:false,breakAt:anchor}).flatMap(s=>s.booking?[s]:Array.from({length:s.span},(_,i)=>({...s,date:dates[dates.indexOf(s.date)+i],span:1})));
      return <Fragment key={lane.key}>
-      <tr><th rowSpan={2} className={`sticky left-0 z-20 border-b border-r border-slate-200 text-center font-medium ${labelBg}`}>{extra?`超過${lane.number}`:unconfigured?`仮${lane.number}`:lane.number}</th><th className={`sticky left-9 z-20 border-b border-dotted border-r border-slate-200 text-[10px] font-normal ${labelBg}`}>{reserve?"予備":"担当者"}</th>{dates.map(date=>{const b=bookingOn(lane,date),inactive=locked(lane,index,date);return <td key={date} className={`h-6 border-b border-dotted border-r border-slate-200 px-0.5`} style={{backgroundColor:reserve||inactive?"#e2e8f0":extra?"#ffe4e6":boardColor(b,date)}}><button type="button" disabled={reserve||inactive} onClick={()=>open(date,b)} title={b?`${b.staff}｜${b.store}`:"仮押さえを追加"} aria-label={`${lane.number}枠 ${date} ${b?`${b.staff} ${b.store}`:"仮押さえを追加"}`} className={`flex h-[22px] w-full items-center justify-between rounded-md bg-white/55 px-0.5 text-[10px] leading-none hover:ring-1 hover:ring-slate-500 disabled:cursor-not-allowed ${b?.staff==="担当者未設定"?"font-bold text-red-600":"text-slate-900"}`}><span className="truncate">{b?.staff==="担当者未設定"?"要確認":b?.staff??""}</span></button></td>;})}</tr>
+      <tr><th rowSpan={2} className={`sticky left-0 z-20 border-b border-r border-slate-200 text-center font-medium ${labelBg}`}>{extra?`超過${lane.number}`:unconfigured?`仮${lane.number}`:lane.number}</th><th className={`sticky left-9 z-20 border-b border-dotted border-r border-slate-200 text-[10px] font-normal ${labelBg}`}>{reserve?"予備":"担当者"}</th>{staffSegments.map(s=>{const date=s.date,b=s.booking,inactive=s.inactive;return <td key={date} colSpan={s.span} className="h-6 border-b border-dotted border-r border-slate-200 px-0.5" style={{backgroundColor:reserve||inactive?"#e2e8f0":extra?"#ffe4e6":boardColor(b,b?.start??date)}}><button type="button" disabled={reserve||inactive} onClick={()=>open(date,b)} title={b?`${b.staff}｜${b.store}`:"仮押さえを追加"} aria-label={`${lane.number}枠 ${date} ${b?`${b.staff} ${b.store}`:"仮押さえを追加"}`} className={`flex h-[22px] w-full items-center justify-center rounded-md bg-white/55 px-0.5 text-[11px] leading-none hover:ring-1 hover:ring-slate-500 disabled:cursor-not-allowed ${b?.staff==="担当者未設定"?"font-bold text-red-600":"text-slate-900"}`}><span className="truncate">{b?.staff==="担当者未設定"?"要確認":b?.staff??""}</span></button></td>;})}</tr>
       <tr><th className={`sticky left-9 z-20 h-6 border-b border-r border-slate-200 text-[10px] font-normal ${labelBg}`}>{reserve?"貸出不可":"イベント場所"}</th>{segments.map(s=>{const b=s.booking;return <td key={s.date} colSpan={s.span} className={`h-6 overflow-hidden border-b border-r border-slate-200 `} style={{backgroundColor:reserve||s.inactive?"#e2e8f0":extra?"#ffe4e6":boardColor(b,s.date)}}>
        {b&&<button onClick={()=>open(s.date,b)} type="button" className="block w-full truncate px-2 text-left text-[11px] hover:underline" title={`${b.managementNo?b.managementNo+"：":""}${b.store}`}>
         {bookingLabel(b,s.date)}
