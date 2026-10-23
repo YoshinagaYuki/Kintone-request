@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 const db = new PGlite();
 await db.exec(`
-create role anon; create role authenticated;
+create role anon; create role authenticated; create role service_role bypassrls;
 create schema auth;
 create table auth.users(id uuid primary key);
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
@@ -21,6 +21,7 @@ insert into public.item_name_master values ('33333333-3333-4333-8333-33333333333
 insert into public.staff_members values ('55555555-5555-4555-8555-555555555555',true);
 `);
 await db.exec(await readFile(new URL('../../docs/sql/inventory-phase2.draft.sql', import.meta.url), 'utf8'));
+await db.exec(await readFile(new URL('../../supabase/migrations/20261023103000_inventory_stock_schedule.sql', import.meta.url), 'utf8'));
 await db.exec(`set role authenticated; select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false)`);
 const rejected = async (sql, pattern) => { await assert.rejects(db.exec(sql), pattern); };
 await db.exec(`insert into public.inventory_stock(item_id,total_count,reserve_count) values ('33333333-3333-4333-8333-333333333333',5,1)`);
@@ -40,6 +41,14 @@ assert.equal((await db.query('select count(*)::int n from public.inventory_audit
 await db.exec(`select set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',false)`);
 assert.equal((await db.query('select count(*)::int n from public.inventory_holds')).rows[0].n,0);
 await rejected(insertHold('99999999-9999-4999-8999-999999999999','22222222-2222-4222-8222-222222222222'),/active administrator/);
+await db.exec(`select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',false)`);
+await db.exec(`insert into public.inventory_stock_schedule(item_id,effective_date,total_count,reserve_count) values ('33333333-3333-4333-8333-333333333333','2026-11-01',4,1)`);
+await rejected(`update public.inventory_stock_schedule set reserve_count=5`,/check constraint/);
+await rejected(`delete from public.inventory_stock_schedule`,/permission denied/);
+assert.equal((await db.query(`select count(*)::int n from public.inventory_audit_logs where table_name='inventory_stock_schedule'`)).rows[0].n,1);
+await db.exec(`select set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',false)`);
+assert.equal((await db.query('select count(*)::int n from public.inventory_stock_schedule')).rows[0].n,0);
+assert.equal((await db.query('update public.inventory_stock_schedule set total_count=9 returning *')).rows.length,0);
 await db.exec('reset role; set role anon');
 await rejected('select * from public.inventory_stock',/permission denied/);
 console.log('PASS: SQL applies; stock constraints; business validation; hold creation; duplicate ID; actor spoofing; date ordering; field permissions; cancellation; delete protection; audit integrity; disabled admin; anonymous access. Local in-memory database only.');

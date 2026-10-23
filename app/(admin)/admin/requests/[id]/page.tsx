@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { InventoryExtensionPanel } from "@/components/admin/inventory-extension-panel";
 import { InventoryMatch } from "@/components/admin/inventory-match";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -29,6 +30,7 @@ import {
 export const dynamic = "force-dynamic";
 
 type Detail = {
+  inventory_parent_request_id: string | null;
   id: string;
   raw_text: string;
   parsed_data: Record<string, string>;
@@ -133,13 +135,15 @@ export default async function RequestDetailPage({
   const { data } = await supabase
     .from("requests")
     .select(
-      "id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, approved_contents, is_structured, sns_promotion_requested, billing_type, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, allmight_arrangement_sync_failed, deleted_at, deleted_by, processing_at, company_staff_name_input, approved_staff_name, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
+      "id, inventory_parent_request_id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, approved_contents, is_structured, sns_promotion_requested, billing_type, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, allmight_arrangement_sync_failed, deleted_at, deleted_by, processing_at, company_staff_name_input, approved_staff_name, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
     )
     .eq("id", id)
     .maybeSingle();
 
   if (!data) notFound();
   const request = data as unknown as Detail;
+  const extensionCheck = await supabase.from("inventory_extensions").select("id").or(`parent_request_id.eq.${id},child_request_id.eq.${id}`).limit(1);
+  const hasExtension = Boolean(extensionCheck.error || extensionCheck.data?.length || request.inventory_parent_request_id);
 
   // 手配種別(オールマイト=App10のみ)。編集は「オールマイト担当の管理者」に限定。
   const isAllmight = request.form_types?.kintone_app_id === 10;
@@ -371,7 +375,7 @@ export default async function RequestDetailPage({
         </h1>
         <StatusBadge status={request.status} />
         {/* 申請内容を編集(未承認かつ kintone未登録・未削除のときのみ) */}
-        {request.status === "pending" && !request.kintone_record_id && !isDeleted && (
+        {request.status === "pending" && !request.kintone_record_id && !isDeleted && !hasExtension && (
           <Link
             href={`/admin/requests/${request.id}/edit`}
             className="ml-auto rounded-md border border-blue-300 bg-white px-3 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-50"
@@ -693,6 +697,7 @@ export default async function RequestDetailPage({
         </table>
       </SectionCard>
 
+      {isAllmight && <InventoryExtensionPanel request={request} canManage={canManage} />}
       {/* 手配種別(オールマイト=App10のみ。配送/集荷を独立編集。てずくーるでは非表示) */}
       {isAllmight && !request.processing_at && <InventoryMatch request={request} />}
       {isAllmight && (
@@ -703,7 +708,7 @@ export default async function RequestDetailPage({
             pickupDefault={request.allmight_pickup_arrangement}
             deliveryTimeDefault={request.allmight_delivery_time}
             pickupTimeDefault={request.allmight_pickup_time}
-            canEdit={canEditArrangement && !isDeleted}
+            canEdit={canEditArrangement && !isDeleted && !hasExtension}
             kintoneRegistered={Boolean(request.kintone_record_id)}
             syncFailed={request.allmight_arrangement_sync_failed === true}
           />

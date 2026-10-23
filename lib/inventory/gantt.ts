@@ -1,6 +1,7 @@
 import { ALLMIGHT_FMT_LABELS as L, equipmentLabel } from "@/lib/allmight-fmt";
 
 export type InventoryRequest = {
+  inventory_parent_request_id?: string | null; inventory_root_id?: string; pickup_cancelled?: boolean;
   id: string; status: string; management_no: string | null;
   parsed_data: Record<string, unknown> | null;
   approved_staff_name: string | null; company_staff_name_input: string | null;
@@ -20,7 +21,7 @@ export function ganttEntry(request: InventoryRequest) {
   const text = (key: string) => typeof data[key] === "string" ? (data[key] as string).trim() : "";
   const start = text(L.usageStart), end = text(L.usageEnd);
   if (!validDate(start) || !validDate(end) || end < start) return null;
-  const delivery = text(L.deliveryDate), pickup = text(L.pickupDate);
+  const delivery = text(L.deliveryDate), pickup = request.pickup_cancelled ? "" : text(L.pickupDate);
   const dates = [start, end, delivery, pickup].filter(validDate).sort();
   return {
     ...request, start, end, delivery, pickup,

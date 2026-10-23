@@ -1,0 +1,39 @@
+import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { ganttEntry, type InventoryRequest } from "@/lib/inventory/gantt";
+import { extensionView } from "@/lib/inventory/extension-view";
+import { matchCapacityItem } from "@/lib/inventory/availability";
+import { listCsv,ganttCsv,type SheetEntry } from "@/lib/inventory/sheet-export";
+export const dynamic="force-dynamic";
+export const maxDuration=60;
+export async function GET(req:NextRequest){
+ const secret=process.env.INVENTORY_SHEETS_TOKEN??"",key=req.nextUrl.searchParams.get("key")??"";
+ if(secret.length<32)return new NextResponse("同期未設定",{status:503});
+ if(Buffer.byteLength(secret)!==Buffer.byteLength(key)||!timingSafeEqual(Buffer.from(secret),Buffer.from(key)))return new NextResponse("認証が必要です",{status:401});
+ try{
+  const db=createAdminClient();const rows:InventoryRequest[]=[];
+  for(let offset=0;offset<=5000;offset+=500){const r=await db.from("requests").select("id,inventory_parent_request_id,status,management_no,parsed_data,approved_staff_name,company_staff_name_input,form_types!inner(kintone_app_id)").eq("form_types.kintone_app_id",10).is("deleted_at",null).neq("status","rejected").order("id").range(offset,Math.min(offset+499,5000));if(r.error)throw new Error("requests");rows.push(...(r.data??[]) as InventoryRequest[]);if((r.data?.length??0)<500)break;}
+  if(rows.length>5000)throw new Error("too many requests");
+  const [extensions,items,holds]=await Promise.all([
+   db.from("inventory_extensions").select("parent_request_id,child_request_id,state").limit(1000),
+   db.from("item_name_master").select("id,name,aliases").eq("category","allmight").limit(1000),
+   db.from("inventory_holds").select("id,store_name,quantity,start_date,end_date,item_name_master(name),staff_members(name),inventory_hold_links(request_id,requests(status,deleted_at))").is("cancelled_at",null).limit(1000),
+  ]);
+  if([extensions,items,holds].some(r=>r.error||(r.data?.length??0)>=1000))throw new Error("incomplete export");
+  const entries:SheetEntry[]=[];const status:Record<string,string>={pending:"申請待ち",approved:"承認済み",registered:"登録完了",register_failed:"連携失敗"};
+  const base=(process.env.APP_BASE_URL||req.nextUrl.origin).replace(/\/$/,"");
+  for(const row of extensionView(rows,extensions.data??[])){
+   const e=ganttEntry(row);if(!e||!e.items.length)throw new Error("invalid source dates or equipment");
+   for(const name of e.items){const product=matchCapacityItem(name,items.data??[])?.name??name;entries.push({product,staff:e.staff,store:e.store,managementNo:e.management_no??"",start:e.start,end:e.end,delivery:e.delivery,pickup:e.pickup,status:e.inventory_parent_request_id?"延長":status[e.status]??e.status,quantity:1,requestUrl:`${base}/admin/requests/${e.id}`});}
+  }
+  type Link={requests:{status:string;deleted_at:string|null}|null};
+  type Hold={id:string;store_name:string;quantity:number;start_date:string;end_date:string;item_name_master:{name:string}|null;staff_members:{name:string}|null;inventory_hold_links:Link|Link[]|null};
+  for(const h of (holds.data??[]) as unknown as Hold[]){const links=Array.isArray(h.inventory_hold_links)?h.inventory_hold_links:h.inventory_hold_links?[h.inventory_hold_links]:[];if(links.some(l=>l.requests&&!l.requests.deleted_at&&l.requests.status!=="rejected"))continue;entries.push({product:h.item_name_master?.name??"商品不明",staff:h.staff_members?.name??"担当者不明",store:h.store_name,managementNo:"",start:h.start_date,end:h.end_date,delivery:"",pickup:"",status:"仮押さえ",quantity:h.quantity,requestUrl:`${base}/admin/inventory/allmight`});}
+  entries.sort((a,b)=>a.start.localeCompare(b.start)||a.product.localeCompare(b.product)||a.store.localeCompare(b.store));
+  const product=req.nextUrl.searchParams.get("product");
+  const month=req.nextUrl.searchParams.get("month")||new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date()).slice(0,7);
+  const csv=product?ganttCsv(entries,product,month):listCsv(entries);
+  return new NextResponse(csv,{headers:{"Content-Type":"text/csv; charset=utf-8","Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
+ }catch{return NextResponse.json({error:"同期用の在庫データを完全に取得できませんでした"},{status:503});}
+}

@@ -4,6 +4,8 @@ import { registerRequestToKintone } from "@/lib/kintone/register-request";
 import { getVersionedConfig, isKintoneReady } from "@/lib/form-types";
 import type { FieldMapping } from "@/lib/kintone/mapper";
 
+export const maxDuration = 60;
+
 /** kintone登録の再実行(register_failed のみ)。承認履歴は追加しない */
 export async function POST(
   _req: NextRequest,
