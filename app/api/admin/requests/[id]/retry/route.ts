@@ -1,3 +1,4 @@
+import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { registerRequestToKintone } from "@/lib/kintone/register-request";
@@ -7,7 +8,7 @@ import type { FieldMapping } from "@/lib/kintone/mapper";
 export const maxDuration = 60;
 
 /** kintone登録の再実行(register_failed のみ)。承認履歴は追加しない */
-export async function POST(
+async function POSTHandler(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -96,3 +97,5 @@ export async function POST(
   }
   return NextResponse.json({ ok: true, recordId: result.recordId });
 }
+
+export const POST=withInventorySheetPush(POSTHandler);

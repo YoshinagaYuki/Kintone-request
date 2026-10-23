@@ -1,3 +1,4 @@
+import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -23,7 +24,7 @@ import {
  * ・成功で sync_failed=false + 履歴 arrangement_synced、失敗で sync_failed=true + 履歴 arrangement_sync_failed。
  * ・既存の申請・承認・配送・通知処理には影響しない。
  */
-export async function POST(
+async function POSTHandler(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -154,3 +155,5 @@ export async function POST(
       : {}),
   });
 }
+
+export const POST=withInventorySheetPush(POSTHandler);

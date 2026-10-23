@@ -1,3 +1,4 @@
+import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
 import { canManageInventoryRequest } from "@/lib/inventory/request-access";
 import { NextResponse } from "next/server";
 import { inventoryAccess } from "@/lib/inventory/access";
@@ -5,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { extensionInput } from "@/lib/inventory/extensions/model";
 import { extensionsEnabled, runInventoryExtension } from "@/lib/inventory/extensions/runner";
 export const maxDuration=60;
-export async function POST(req:Request,{params}:{params:Promise<{id:string}>}) {
+async function POSTHandler(req:Request,{params}:{params:Promise<{id:string}>}) {
   const access=await inventoryAccess();
   if("error" in access)return NextResponse.json({error:access.error},{status:access.status});
   if(!extensionsEnabled())return NextResponse.json({error:"延長機能は停止中です"},{status:503});
@@ -19,3 +20,5 @@ export async function POST(req:Request,{params}:{params:Promise<{id:string}>}) {
   const result=await runInventoryExtension(childId,access.admin.auth_user_id);
   return NextResponse.json({...result,childId},{status:result.ok?201:502});
 }
+
+export const POST=withInventorySheetPush(POSTHandler);

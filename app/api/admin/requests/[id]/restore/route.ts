@@ -1,3 +1,4 @@
+import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -12,7 +13,7 @@ import { getCurrentAdmin, isActiveAdmin } from "@/lib/admin-users";
  * ・復元は deleted_at を NULL に戻すだけ。kintone 再登録・配送再連携・メール再送は行わない。
  *   management_no / kintone_record_id / status は保持(重複レコードを作らない)。
  */
-export async function POST(
+async function POSTHandler(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -69,3 +70,5 @@ export async function POST(
 
   return NextResponse.json({ ok: true, code: res.code });
 }
+
+export const POST=withInventorySheetPush(POSTHandler);

@@ -1,6 +1,7 @@
+import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
 import { NextResponse } from "next/server";
 import { inventoryAccess } from "@/lib/inventory/access";
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+async function PUTHandler(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const access = await inventoryAccess();
   if ("error" in access) return NextResponse.json({ error: access.error }, { status: access.status });
   const { id } = await params;
@@ -12,3 +13,5 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (error) return NextResponse.json({ error: "紐付けを保存できませんでした。別申請への紐付け・取消・商品台数・処理中状態を確認してください" }, { status: 409 });
   return NextResponse.json({ ok: true });
 }
+
+export const PUT=withInventorySheetPush(PUTHandler);

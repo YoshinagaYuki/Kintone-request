@@ -1,3 +1,4 @@
+import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -15,7 +16,7 @@ const MAX_DELETE = 100;
  * ・削除と履歴(action='deleted')は RPC で原子的に実行(soft_delete_request)。
  * ・承認・採番・kintone登録・通知・メールには一切触れない。
  */
-export async function DELETE(req: NextRequest) {
+async function DELETEHandler(req: NextRequest) {
   const supabase = await createClient();
   const me = await getCurrentAdmin(supabase);
   if (!isActiveAdmin(me)) {
@@ -114,3 +115,5 @@ export async function DELETE(req: NextRequest) {
   const res = (rpc ?? {}) as { ok?: boolean; deleted?: number };
   return NextResponse.json({ ok: true, deleted: res.deleted ?? 0 });
 }
+
+export const DELETE=withInventorySheetPush(DELETEHandler);

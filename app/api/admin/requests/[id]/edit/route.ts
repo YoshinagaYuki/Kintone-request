@@ -1,3 +1,4 @@
+import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -28,7 +29,7 @@ const MAX_EMAIL = 254;
 const MAX_CUSTOMER_REQUESTS = 2000;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export async function PATCH(
+async function PATCHHandler(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -292,3 +293,5 @@ export async function PATCH(
   const okRes = (rpc ?? {}) as { changed?: number };
   return NextResponse.json({ ok: true, changed: okRes.changed ?? 0 });
 }
+
+export const PATCH=withInventorySheetPush(PATCHHandler);

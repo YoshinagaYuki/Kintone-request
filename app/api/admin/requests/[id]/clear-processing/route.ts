@@ -1,3 +1,4 @@
+import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -13,7 +14,7 @@ import { getCurrentAdmin, isActiveAdmin } from "@/lib/admin-users";
  * ・kintone 再登録・配送再連携・メール送信は一切行わない(状態フラグの解除のみ)。
  * ・解除後、管理者は状態に応じて「再実行(register_failed)」や「削除」を行える。
  */
-export async function POST(
+async function POSTHandler(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -55,3 +56,5 @@ export async function POST(
   const res = (rpc ?? {}) as { ok?: boolean; code?: string };
   return NextResponse.json({ ok: res.ok === true, code: res.code });
 }
+
+export const POST=withInventorySheetPush(POSTHandler);

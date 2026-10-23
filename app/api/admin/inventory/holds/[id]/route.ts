@@ -1,6 +1,7 @@
+import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
 import { NextResponse } from "next/server";
 import { inventoryAccess } from "@/lib/inventory/access";
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+async function DELETEHandler(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const access = await inventoryAccess();
   if ("error" in access) return NextResponse.json({ error: access.error }, { status: access.status });
   const { id } = await params;
@@ -10,3 +11,5 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
   if (!data) return NextResponse.json({ error: "仮押さえが見つからないか、すでに取消済みです" }, { status: 409 });
   return NextResponse.json({ ok: true });
 }
+
+export const DELETE=withInventorySheetPush(DELETEHandler);

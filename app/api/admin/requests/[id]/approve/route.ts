@@ -1,3 +1,4 @@
+import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { registerRequestToKintone } from "@/lib/kintone/register-request";
@@ -12,7 +13,7 @@ import type { ParserConfig } from "@/types/request";
  *   ・無ければ既存の approved/requested を採用。どちらも無ければ 409(承認不可)
  * middleware は /api を保護しないため、ここで認証チェックする。
  */
-export async function POST(
+async function POSTHandler(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -265,3 +266,5 @@ export async function POST(
   }
   return NextResponse.json({ ok: true, recordId: result.recordId });
 }
+
+export const POST=withInventorySheetPush(POSTHandler);

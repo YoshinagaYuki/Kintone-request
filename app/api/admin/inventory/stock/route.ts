@@ -1,7 +1,8 @@
+import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
 import { NextRequest, NextResponse } from "next/server";
 import { inventoryAccess } from "@/lib/inventory/access";
 import { stockInput } from "@/lib/inventory/validation";
-export async function PUT(req: NextRequest) {
+async function PUTHandler(req: NextRequest) {
   const access = await inventoryAccess();
   if ("error" in access) return NextResponse.json({ error: access.error }, { status: access.status });
   let input;
@@ -13,3 +14,5 @@ export async function PUT(req: NextRequest) {
   if (error) return NextResponse.json({ error: "在庫数を保存できませんでした。設定を確認してください" }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
+
+export const PUT=withInventorySheetPush(PUTHandler);

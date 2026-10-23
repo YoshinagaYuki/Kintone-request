@@ -1,3 +1,4 @@
+import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -29,7 +30,7 @@ function parseArrangement(v: unknown): ArrangementValue | null {
   return v === "normal" || v === "charter" ? v : null;
 }
 
-export async function PATCH(
+async function PATCHHandler(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -243,3 +244,5 @@ export async function PATCH(
       : {}),
   });
 }
+
+export const PATCH=withInventorySheetPush(PATCHHandler);

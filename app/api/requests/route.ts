@@ -1,3 +1,4 @@
+import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseFmt } from "@/lib/parser/fmt-parser";
@@ -35,7 +36,7 @@ function isRateLimited(ip: string): boolean {
  * ・レンタルプラン種別で new_rental の場合、サーバー側で有効プラン名を raw_text に注入
  *   already_renting の場合は レンタルプラン の必須チェックを緩和(承認時に社内で設定)
  */
-export async function POST(req: NextRequest) {
+async function POSTHandler(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   if (isRateLimited(ip)) {
     return NextResponse.json(
@@ -325,3 +326,5 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true, rid: request.id, mail }, { status: 201 });
 }
+
+export const POST=withInventorySheetPush(POSTHandler);
