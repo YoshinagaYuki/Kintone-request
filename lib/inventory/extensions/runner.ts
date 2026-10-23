@@ -1,3 +1,4 @@
+import { canManageInventoryRequest } from "../request-access";
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getVersionedConfig } from "@/lib/form-types";
@@ -11,6 +12,7 @@ export const extensionsEnabled = () => process.env.INVENTORY_EXTENSIONS_ENABLED 
 export async function runInventoryExtension(childId: string, actor: string) {
   if (!extensionsEnabled()) return { ok: false as const, error: "延長連携は停止中です。通常の新規登録は行いません" };
   const db = createAdminClient();
+  if(!await canManageInventoryRequest(db,childId,actor))return {ok:false as const,error:"この事業の担当権限が必要です"};
   const token = crypto.randomUUID();
   const claim = await db.rpc("claim_inventory_extension", { p_id: childId, p_token: token, p_actor: actor });
   if (claim.error || !claim.data) return { ok: false as const, error: "延長の処理状態を確認できませんでした" };
