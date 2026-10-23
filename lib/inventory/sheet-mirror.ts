@@ -1,3 +1,4 @@
+import {shiftMonth} from './calendar';
 import {addDays,validDate} from './gantt';
 import {layoutBoard,bookingOn,type BoardBooking} from './board';
 import type {CapacityItem} from './availability';
@@ -11,7 +12,7 @@ export function buildSheetMirror(item:CapacityItem,bookings:BoardBooking[],start
  let from=start;
  for(let month=0;month<count;month++){
   const until=nextMonth(from),to=addDays(until,-1),days=Math.round((Date.parse(to)-Date.parse(from))/86400000)+1;
-  const dates=Array.from({length:days},(_,i)=>addDays(from,i));const lanes=layoutBoard(item,dates,bookings),normalCount=lanes.filter(l=>l.kind==='normal').length;
+  const dates=Array.from({length:days},(_,i)=>addDays(from,i));const historyFrom=shiftMonth(from,-1),historyDays=Math.round((Date.parse(from)-Date.parse(historyFrom))/86400000);const layoutDates=Array.from({length:historyDays+dates.length},(_,i)=>addDays(historyFrom,i));const lanes=layoutBoard(item,layoutDates,bookings),normalCount=lanes.filter(l=>l.kind==='normal').length;
   result.headerRows.push(result.values.length);result.merges.push({row:result.values.length,column:0,span:2});
   append([`${from.slice(0,4)}年 ${from.slice(5).replace('-','/')}〜${to.slice(5).replace('-','/')}`,'',...dates.map(d=>`${d.slice(5).replace('-','/')}\n${'日月火水木金土'[new Date(`${d}T00:00:00Z`).getUTCDay()]}`)],['#0f172a','#0f172a',...dates.map(d=>new Date(`${d}T00:00:00Z`).getUTCDay()===0?'#fff1f2':new Date(`${d}T00:00:00Z`).getUTCDay()===6?'#eff6ff':'#f1f5f9')]);
   for(const [index,lane] of lanes.entries()){
@@ -21,7 +22,7 @@ export function buildSheetMirror(item:CapacityItem,bookings:BoardBooking[],start
    for(const date of dates){const b=bookingOn(lane,date);const inactive=laneLocked(item,lane,index,normalCount,date);top.push(b?.staff??'');bottom.push('');backgrounds.push(reserved||inactive?BOARD_COLORS.reserve:lane.kind==='overflow'?BOARD_COLORS.overflow:boardColor(b,date));notes.push(b?`${b.managementNo?b.managementNo+'：':''}${b.store}\n担当者：${b.staff}\n利用：${b.start}〜${b.end}${b.delivery?'\n配送：'+b.delivery:''}${b.pickup?'\n集荷：'+b.pickup:''}${b.href?'\n'+b.href:''}`:'');}
    for(const segment of boardSegments(lane,dates,d=>laneLocked(item,lane,index,normalCount,d),{splitPhases:false})){if(!segment.booking)continue;const col=2+dates.indexOf(segment.date);for(let i=1;i<segment.span;i++)top[col+i]='';if(segment.span>1)result.merges.push({row:result.values.length,column:col,span:segment.span});}
    for(const segment of boardSegments(lane,dates,d=>laneLocked(item,lane,index,normalCount,d))){if(!segment.booking)continue;const col=2+dates.indexOf(segment.date);const spanDates=dates.slice(col-2,col-2+segment.span);bottom[col]=bookingLabel(segment.booking,segment.date)+(spanDates.includes(segment.booking.delivery)?' ［配］':'')+(spanDates.includes(segment.booking.pickup)?' ［集］':'');if(segment.span>1)result.merges.push({row:result.values.length+1,column:col,span:segment.span});}
-   append(top,backgrounds,notes);append(bottom,backgrounds,notes);result.unitEndRows.push(result.values.length-1);
+   append(top,backgrounds.map((color,i)=>{if(i<2||reserved||lane.kind==='overflow'||laneLocked(item,lane,index,normalCount,dates[i-2]))return color;const b=bookingOn(lane,dates[i-2]);return boardColor(b,b?.start??dates[i-2]);}),notes);append(bottom,backgrounds,notes);result.unitEndRows.push(result.values.length-1);
   }
   append([]);from=until;result.to=to;
  }
