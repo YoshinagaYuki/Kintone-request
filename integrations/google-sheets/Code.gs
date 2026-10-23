@@ -1,4 +1,4 @@
-/** Bound to the existing inventory workbook. Never writes rows 1–249.
+/** Bound to the existing inventory workbook. Preserves rows 1–249 of the original input tabs.
  * Script properties: FEED_URL (existing CSV URL without product/months), PUSH_KEY.
  * Deploy as web app executing as the owner; callers are authenticated by HMAC.
  */
@@ -26,26 +26,47 @@ function syncInventory() {
   const props=PropertiesService.getScriptProperties(),feed=props.getProperty('FEED_URL');
   if(!feed||!feed.startsWith('https://kintone-request.vercel.app/api/inventory/sheet.csv?key='))throw Error('feed not configured');
   const book=SpreadsheetApp.openById('1bEbV3bJvGIBhRdKnf3KwBIoJo-2EA-uXRNx2szq6Qx0');
-  if(!book||book.getId()!=='1bEbV3bJvGIBhRdKnf3KwBIoJo-2EA-uXRNx2szq6Qx0')throw Error('wrong workbook');
-  // Fetch and validate every tab before touching any cells. Errors leave the old content intact.
-  const plans=Object.entries(INVENTORY_TABS).map(([name,product])=>{
-   const sheet=book.getSheetByName(name);if(!sheet)throw Error('missing tab');
-   const response=UrlFetchApp.fetch(feed+'&months=6&layout=push&product='+encodeURIComponent(product),{muteHttpExceptions:true});
-   if(response.getResponseCode()!==200)throw Error('feed unavailable');
-   const rows=Utilities.parseCsv(response.getContentText('UTF-8'));
-   if(!rows.length||rows.length>900||rows[0][2]!=='担当者・店舗')throw Error('invalid feed');
-   return {name,sheet,rows:rows.map(row=>Array.from({length:34},(_,i)=>row[i]||''))};
+  const tabs=Object.entries(INVENTORY_TABS);
+  const responses=UrlFetchApp.fetchAll(tabs.map(([name,product])=>({url:feed+'&months=6&layout=mirror&product='+encodeURIComponent(product),muteHttpExceptions:true})));
+  // Validate every product before any writes. A failed feed leaves the last good mirror intact.
+  const plans=tabs.map(([name,product],i)=>{
+   if(responses[i].getResponseCode()!==200)throw Error('feed unavailable');
+   const raw=responses[i].getContentText('UTF-8'),data=JSON.parse(raw);
+   if(data.version!==1||data.product!==product||!Array.isArray(data.values)||!data.values.length||data.values.length>4000||data.values.some(r=>r.length!==33)||data.backgrounds.length!==data.values.length||data.notes.length!==data.values.length)throw Error('invalid mirror');
+   return {name,data,hash:Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,raw))};
   });
   for(const plan of plans){
-   if(plan.sheet.getMaxRows()<251+plan.rows.length)plan.sheet.insertRowsAfter(plan.sheet.getMaxRows(),251+plan.rows.length-plan.sheet.getMaxRows());
-   // This area was reserved for automatic output in the initial integration.
-   const previous=Math.max(Number(props.getProperty('rows:'+plan.name)||0),plan.rows.length);
-   plan.sheet.getRange(251,1,Math.min(previous,900),34).clearContent();
-   plan.sheet.getRange(251,1,plan.rows.length,34).setNumberFormat('@').setValues(plan.rows);
-   plan.sheet.getRange('D250').setValue('システム自動連携｜更新 '+Utilities.formatDate(new Date(),'Asia/Tokyo','yyyy/MM/dd HH:mm:ss'));
-   props.setProperty('rows:'+plan.name,String(plan.rows.length));
+   const name='ガント '+plan.name.trim(),data=plan.data;let sheet=book.getSheetByName(name);
+   if(sheet&&props.getProperty('mirror:'+name)===plan.hash)continue;
+   if(!sheet)sheet=book.insertSheet(name);
+   const needed=data.values.length+4,oldRows=Number(props.getProperty('mirrorRows:'+name)||0);
+   if(sheet.getMaxRows()<needed)sheet.insertRowsAfter(sheet.getMaxRows(),needed-sheet.getMaxRows());
+   if(sheet.getMaxColumns()<33)sheet.insertColumnsAfter(sheet.getMaxColumns(),33-sheet.getMaxColumns());
+   const area=sheet.getRange(1,1,Math.max(needed,oldRows,5),33);area.breakApart();area.clear();
+   sheet.setHiddenGridlines(true);sheet.setFrozenRows(4);sheet.setFrozenColumns(2);
+   sheet.setColumnWidth(1,36);sheet.setColumnWidth(2,88);sheet.setColumnWidths(3,31,46);
+   area.setFontFamily('Arial').setFontSize(10).setFontColor('#334155').setVerticalAlignment('middle').setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
+   sheet.getRange(1,1,1,33).merge().setValue(data.product+'　在庫管理表').setBackground('#0f172a').setFontColor('#ffffff').setFontSize(14).setFontWeight('bold');sheet.setRowHeight(1,38);
+   const stamp=Utilities.formatDate(new Date(),'Asia/Tokyo','MM/dd HH:mm:ss');
+   sheet.getRange(2,1,1,33).merge().setValue('自動更新 '+stamp+'　／　閲覧用（入力は管理画面から）　／　'+data.from+' 〜 '+data.to).setBackground('#f8fafc').setFontSize(10);sheet.setRowHeight(2,26);
+   const legend=[['登録完了','#d1fae5'],['仮押さえ','#fef3c7'],['申請待ち','#dbeafe'],['延長','#ede9fe'],['予備','#e2e8f0']];
+   legend.forEach(([label,color],i)=>sheet.getRange(3,1+i*4,1,4).merge().setValue(label).setBackground(color).setHorizontalAlignment('center'));sheet.setRowHeight(3,24);sheet.setRowHeight(4,8);
+   const values=data.values.map(row=>row.map(value=>/^[=+@\-\t\r]/.test(value)?"'"+value:value));
+   const grid=sheet.getRange(5,1,values.length,33);grid.setNumberFormat('@').setValues(values).setBackgrounds(data.backgrounds).setNotes(data.notes).setBorder(true,true,true,true,true,false,'#e2e8f0',SpreadsheetApp.BorderStyle.SOLID);
+   sheet.setRowHeights(5,values.length,24);sheet.getRange(5,1,values.length,2).setHorizontalAlignment('center').setFontSize(9);
+   data.merges.forEach(m=>sheet.getRange(5+m.row,1+m.column,1,m.span).merge());
+   data.headerRows.forEach(row=>{sheet.setRowHeight(5+row,38);sheet.getRange(5+row,1,1,33).setFontWeight('bold').setHorizontalAlignment('center').setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);sheet.getRange(5+row,1,1,2).setFontColor('#ffffff');});
+   data.unitEndRows.forEach(row=>sheet.getRange(5+row,1,1,33).setBorder(null,null,true,null,null,null,'#e2e8f0',SpreadsheetApp.BorderStyle.SOLID));
+   // Protected viewing copy; the owning account can still administer it.
+   if(!sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET).length){const protection=sheet.protect().setDescription('自動更新の閲覧用ガント表');protection.removeEditors(protection.getEditors());if(protection.canDomainEdit())protection.setDomainEdit(false);}
+   SpreadsheetApp.flush();props.setProperty('mirror:'+name,plan.hash);props.setProperty('mirrorRows:'+name,String(needed));
+   const original=book.getSheetByName(plan.name);
+   if(original&&!props.getProperty('mirrorMoved:'+name)){
+    const previous=Number(props.getProperty('rows:'+plan.name)||0);if(previous>0)original.getRange(251,1,Math.min(previous,900),34).clearContent();
+    original.getRange('D250').setValue('最新の在庫表は「'+name+'」タブへ（自動更新・閲覧用）');props.setProperty('mirrorMoved:'+name,'true');
+   }
   }
-  SpreadsheetApp.flush();props.setProperty('last_success',new Date().toISOString());
+  props.setProperty('last_success',new Date().toISOString());
  }finally{lock.releaseLock();}
 }
 /** One-minute retry/reconciliation also covers temporary network failures and closed browser windows. */

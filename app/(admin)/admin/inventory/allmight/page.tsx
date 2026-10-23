@@ -40,15 +40,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
   if (extensionRows.error || (extensionRows.data?.length ?? 0) >= 1000) failed = true;
   const entries = extensionView(rows, (extensionRows.data ?? []) as ExtensionEdge[]).map(ganttEntry);
   const invalid = entries.filter(e => !e || !e.items.length).length;
-  return <main className="mx-auto w-full max-w-[1900px] px-4 py-5">
-    <h1 className="text-2xl font-bold">オールマイト 在庫管理表</h1>
-    <p className="mt-2 text-sm text-gray-600">商品タブごとに、1台ずつの利用予定を確認できます。担当者の下段にイベント場所を表示します。</p>
-    <form className="my-4 flex flex-wrap items-end gap-3 text-sm">
+  return <main className="mx-auto w-full max-w-[1900px] px-4 py-4 sm:px-6">
+    <h1 className="text-xl font-bold tracking-tight text-slate-900">オールマイト 在庫管理表</h1>
+    <p className="mt-1 text-xs text-slate-500">商品タブごとに、1台ずつの利用予定を確認できます。担当者の下段にイベント場所を表示します。</p>
+    <form className="my-3 flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-sm">
       {params.product&&<input type="hidden" name="product" value={params.product}/>}
-      <label>開始日<input className="block rounded border p-2" type="date" name="start" defaultValue={start} required /></label>
-      <label>表示期間<select className="block rounded border p-2" name="period" defaultValue={period}>{Object.entries(PRESETS).map(([key, [label]]) => <option key={key} value={key}>{label}</option>)}</select></label>
-      <label>終了日（任意・優先）<input className="block rounded border p-2" type="date" name="end" defaultValue={validDate(params.end) ? params.end : ""} /></label>
-      <button className="rounded bg-blue-600 px-4 py-2 text-white">表示</button>
+      <label>開始日<input className="mt-1 block h-9 rounded-lg border px-2.5 text-sm" type="date" name="start" defaultValue={start} required /></label>
+      <label>表示期間<select className="mt-1 block h-9 rounded-lg border px-2.5 text-sm" name="period" defaultValue={period}>{Object.entries(PRESETS).map(([key, [label]]) => <option key={key} value={key}>{label}</option>)}</select></label>
+      <label>終了日（任意・優先）<input className="mt-1 block h-9 rounded-lg border px-2.5 text-sm" type="date" name="end" defaultValue={validDate(params.end) ? params.end : ""} /></label>
+      <button className="h-9 rounded-lg bg-slate-900 px-5 text-sm font-medium text-white hover:bg-slate-700">表示</button>
     </form>
     {failed||rows.length>5000?<p role="alert" className="rounded bg-red-50 p-4 text-red-800">申請を完全に取得できなかったため表示を停止しました。再読み込みしてください。</p>:<InventoryWorkspace start={start} end={end} dates={dates} requests={entries.filter((e): e is NonNullable<typeof e> => e !== null)} incomplete={invalid>0} product={params.product} period={period} customEnd={validDate(params.end)?params.end:undefined} />}
     {invalid>0&&<p role="status" className="mt-3 text-sm text-amber-800">日付または商品が未設定・不正の申請 {invalid} 件は表示できません。申請一覧で確認してください。</p>}

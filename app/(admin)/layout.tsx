@@ -17,9 +17,9 @@ export default async function AdminLayout({
   }
 
   return (
-    <>
+    <div className="admin-shell min-h-screen">
       <AdminHeader />
       {children}
-    </>
+    </div>
   );
 }

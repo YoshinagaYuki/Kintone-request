@@ -1,3 +1,13 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Shared admin surfaces. Public application forms keep their existing design. */
+.admin-shell { background: #f6f8fb; color: #17243b; }
+.admin-shell input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+.admin-shell select, .admin-shell textarea { border-color: #dbe2eb; border-radius: 8px; background-color: white; transition: border-color .15s, box-shadow .15s; }
+.admin-shell input:focus-visible, .admin-shell select:focus-visible, .admin-shell textarea:focus-visible { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px #dbeafe; }
+.admin-shell button:focus-visible, .admin-shell a:focus-visible, .admin-shell summary:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.inventory-grid { scrollbar-width: thin; scrollbar-color: #cbd5e1 #f8fafc; }
+.inventory-grid tbody tr:hover td { filter: brightness(.98); }
+@media (prefers-reduced-motion: reduce) { .admin-shell * { transition: none !important; } }
