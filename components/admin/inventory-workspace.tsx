@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { capacityOn, matchCapacityItem, type Occupancy } from "@/lib/inventory/availability";
 import type { ganttEntry } from "@/lib/inventory/gantt";
-import { InventoryCancel } from "./inventory-cancel";
+import {InventoryBoard} from "./inventory-board";
+import {layoutBoard,stockOn,type BoardBooking} from "@/lib/inventory/board";
 import { createClient } from "@/lib/supabase/server";
 import { inventoryEnabled } from "@/lib/inventory/access";
 import { InventoryControls, type StockRow } from "./inventory-controls";
-export async function InventoryWorkspace({ start, end, dates, requests, incomplete }: { start: string; end: string; dates: string[]; requests: NonNullable<ReturnType<typeof ganttEntry>>[]; incomplete: boolean }) {
+export async function InventoryWorkspace({ start, end, dates, requests, incomplete, product, period, customEnd }: { customEnd?:string;product?:string;period:string; start: string; end: string; dates: string[]; requests: NonNullable<ReturnType<typeof ganttEntry>>[]; incomplete: boolean }) {
   if (!inventoryEnabled()) return null;
   const db = await createClient();
   const [items, staff, stocks, holds, plans] = await Promise.all([
@@ -29,15 +30,23 @@ export async function InventoryWorkspace({ start, end, dates, requests, incomple
     else occupancies.push({item_id:item.id,from:r.from,to:r.to,quantity:1,group:`${r.inventory_root_id??r.id}:${slot}`});
   }
   const capacityItems = (items.data ?? []).map(i => ({...i,...(stocks.data ?? []).find(s=>s.item_id===i.id),schedule:(plans.data??[]).filter(p=>p.item_id===i.id)}));
+  const selected=capacityItems.find(i=>i.id===product)??capacityItems[0];
+  if(!selected)return <p className="my-4">商品マスタにオールマイトの商品を登録してください。</p>;
+  if(unlinked.filter(h=>h.item_id===selected.id).reduce((n,h)=>n+h.quantity,0)>1000)return <><p role="alert" className="my-4 text-red-800">表示する仮押さえ台数が多すぎます。期間・台数を確認してください。</p><InventoryControls key={selected.id} items={items.data??[]} staff={staff.data??[]} stocks={(stocks.data??[]) as StockRow[]} plans={plans.data??[]} initialItemId={selected.id}/></>;
+  const bookings:BoardBooking[]=[];
+  for(const r of requests.filter(r=>r.from<=end&&r.to>=start))for(const [slot,name] of r.items.entries())if(matchCapacityItem(name,items.data??[])?.id===selected.id)bookings.push({id:r.id,group:`${r.inventory_root_id??r.id}:${slot}`,kind:"request",staff:r.staff,store:r.store,managementNo:r.management_no??"",status:r.status,from:r.from,to:r.to,start:r.start,end:r.end,delivery:r.delivery,pickup:r.pickup,href:`/admin/requests/${r.id}`,extension:!!r.inventory_parent_request_id});
+  for(const h of unlinked.filter(h=>h.item_id===selected.id))for(let i=0;i<h.quantity;i++)bookings.push({id:h.id,group:`hold:${h.id}:${i}`,kind:"hold",staff:h.staff_members?.name??"担当者未設定",store:h.store_name,managementNo:"",status:"hold",from:h.start_date,to:h.end_date,start:h.start_date,end:h.end_date,delivery:"",pickup:"",href:""});
+  let lanes;try{lanes=layoutBoard(selected,dates,bookings);}catch(e){return <><p role="alert" className="my-4 text-red-800">{e instanceof Error?e.message:"在庫枠を表示できませんでした"}</p><InventoryControls key={selected.id} items={items.data??[]} staff={staff.data??[]} stocks={(stocks.data??[]) as StockRow[]} plans={plans.data??[]} initialItemId={selected.id}/></>;}
+  const stock=stockOn(selected,start);const lastStock=stockOn(selected,end);
   return <>
-    <h2 className="mb-2 text-lg font-bold">日別の残数（参考）</h2>
-    <p className="mb-2 text-sm text-gray-600">通常利用枠から申請・未紐付けの仮押さえを差し引きます。申請は配送〜集荷、仮押さえは利用期間を含みます。旧シートの手入力案件、同日再出庫・返却点検の余裕日は含みません。発注前に旧シートも確認してください。</p>
-    {unknown && <p role="alert" className="mb-2 text-amber-800">日付・商品などが未確認の申請があるため残数を確定表示できません。要確認として表示します。</p>}
-    <div className="mb-6 overflow-auto rounded border"><table className="w-full text-xs"><thead><tr><th className="sticky left-0 min-w-64 border bg-gray-100 p-2">商品 / 総在庫・内予備</th>{dates.map(d=><th className="min-w-16 border bg-gray-100 p-2" key={d}>{d.slice(5)}</th>)}</tr></thead><tbody>{capacityItems.map(i=><tr key={i.id}><th className="sticky left-0 border bg-white p-2 text-left">{i.name}<br/>{i.total_count==null?"在庫数未設定":`在庫 ${i.total_count} / 内予備 ${i.reserve_count}`}</th>{dates.map(d=>{const c=capacityOn(d,i,occupancies);return <td key={d} className={`border p-2 text-center ${!unknown&&c.remaining!=null&&c.remaining<0?"bg-red-100 font-bold text-red-800":""}`}>{unknown?"要確認":c.remaining==null?"未設定":c.remaining<0?`${-c.remaining}超過`:`残${c.remaining}`}<span className="block text-gray-600">予定{c.used}</span></td>;})}</tr>)}</tbody></table></div>
-    <InventoryControls items={items.data ?? []} staff={staff.data ?? []} stocks={(stocks.data ?? []) as StockRow[]} plans={plans.data??[]} />
-    <h2 className="mb-2 text-lg font-bold">仮押さえ</h2>
-    <div className="mb-6 overflow-auto rounded border"><table className="w-full text-xs"><thead><tr><th className="sticky left-0 min-w-64 border bg-gray-100 p-2">商品・店舗・担当者</th>{dates.map(d => <th className="min-w-16 border bg-gray-100 p-2" key={d}>{d.slice(5)}</th>)}</tr></thead><tbody>
-      {unlinked.map(h => <tr key={h.id}><th className="sticky left-0 border bg-white p-2 text-left font-normal">{h.item_name_master?.name ?? "商品不明"} × {h.quantity}<br/>{h.store_name}<br/>{h.staff_members?.name ?? "担当者不明"}<br/>{linksFor(h).length ? <Link className="text-blue-600 underline" href={`/admin/requests/${linksFor(h)[0].request_id}`}>紐付け先を確認</Link> : <InventoryCancel id={h.id} />}</th>{dates.map(d => <td className={`border p-2 text-center ${d >= h.start_date && d <= h.end_date ? "bg-yellow-100" : ""}`} key={d}>{d >= h.start_date && d <= h.end_date ? "仮" : ""}</td>)}</tr>)}
-    </tbody></table>{unlinked.length === 0 && <p className="p-4 text-sm text-gray-600">この期間の仮押さえはありません。</p>}</div>
+    <nav role="tablist" aria-label="コンテンツ切り替え" className="mb-4 flex gap-1 overflow-x-auto border-b border-slate-300">
+      {capacityItems.map(i=><Link key={i.id} role="tab" aria-selected={i.id===selected.id} scroll={false} href={`?${new URLSearchParams({start,period,product:i.id,...(customEnd?{end:customEnd}:{})})}`} className={`shrink-0 border-b-[3px] px-4 py-3 text-sm font-medium ${i.id===selected.id?"border-blue-600 bg-blue-50 text-blue-700":"border-transparent text-slate-600 hover:bg-slate-100"}`}>{i.name}</Link>)}
+    </nav>
+    <div className="mb-3 flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-xl font-bold">{selected.name}</h2><p className="mt-1 text-sm text-slate-600">{start} 〜 {end} <span className="ml-2">{stock?`在庫 ${stock.total}台 ／ 内予備 ${stock.reserve}台`:"在庫数未設定"}</span>{stock&&lastStock&&(stock.total!==lastStock.total||stock.reserve!==lastStock.reserve)&&<span className="ml-2 text-amber-800">期間内に台数の変更予定あり</span>}</p></div><div className="flex flex-wrap gap-3 text-xs text-slate-600"><span><i className="mr-1 inline-block h-3 w-3 bg-[#70f5c6]"/>登録完了</span><span><i className="mr-1 inline-block h-3 w-3 bg-amber-100"/>仮押さえ・連携確認</span><span><i className="mr-1 inline-block h-3 w-3 bg-sky-100"/>申請待ち</span><span><i className="mr-1 inline-block h-3 w-3 bg-violet-200"/>延長</span><span><i className="mr-1 inline-block h-3 w-3 bg-[#aaa]"/>予備・対象外</span></div></div>
+    <p className="mb-2 text-xs text-amber-800">旧シートの手入力案件はこの表には含まれません。発注前に旧シートも確認してください。</p>
+    <InventoryBoard key={selected.id} item={selected} dates={dates} lanes={lanes} staff={staff.data??[]} />
+    {unknown&&<p role="alert" className="my-2 rounded bg-amber-50 p-3 text-sm text-amber-900">日付・商品などが未確認の申請があります。残数の確認が必要です。</p>}
+    <details className="my-4 rounded border bg-white p-3"><summary className="cursor-pointer text-sm font-medium">日別残数を確認（システム登録分・参考）</summary><div className="mt-3 overflow-auto"><table className="text-xs"><thead><tr>{dates.map(d=><th className="min-w-20 border p-2" key={d}>{d.slice(5)}</th>)}</tr></thead><tbody><tr>{dates.map(d=>{const c=capacityOn(d,selected,occupancies);return <td key={d} className={`border p-2 text-center ${!unknown&&c.remaining!=null&&c.remaining<0?"bg-rose-100 text-rose-800":""}`}>{unknown?"要確認":c.remaining==null?"未設定":c.remaining<0?`${-c.remaining}台超過`:`参考残${c.remaining}`}<span className="block text-slate-500">予定{c.used}</span></td>;})}</tr></tbody></table></div><p className="mt-2 text-xs text-slate-500">申請は配送〜集荷、仮押さえは利用期間で計上します。旧手入力案件・返却点検の余裕日は含みません。</p></details>
+    <InventoryControls key={selected.id} items={items.data??[]} staff={staff.data??[]} stocks={(stocks.data??[]) as StockRow[]} plans={plans.data??[]} initialItemId={selected.id} />
   </>;
 }

@@ -1,0 +1,46 @@
+"use client";
+import {useState,Fragment} from "react";
+import Link from "next/link";
+import {useRouter} from "next/navigation";
+import {bookingOn,bookingPhase,stockOn,type BoardBooking,type BoardLane} from "@/lib/inventory/board";
+import type {CapacityItem} from "@/lib/inventory/availability";
+import {InventoryCancel} from "./inventory-cancel";
+const DAY=110;
+export function InventoryBoard({item,dates,lanes,staff}:{item:CapacityItem;dates:string[];lanes:BoardLane[];staff:{id:string;name:string}[]}){
+ const router=useRouter();const [selection,setSelection]=useState<{date:string;booking?:BoardBooking}|null>(null);const [busy,setBusy]=useState(false);const [error,setError]=useState("");const [operationId,setOperationId]=useState("");
+ const normalCount=lanes.filter(l=>l.kind==="normal").length;
+ const locked=(lane:BoardLane,index:number,date:string)=>{const s=stockOn(item,date);return lane.kind==="reserve"?index-normalCount>=(s?.reserve??0):lane.kind==="normal"?index>=(s?.usable??0):false;};
+ function open(date:string,booking?:BoardBooking){setSelection({date,booking});setError("");setOperationId(crypto.randomUUID());}
+ const palette=(b:BoardBooking,date:string)=>bookingPhase(b,date)!=="usage"?"bg-emerald-50":b.kind==="hold"?"bg-amber-100":b.status==="registered"?b.extension?"bg-violet-200":"bg-[#70f5c6]":b.status==="pending"?"bg-sky-100":"bg-amber-100";
+ return <>
+  <div className="overflow-auto border border-slate-500 bg-white" style={{maxHeight:"calc(100vh - 260px)",minHeight:360}}>
+   <table className="border-separate border-spacing-0 text-sm" style={{width:176+dates.length*DAY,tableLayout:"fixed"}} aria-label={`${item.name} 台数別の在庫管理表`}>
+    <colgroup><col style={{width:44}}/><col style={{width:132}}/>{dates.map(d=><col key={d} style={{width:DAY}}/>)}</colgroup>
+    <thead className="sticky top-0 z-30"><tr><th className="sticky left-0 z-40 border-b border-r border-slate-500 bg-slate-100 py-3">枠</th><th className="sticky left-11 z-40 border-b border-r-2 border-slate-500 bg-slate-100">{item.name}</th>{dates.map(d=>{const day=new Date(`${d}T00:00:00Z`).getUTCDay();return <th key={d} className={`border-b border-r border-slate-500 py-2 ${day===0?"bg-rose-100 text-rose-700":day===6?"bg-sky-100 text-sky-700":"bg-amber-100"}`}><span className="block text-xs font-normal">{Number(d.slice(5,7))}月</span>{Number(d.slice(8))}日 <span className="text-xs font-normal">（{"日月火水木金土"[day]}）</span></th>;})}</tr></thead>
+    <tbody>{lanes.map((lane,index)=>{
+     const reserve=lane.kind==="reserve",extra=lane.kind==="overflow",unconfigured=lane.kind==="unconfigured";
+     const labelBg=reserve?"bg-[#aaa]":extra?"bg-rose-100":"bg-white";
+     const segments:{date:string;booking?:BoardBooking;span:number;inactive:boolean}[]=[];
+     for(const date of dates){const booking=bookingOn(lane,date),inactive=locked(lane,index,date);const previous=segments[segments.length-1];if(previous&&previous.booking?.id===booking?.id&&previous.inactive===inactive&&(!booking||bookingPhase(previous.booking!,previous.date)===bookingPhase(booking,date)))previous.span++;else segments.push({date,booking,span:1,inactive});}
+     return <Fragment key={lane.key}>
+      <tr><th rowSpan={2} className={`sticky left-0 z-20 border-b-2 border-r border-slate-500 text-center font-medium ${labelBg}`}>{extra?`超過${lane.number}`:unconfigured?`仮${lane.number}`:lane.number}</th><th className={`sticky left-11 z-20 border-b border-dotted border-r-2 border-slate-500 font-normal ${labelBg}`}>{reserve?"予備":"担当者"}</th>{dates.map(date=>{const b=bookingOn(lane,date),inactive=locked(lane,index,date);return <td key={date} className={`h-8 border-b border-dotted border-r border-slate-500 px-2 ${reserve||inactive?"bg-[#aaa]":extra?"bg-rose-100":b?palette(b,date):"bg-white"}`}><button type="button" disabled={reserve||inactive} onClick={()=>open(date,b)} aria-label={`${lane.number}枠 ${date} ${b?`${b.staff} ${b.store}`:"仮押さえを追加"}`} className={`flex h-[22px] w-full items-center justify-between rounded-full bg-slate-100/90 px-2 text-xs leading-none hover:ring-1 hover:ring-slate-500 disabled:cursor-not-allowed ${b?.staff==="担当者未設定"?"font-bold text-red-600":"text-slate-900"}`}><span className="truncate">{b?.staff==="担当者未設定"?"要確認":b?.staff??""}</span><span aria-hidden="true" className="ml-1 text-[9px]">▼</span></button></td>;})}</tr>
+      <tr><th className={`sticky left-11 z-20 h-8 border-b-2 border-r-2 border-slate-500 font-normal ${labelBg}`}>{reserve?"原則貸出不可":"イベント場所"}</th>{segments.map(s=>{const b=s.booking,phase=b?bookingPhase(b,s.date):null;return <td key={s.date} colSpan={s.span} className={`h-8 overflow-hidden border-b-2 border-r border-slate-500 ${reserve||s.inactive?"bg-[#aaa]":extra?"bg-rose-100":b?palette(b,s.date):"bg-white"}`}>
+       {b&&<button onClick={()=>open(s.date,b)} type="button" className="block w-full truncate px-2 text-left text-[13px] hover:underline" title={`${b.managementNo?b.managementNo+"：":""}${b.store}`}>
+        {phase==="delivery"?"配送期間":phase==="return"?"返却期間":`${b.managementNo?b.managementNo+"：":b.kind==="hold"?"仮押さえ：":"番号未発行："}${b.store}`}
+        {dates.slice(dates.indexOf(s.date),dates.indexOf(s.date)+s.span).includes(b.delivery)&&<span className="ml-2 rounded bg-white/70 px-1 text-[11px]">配送</span>}{dates.slice(dates.indexOf(s.date),dates.indexOf(s.date)+s.span).includes(b.pickup)&&<span className="ml-2 rounded bg-white/70 px-1 text-[11px]">集荷</span>}
+       </button>}
+      </td>;})}</tr>
+     </Fragment>;
+    })}</tbody>
+   </table>
+   {lanes.length===0&&<p className="p-8 text-center text-sm text-slate-600">表示する在庫枠がありません。下の在庫設定で台数を登録してください。</p>}
+  </div>
+  <p className="mt-2 text-xs text-slate-500">行番号は日程に合わせた自動配置の表示枠です。実物の個体番号・確定した割当ではありません。空き枠から仮押さえを登録できます。</p>
+  {selection&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4" onClick={()=>!busy&&setSelection(null)} onKeyDown={e=>{if(e.key==="Escape"&&!busy)setSelection(null);if(e.key==="Tab"){const focusable=Array.from(e.currentTarget.querySelectorAll<HTMLElement>('button:not([disabled]),a[href],input,select'));const first=focusable[0],last=focusable[focusable.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}}}><section role="dialog" aria-modal="true" aria-label={selection.booking?"案件の確認":"仮押さえを追加"} className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-xl bg-white p-6 shadow-xl" onClick={e=>e.stopPropagation()}>
+   <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold">{selection.booking?"案件の確認":"仮押さえを追加"}</h2><button type="button" autoFocus disabled={busy} onClick={()=>setSelection(null)} className="rounded border px-3 py-1">閉じる</button></div>
+   {selection.booking?<><p className="font-semibold">{selection.booking.managementNo?selection.booking.managementNo+"：":""}{selection.booking.store}</p><p className="mt-2">担当者：{selection.booking.staff}</p><p className="mt-2 text-sm">利用：{selection.booking.start} 〜 {selection.booking.end}</p>{selection.booking.delivery&&<p className="mt-1 text-sm">配送：{selection.booking.delivery}</p>}{selection.booking.pickup&&<p className="mt-1 text-sm">集荷：{selection.booking.pickup}</p>}{selection.booking.kind==="request"?<Link href={selection.booking.href} className="mt-5 inline-block rounded bg-blue-600 px-4 py-2 text-white">申請内容・延長を開く</Link>:<div className="mt-4"><InventoryCancel id={selection.booking.id}/></div>}</>:<form onSubmit={async e=>{e.preventDefault();const f=new FormData(e.currentTarget);setBusy(true);setError("");try{const res=await fetch("/api/admin/inventory/holds",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:operationId,item_id:item.id,staff_id:f.get("staff"),store_name:f.get("store"),quantity:1,start_date:f.get("start"),end_date:f.get("end"),note:""})});const result=await res.json();if(!res.ok)throw Error(result.error||"保存できませんでした");setSelection(null);router.refresh();}catch(e){setError(e instanceof Error?e.message:"保存できませんでした");}finally{setBusy(false);}}} className="grid gap-3">
+    <p className="text-sm text-slate-600">{item.name}・1台</p><label>担当者<select name="staff" required className="mt-1 block w-full rounded border p-2" defaultValue=""><option value="" disabled>選択してください</option>{staff.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label><label>イベント場所<input name="store" required maxLength={200} className="mt-1 block w-full rounded border p-2"/></label><div className="grid grid-cols-2 gap-3"><label>利用開始日<input type="date" name="start" required min="2000-01-01" max="2100-12-31" defaultValue={selection.date} className="mt-1 block w-full rounded border p-2"/></label><label>利用終了日<input type="date" name="end" required min="2000-01-01" max="2100-12-31" defaultValue={selection.date} className="mt-1 block w-full rounded border p-2"/></label></div>{error&&<p role="alert" className="text-sm text-red-700">{error}</p>}<button disabled={busy} className="mt-2 rounded bg-blue-600 p-3 font-medium text-white disabled:opacity-50">{busy?"登録中…":"仮押さえを登録"}</button>
+   </form>}
+  </section></div>}
+ </>;
+}

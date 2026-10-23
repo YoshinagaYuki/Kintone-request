@@ -4,17 +4,17 @@ import type {StockSchedule} from "@/lib/inventory/availability";
 import { useRouter } from "next/navigation";
 export type InventoryItem = { id: string; name: string };
 export type StockRow = { item_id: string; total_count: number; reserve_count: number };
-export function InventoryControls({ items, staff, stocks, plans = [], includeHolds = true }: { includeHolds?: boolean; plans?:StockSchedule[]; items: InventoryItem[]; staff: InventoryItem[]; stocks: StockRow[] }) {
+export function InventoryControls({ items, staff, stocks, plans = [], includeHolds = true, initialItemId }: { initialItemId?:string; includeHolds?: boolean; plans?:StockSchedule[]; items: InventoryItem[]; staff: InventoryItem[]; stocks: StockRow[] }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [holdId, setHoldId] = useState("");
-  const [selected, setSelected] = useState(items[0]?.id ?? "");
+  const [selected, setSelected] = useState(initialItemId??items[0]?.id ?? "");
   const [effectiveDate,setEffectiveDate]=useState("");
-  const [stockId, setStockId] = useState(items[0]?.id ?? "");
-  const [total, setTotal] = useState(String(stocks.find(s => s.item_id === items[0]?.id)?.total_count ?? ""));
-  const [reserve, setReserve] = useState(String(stocks.find(s => s.item_id === items[0]?.id)?.reserve_count ?? ""));
+  const [stockId, setStockId] = useState(initialItemId??items[0]?.id ?? "");
+  const [total, setTotal] = useState(String(stocks.find(s => s.item_id === (initialItemId??items[0]?.id))?.total_count ?? ""));
+  const [reserve, setReserve] = useState(String(stocks.find(s => s.item_id === (initialItemId??items[0]?.id))?.reserve_count ?? ""));
   const inputClass = "block w-full rounded border p-2 text-sm";
   const options = items.map(i => <option key={i.id} value={i.id}>{i.name}</option>);
   async function submit(path: string, method: string, body: unknown) {
