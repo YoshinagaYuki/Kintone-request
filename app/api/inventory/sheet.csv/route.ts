@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ganttEntry, type InventoryRequest } from "@/lib/inventory/gantt";
 import { extensionView } from "@/lib/inventory/extension-view";
 import { matchCapacityItem } from "@/lib/inventory/availability";
-import { listCsv,ganttCsv,type SheetEntry } from "@/lib/inventory/sheet-export";
+import { listCsv,multiMonthGanttCsv,type SheetEntry } from "@/lib/inventory/sheet-export";
 export const dynamic="force-dynamic";
 export const maxDuration=60;
 export async function GET(req:NextRequest){
@@ -33,7 +33,9 @@ export async function GET(req:NextRequest){
   entries.sort((a,b)=>a.start.localeCompare(b.start)||a.product.localeCompare(b.product)||a.store.localeCompare(b.store));
   const product=req.nextUrl.searchParams.get("product");
   const month=req.nextUrl.searchParams.get("month")||new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date()).slice(0,7);
-  const csv=product?ganttCsv(entries,product,month):listCsv(entries);
+  const months=Number(req.nextUrl.searchParams.get("months")||"1");
+  if(!Number.isInteger(months)||months<1||months>6)return new NextResponse("期間は1〜6ヶ月で指定してください",{status:400});
+  const csv=product?multiMonthGanttCsv(entries,product,month,months):listCsv(entries);
   return new NextResponse(csv,{headers:{"Content-Type":"text/csv; charset=utf-8","Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
  }catch{return NextResponse.json({error:"同期用の在庫データを完全に取得できませんでした"},{status:503});}
 }
