@@ -1,8 +1,8 @@
 # Existing workbook writer (enabled 2026-10-23)
 
-The eight Allmight tabs now use the authenticated writer. The old IMPORTDATA formulas were replaced after the user approved Google access. See docs/inventory-sheet-import.md for live verification. The following steps describe setup or recovery.
+Eight protected Allmight mirror tabs now use the authenticated writer (deployed version 3). The old IMPORTDATA formulas were replaced after the user approved Google access. See docs/inventory-sheet-import.md for live verification. The following steps describe setup or recovery.
 
-The proposed writer updates only A251:AH1150 in the eight Allmight tabs and the D250 update label. Original manual rows 1–249 remain intact. It pulls the minimal inventory CSV; contacts, addresses, prices, kintone credentials and Supabase credentials are never sent to Google.
+The writer renders protected viewing tabs named ガント STC(小), etc. It uses the same layout, colors and merged staff/store periods as the web board, over six monthly blocks. Original manual rows 1–249 remain intact. Previous output below row 250 is replaced by a pointer to the viewing tab. The mirror JSON contains inventory fields only, with no contact details, addresses, prices or credentials.
 
 1. Open the existing workbook's bound Apps Script project and add Code.gs.
 2. Set FEED_URL to the existing protected CSV feed URL (key only, without product/months).
