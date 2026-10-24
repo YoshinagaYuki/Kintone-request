@@ -37,6 +37,7 @@ function syncInventory() {
   });
   for(const plan of plans){
    const name='ガント '+plan.name.trim(),data=plan.data;let sheet=book.getSheetByName(name);
+   if(sheet)ensureMirrorEditors(sheet);
    if(sheet&&props.getProperty('mirror:'+name)===plan.hash)continue;
    if(!sheet)sheet=book.insertSheet(name);
    const needed=data.values.length+4,oldRows=Number(props.getProperty('mirrorRows:'+name)||0);
@@ -57,8 +58,7 @@ function syncInventory() {
    data.merges.forEach(m=>sheet.getRange(5+m.row,1+m.column,1,m.span).merge());
    data.headerRows.forEach(row=>{sheet.setRowHeight(5+row,38);sheet.getRange(5+row,1,1,33).setFontWeight('bold').setHorizontalAlignment('center').setWrapStrategy(SpreadsheetApp.WrapStrategy.WRAP);sheet.getRange(5+row,1,1,2).setFontColor('#ffffff');});
    data.unitEndRows.forEach(row=>sheet.getRange(5+row,1,1,33).setBorder(null,null,true,null,null,null,'#e2e8f0',SpreadsheetApp.BorderStyle.SOLID));
-   // Protected viewing copy; the owning account can still administer it.
-   if(!sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET).length){const protection=sheet.protect().setDescription('自動更新の閲覧用ガント表');protection.removeEditors(protection.getEditors());if(protection.canDomainEdit())protection.setDomainEdit(false);}
+   ensureMirrorEditors(sheet);
    SpreadsheetApp.flush();props.setProperty('mirror:'+name,plan.hash);props.setProperty('mirrorRows:'+name,String(needed));
    const original=book.getSheetByName(plan.name);
    if(original&&!props.getProperty('mirrorMoved:'+name)){
@@ -73,4 +73,16 @@ function syncInventory() {
 function installRecoveryTrigger(){
  if(!ScriptApp.getProjectTriggers().some(t=>t.getHandlerFunction()==='syncInventory'))ScriptApp.newTrigger('syncInventory').timeBased().everyMinutes(1).create();
  syncInventory();
+}
+
+/** Only the named inventory administrator may edit the generated mirror. */
+function ensureMirrorEditors(sheet){
+ let protections=sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET);
+ if(!protections.length){const p=sheet.protect().setDescription('自動更新ガント表・指定管理者は編集可');p.removeEditors(p.getEditors());if(p.canDomainEdit())p.setDomainEdit(false);protections=[p];}
+ protections.forEach(p=>p.addEditor('y-yoshinaga@unity-corp.jp'));
+}
+function configureMirrorEditors(){
+ const book=SpreadsheetApp.openById('1bEbV3bJvGIBhRdKnf3KwBIoJo-2EA-uXRNx2szq6Qx0');
+ Object.keys(INVENTORY_TABS).forEach(name=>{const sheet=book.getSheetByName('ガント '+name.trim());if(sheet)ensureMirrorEditors(sheet);});
+ SpreadsheetApp.flush();
 }

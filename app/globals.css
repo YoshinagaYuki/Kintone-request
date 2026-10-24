@@ -11,3 +11,12 @@
 .inventory-grid { scrollbar-width: thin; scrollbar-color: #cbd5e1 #f8fafc; }
 .inventory-grid tbody tr:hover td { filter: brightness(.98); }
 @media (prefers-reduced-motion: reduce) { .admin-shell * { transition: none !important; } }
+
+/* Quiet grid, crisp labels and a single accent for the inventory workspace. */
+.inventory-grid { scrollbar-gutter: stable; isolation: isolate; }
+.inventory-grid td { transition: background-color 120ms ease; }
+.inventory-booking { color: #1e293b; border-radius: 4px; }
+.inventory-booking:hover .inventory-booking-text { color: #3730a3; }
+.inventory-booking:focus-visible { outline: 2px solid #6366f1; outline-offset: -2px; }
+.inventory-product-tabs a { letter-spacing: .01em; }
+.admin-shell { background: #f5f7fb; }

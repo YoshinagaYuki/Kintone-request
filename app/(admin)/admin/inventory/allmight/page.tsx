@@ -44,9 +44,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
   const entries = extensionView(rows, (extensionRows.data ?? []) as ExtensionEdge[]).map(ganttEntry);
   const invalid = entries.filter(e => !e || !e.items.length).length;
   return <main className="mx-auto w-full max-w-[1900px] px-4 py-4 sm:px-6">
-    <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-xl font-bold tracking-tight text-slate-900">オールマイト 在庫管理表</h1>
-    <p className="mt-1 text-xs text-slate-500">商品タブごとに、1台ずつの利用予定を確認できます。担当者の下段にイベント場所を表示します。</p>
-    </div><form className=" flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-white p-2 text-xs shadow-sm">
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold tracking-tight text-slate-900">オールマイト 在庫管理表</h1>
+    <p className="mt-1 text-xs text-slate-500">貸出・仮押さえ・返却予定を、ひとつのスケジュールで。</p>
+    </div><form className=" flex flex-wrap items-end gap-2 rounded-2xl border border-slate-200 bg-white p-2 text-xs shadow-sm">
       {params.product&&<input type="hidden" name="product" value={params.product}/>}
       <label>開始日<input className="mt-1 block h-9 rounded-lg border px-2.5 text-sm" type="date" name="start" defaultValue={start} required /></label>
       <label>表示期間<select className="mt-1 block h-9 rounded-lg border px-2.5 text-sm" name="period" defaultValue={period}>{Object.entries(PRESETS).map(([key, [label]]) => <option key={key} value={key}>{label}</option>)}</select></label>
