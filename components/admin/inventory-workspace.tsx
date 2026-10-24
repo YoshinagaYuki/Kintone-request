@@ -1,59 +1,18 @@
-import Link from "next/link";
-import {importedBookings,type ImportedEntry} from "@/lib/inventory/sheet-import";
-import { capacityOn, matchCapacityItem, type Occupancy } from "@/lib/inventory/availability";
-import type { ganttEntry } from "@/lib/inventory/gantt";
-import {InventoryBoard} from "./inventory-board";
-import {layoutBoard,stockOn,type BoardBooking} from "@/lib/inventory/board";
-import { createClient } from "@/lib/supabase/server";
-import { inventoryEnabled } from "@/lib/inventory/access";
-import { InventoryControls, type StockRow } from "./inventory-controls";
-export async function InventoryWorkspace({ start, end, dates, requests, incomplete, product, period, customEnd }: { customEnd?:string;product?:string;period:string; start: string; end: string; dates: string[]; requests: NonNullable<ReturnType<typeof ganttEntry>>[]; incomplete: boolean }) {
-  if (!inventoryEnabled()) return null;
-  const rangeStart=dates[0]??start;
-  const db = await createClient();
-  const [items, staff, stocks, holds, plans, imported] = await Promise.all([
-    db.from("item_name_master").select("id,name,aliases").eq("category", "allmight").eq("is_active", true).order("sort_order").limit(1000),
-    db.from("staff_members").select("id,name").eq("is_active", true).order("sort_order").limit(1000),
-    db.from("inventory_stock").select("item_id,total_count,reserve_count").limit(1000),
-    db.from("inventory_holds").select("id,item_id,store_name,quantity,start_date,end_date,item_name_master(name),staff_members(name),inventory_hold_links(request_id,requests(status,deleted_at))").is("cancelled_at", null).order("start_date").limit(1000),
-    db.from("inventory_stock_schedule").select("item_id,effective_date,total_count,reserve_count").order("effective_date").limit(1000),
-    db.from("inventory_sheet_entries").select("source_key,source_tab,source_cell,staff_name,store_name,management_no,start_date,end_date,request_id,hold_id,item_id,state").lte("start_date",end).gte("end_date",rangeStart).limit(1000),
-  ]);
-  if ([items, staff, stocks, holds, plans, imported].some(r => r.error || (r.data?.length ?? 0) >= 1000)) return <p role="alert" className="my-4 rounded bg-red-50 p-4 text-red-800">在庫・仮押さえを完全に取得できませんでした。DB設定または表示対象件数を確認してください。</p>;
-  type Linked = { request_id: string; requests: {status: string; deleted_at: string|null}|null };
-  type Hold = { item_id: string; inventory_hold_links: Linked[]|Linked|null; id: string; store_name: string; quantity: number; start_date: string; end_date: string; item_name_master: { name: string } | null; staff_members: { name: string } | null };
-  const allHolds = (holds.data ?? []) as unknown as Hold[];
-  const linksFor = (h: Hold) => Array.isArray(h.inventory_hold_links) ? h.inventory_hold_links : h.inventory_hold_links ? [h.inventory_hold_links] : [];
-  const unlinked = allHolds.filter(h => !linksFor(h).some(l => l.requests && !l.requests.deleted_at && l.requests.status !== "rejected"));
-  const occupancies: Occupancy[] = unlinked.map(h => ({item_id:h.item_id,from:h.start_date,to:h.end_date,quantity:h.quantity}));
-  let unknown = incomplete;
-  for(const r of requests.filter(r=>r.from<=end&&r.to>=rangeStart)) for(const [slot,name] of r.items.entries()) {
-    const item = matchCapacityItem(name, items.data ?? []);
-    if(!item) unknown = true;
-    else occupancies.push({item_id:item.id,from:r.from,to:r.to,quantity:1,group:`${r.inventory_root_id??r.id}:${slot}`});
-  }
-  const capacityItems = (items.data ?? []).map(i => ({...i,...(stocks.data ?? []).find(s=>s.item_id===i.id),schedule:(plans.data??[]).filter(p=>p.item_id===i.id)}));
-  const selected=capacityItems.find(i=>i.id===product)??capacityItems[0];
-  if(!selected)return <p className="my-4">商品マスタにオールマイトの商品を登録してください。</p>;
-  if(unlinked.filter(h=>h.item_id===selected.id).reduce((n,h)=>n+h.quantity,0)>1000)return <><p role="alert" className="my-4 text-red-800">表示する仮押さえ台数が多すぎます。期間・台数を確認してください。</p><InventoryControls key={`controls:${selected.id}`} items={items.data??[]} staff={staff.data??[]} stocks={(stocks.data??[]) as StockRow[]} plans={plans.data??[]} initialItemId={selected.id}/></>;
-  const bookings:BoardBooking[]=[];
-  for(const r of requests.filter(r=>r.from<=end&&r.to>=rangeStart))for(const [slot,name] of r.items.entries())if(matchCapacityItem(name,items.data??[])?.id===selected.id)bookings.push({id:r.id,group:`${r.inventory_root_id??r.id}:${slot}`,kind:"request",staff:r.staff,store:r.store,managementNo:r.management_no??"",status:r.status,from:r.from,to:r.to,start:r.start,end:r.end,delivery:r.delivery,pickup:r.pickup,href:`/admin/requests/${r.id}`,source:(imported.data??[]).filter(e=>e.request_id===r.id&&e.item_id===selected.id).map(e=>`${e.source_tab} ${e.source_cell}`).join("、")||undefined,extension:!!r.inventory_parent_request_id});
-  for(const h of unlinked.filter(h=>h.item_id===selected.id))for(let i=0;i<h.quantity;i++)bookings.push({id:h.id,group:`hold:${h.id}:${i}`,kind:"hold",staff:h.staff_members?.name??"担当者未設定",store:h.store_name,managementNo:"",status:"hold",from:h.start_date,to:h.end_date,start:h.start_date,end:h.end_date,delivery:"",pickup:"",href:""});
-  const sourceBookings=importedBookings(((imported.data??[]) as ImportedEntry[]).filter(e=>e.item_id===selected.id),bookings,requests.map(r=>({id:r.id,managementNo:r.management_no??""})));
-  bookings.push(...sourceBookings);
-  for(const b of sourceBookings)occupancies.push({item_id:selected.id,from:b.from,to:b.to,quantity:1,group:b.group});
-  let lanes;try{lanes=layoutBoard(selected,dates,bookings);}catch(e){return <><p role="alert" className="my-4 text-red-800">{e instanceof Error?e.message:"在庫枠を表示できませんでした"}</p><InventoryControls key={`controls:${selected.id}`} items={items.data??[]} staff={staff.data??[]} stocks={(stocks.data??[]) as StockRow[]} plans={plans.data??[]} initialItemId={selected.id}/></>;}
-  const stock=stockOn(selected,start);const lastStock=stockOn(selected,end);
-  return <>
-    <nav role="tablist" aria-label="コンテンツ切り替え" className="inventory-product-tabs mb-4 flex gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
-      {capacityItems.map(i=><Link key={i.id} role="tab" aria-selected={i.id===selected.id} scroll={false} href={`?${new URLSearchParams({start,period,product:i.id,...(customEnd?{end:customEnd}:{})})}`} className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium transition ${i.id===selected.id?"bg-indigo-600 text-white shadow-sm shadow-indigo-100":"text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}>{i.name}</Link>)}
-    </nav>
-    <div className="mb-3 flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-base font-semibold">{selected.name}</h2><p className="mt-1 text-xs text-slate-500">{start} 〜 {end} <span className="ml-2">{stock?`在庫 ${stock.total}台 ／ 内予備 ${stock.reserve}台`:"在庫数未設定"}</span>{stock&&lastStock&&(stock.total!==lastStock.total||stock.reserve!==lastStock.reserve)&&<span className="ml-2 text-amber-800">期間内に台数の変更予定あり</span>}</p></div><div className="flex flex-wrap gap-3 text-xs text-slate-600"><span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-emerald-100"/>確定・管理番号あり</span><span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-amber-100"/>仮押さえ</span><span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-blue-100"/>申請待ち</span><span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-violet-100"/>延長</span><span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-slate-200"/>予備・対象外</span></div></div>
-    <div className="mb-3 flex flex-wrap gap-2 text-xs"><span className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-slate-600">貸出可能 <strong className="ml-1 text-slate-900">{stock?.usable??"—"}台</strong></span><span className="rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-indigo-800">開始日の予定 <strong className="ml-1">{new Set(bookings.filter(b=>b.from<=start&&b.to>=start).map(b=>b.group)).size}台</strong></span><span className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-slate-500">申請優先 · シートの重複を除外</span></div>
-
-    <InventoryBoard key={`board:${selected.id}`} item={selected} dates={dates} anchor={start} lanes={lanes} staff={staff.data??[]} />
-    {unknown&&<p role="alert" className="my-2 rounded bg-amber-50 p-3 text-sm text-amber-900">日付・商品などが未確認の申請があります。残数の確認が必要です。</p>}
-    <details className="my-4 rounded border bg-white p-3"><summary className="cursor-pointer text-sm font-medium">日別残数を確認（システム登録分・参考）</summary><div className="mt-3 overflow-auto"><table className="text-xs"><thead><tr>{dates.map(d=><th className="min-w-20 border p-2" key={d}>{d.slice(5)}</th>)}</tr></thead><tbody><tr>{dates.map(d=>{const c=capacityOn(d,selected,occupancies);return <td key={d} className={`border p-2 text-center ${!unknown&&c.remaining!=null&&c.remaining<0?"bg-rose-100 text-rose-800":""}`}>{unknown?"要確認":c.remaining==null?"未設定":c.remaining<0?`${-c.remaining}台超過`:`参考残${c.remaining}`}<span className="block text-slate-500">予定{c.used}</span></td>;})}</tr></tbody></table></div><p className="mt-2 text-xs text-slate-500">申請は配送〜集荷、仮押さえは利用期間で計上します。旧シートの管理番号付き予定・利用不可期間を含みます。元シートにもない返却点検期間は含みません。</p></details>
-    <details className="my-4 rounded-xl border border-slate-200 bg-white p-4"><summary className="cursor-pointer text-sm font-semibold">在庫数・仮押さえの設定</summary><InventoryControls key={`controls:${selected.id}`} items={items.data??[]} staff={staff.data??[]} stocks={(stocks.data??[]) as StockRow[]} plans={plans.data??[]} initialItemId={selected.id} /></details>
-  </>;
+import Link from 'next/link';import{createClient}from'@/lib/supabase/server';import{loadInventoryModel}from'@/lib/inventory/model';import{layoutBoard,stockOn}from'@/lib/inventory/board';import{capacityOn}from'@/lib/inventory/availability';import{InventoryBoard}from'./inventory-board';import{InventoryControls}from'./inventory-controls';import{InventoryHoldForm}from'./inventory-hold-form';import{InventoryDeleted}from'./inventory-deleted';
+export async function InventoryWorkspace({start,end,dates,product,period,customEnd}:{start:string;end:string;dates:string[];product?:string;period:string;customEnd?:string}){
+ let model;try{model=await loadInventoryModel(await createClient());}catch(e){return <p role="alert" className="rounded-xl bg-rose-50 p-4 text-rose-800">{e instanceof Error?e.message:'在庫を取得できませんでした'}</p>;}
+ const selected=model.items.find(i=>i.id===product)??model.items[0];if(!selected)return <p>商品マスタに在庫商品を登録してください。</p>;const bookings=model.records.filter(r=>r.itemId===selected.id).map(r=>r.booking);let lanes;try{lanes=layoutBoard(selected,dates,bookings);}catch(e){return <p role="alert">{e instanceof Error?e.message:'表示できませんでした'}</p>;}
+ const stock=stockOn(selected,start),pending=new Set(bookings.filter(b=>b.unitNumber==null&&b.from<=end&&b.to>=dates[0]).map(b=>b.group)).size;const conflicts=lanes.filter(l=>l.kind==='overflow').length;
+ const occupancy=bookings.map(b=>({item_id:selected.id,group:`${b.group}:${b.unitNumber??'pending'}`,from:b.from,to:b.to,quantity:1}));
+ return <>
+ <nav role="tablist" aria-label="コンテンツ切り替え" className="inventory-product-tabs sticky top-[60px] z-40 mb-4 flex gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white/95 p-1.5 shadow-sm backdrop-blur">{model.items.map(i=><Link key={i.id} role="tab" aria-selected={i.id===selected.id} scroll={false} href={`?${new URLSearchParams({start,period,product:i.id,...(customEnd?{end:customEnd}:{})})}`} className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium ${i.id===selected.id?'bg-indigo-600 text-white shadow-sm':'text-slate-500 hover:bg-slate-100'}`}>{i.name}</Link>)}</nav>
+ <div className="mb-3 flex flex-wrap items-end justify-between gap-2"><div><h2 className="text-base font-semibold">{selected.name}</h2><p className="mt-1 text-xs text-slate-500">{start} 〜 {end} · 在庫 {stock?.total??'—'}台 ／ 内予備 {stock?.reserve??'—'}台</p></div><div className="flex flex-wrap gap-3 text-xs text-slate-600"><span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-emerald-100"/>確定・管理番号あり</span><span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-amber-100"/>仮押さえ</span><span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-blue-100"/>申請待ち</span><span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-slate-200"/>予備・対象外</span></div></div>
+ <div className="mb-3 flex flex-wrap gap-2 text-xs"><span className="rounded-lg border bg-white px-3 py-1.5 text-slate-600">通常在庫 <strong>{stock?.usable??'—'}台</strong></span><span className={`rounded-lg border px-3 py-1.5 ${pending?'border-amber-200 bg-amber-50 text-amber-900':'bg-white text-slate-600'}`}>未割当 <strong>{pending}件</strong></span>{conflicts>0&&<span role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-rose-800">番号・日程の競合 {conflicts}件</span>}<span className="rounded-lg border bg-white px-3 py-1.5 text-slate-500">番号は手動指定 · 申請優先で重複除外</span></div>
+ {pending>0&&<p className="mb-2 text-[11px] text-amber-900">未割当は番号の確保完了ではありません。予定をクリックして番号を選ぶか、番号の行へドラッグしてください。</p>}
+ <InventoryBoard key={selected.id} item={selected} items={model.items} dates={dates} anchor={start} lanes={lanes} staff={model.staff} version={model.version}/>
+ <InventoryDeleted records={model.allRecords.filter(r=>r.itemId===selected.id&&r.deleted)} version={model.version}/>
+ <details className="my-3 rounded-xl border bg-white p-3"><summary className="cursor-pointer text-sm font-medium">複数商品・複数台を仮押さえ</summary><div className="mt-3"><InventoryHoldForm items={model.items} staff={model.staff} version={model.version} initialItemId={selected.id} initialDate={start}/></div></details>
+ <details className="my-3 rounded-xl border bg-white p-3"><summary className="cursor-pointer text-xs text-slate-600">日別残数（未割当を含む予定数・参考）</summary><div className="mt-2 overflow-auto"><table className="text-xs"><thead><tr>{dates.map(d=><th className="min-w-16 border p-1" key={d}>{d.slice(5)}</th>)}</tr></thead><tbody><tr>{dates.map(d=>{const c=capacityOn(d,selected,occupancy);return <td key={d} className={`border p-1 text-center ${(c.remaining??0)<0?'bg-rose-100 text-rose-800':''}`}>{c.remaining??'未設定'}<span className="block text-slate-500">予定{c.used}</span></td>;})}</tr></tbody></table></div></details>
+ <details className="my-3 rounded-xl border bg-white p-3"><summary className="cursor-pointer text-xs text-slate-600">在庫数・予備数の設定</summary><InventoryControls items={model.items} staff={model.staff} stocks={model.items.filter(i=>i.total_count!=null&&i.reserve_count!=null).map(i=>({item_id:i.id,total_count:i.total_count!,reserve_count:i.reserve_count!}))} plans={model.items.flatMap(i=>i.schedule??[])} initialItemId={selected.id} includeHolds={false}/></details>
+ </>;
 }

@@ -10,7 +10,7 @@ import {
 
 /**
  * オールマイト専用 申請フォーム。
- * ・機器商品は最大5枠(数量入力なし・同一商品の重複選択不可)。
+ * ・機器商品は最大5枠(1枠1台・同じ商品の複数選択可)。
  * ・利用開始日/利用最終日は必須。請求月(◯月分として請求)は必須(翌月請求)。
  * ・配送/集荷に 郵便番号・受領者氏名・連絡先 を追加(必須)。伝票 to/cc・緊急時責任者は任意。
  * ・「配送情報と同じ」チェックで集荷の郵便番号/住所/受領者/連絡先を配送から反映(日付は連動しない)。
@@ -192,13 +192,10 @@ export function AllmightApplyForm({
       errs.push("利用最終日は利用開始日以降の日付を入力してください。");
     }
 
-    // 機器商品(1つ以上・重複不可)
+    // 機器商品（1枠1台、同じ商品も複数枠に選択可）
     const filled = validEquipments(equipments);
     if (filled.length === 0) errs.push("機器商品を1つ以上選択してください。");
-    const dup = filled.filter((v, i) => filled.indexOf(v) !== i);
-    if (dup.length > 0) {
-      errs.push("同じ機材が複数選択されています。機材の選択内容をご確認ください。");
-    }
+
 
     // 配送(必須)
     if (!deliveryDate.trim()) errs.push("配送日付を入力してください。");
@@ -429,7 +426,7 @@ export function AllmightApplyForm({
           <h2 className="text-sm font-semibold text-gray-800">レンタル機材 {req}</h2>
           <span className="text-xs text-gray-500">{filledCount} / {ALLMIGHT_MAX_EQUIPMENT} 件</span>
         </div>
-        <p className="mt-1 text-xs text-gray-500">機材を選択してください(最大{ALLMIGHT_MAX_EQUIPMENT}種類・同じ機材の重複選択はできません)。</p>
+        <p className="mt-1 text-xs text-gray-500">機材を選択してください(最大{ALLMIGHT_MAX_EQUIPMENT}台・同じ商品を複数選択できます)。</p>
         <div className="mt-3 space-y-2">
           {equipments.map((eq, i) => (
             <div key={i} className="flex items-center gap-2">
