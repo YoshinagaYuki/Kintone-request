@@ -27,7 +27,8 @@ function syncInventory() {
   if(!feed||!feed.startsWith('https://kintone-request.vercel.app/api/inventory/sheet.csv?key='))throw Error('feed not configured');
   const book=SpreadsheetApp.openById('1bEbV3bJvGIBhRdKnf3KwBIoJo-2EA-uXRNx2szq6Qx0');
   const tabs=Object.entries(INVENTORY_TABS);
-  const responses=UrlFetchApp.fetchAll(tabs.map(([name,product])=>({url:feed+'&months=6&layout=mirror&product='+encodeURIComponent(product),muteHttpExceptions:true})));
+  const monthStart=Utilities.formatDate(new Date(),'Asia/Tokyo','yyyy-MM')+'-01';
+  const responses=UrlFetchApp.fetchAll(tabs.map(([name,product])=>({url:feed+'&months=6&layout=mirror&start='+monthStart+'&product='+encodeURIComponent(product),muteHttpExceptions:true})));
   // Validate every product before any writes. A failed feed leaves the last good mirror intact.
   const plans=tabs.map(([name,product],i)=>{
    if(responses[i].getResponseCode()!==200)throw Error('feed unavailable');
@@ -49,7 +50,7 @@ function syncInventory() {
    area.setFontFamily('Arial').setFontSize(10).setFontColor('#334155').setVerticalAlignment('middle').setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
    sheet.getRange(1,1,1,2).merge().setValue('在庫管理表').setBackground('#0f172a').setFontColor('#ffffff').setFontSize(10);sheet.getRange(1,3,1,31).merge().setValue(data.product).setBackground('#0f172a').setFontColor('#ffffff').setFontSize(14).setFontWeight('bold');sheet.setRowHeight(1,38);
    const stamp=Utilities.formatDate(new Date(),'Asia/Tokyo','MM/dd HH:mm:ss');
-   sheet.getRange(2,1,1,2).merge().setValue('自動更新').setBackground('#f8fafc');sheet.getRange(2,3,1,31).merge().setValue(stamp+'　／　閲覧用（入力は管理画面から）　／　'+data.from+' 〜 '+data.to).setBackground('#f8fafc').setFontSize(10);sheet.setRowHeight(2,26);
+   sheet.getRange(2,1,1,2).merge().setValue('自動更新').setBackground('#f8fafc');sheet.getRange(2,3,1,31).merge().setValue(stamp+'　／　管理者は編集可・自動更新時はシステムの内容を反映　／　'+data.from+' 〜 '+data.to).setBackground('#f8fafc').setFontSize(10);sheet.setRowHeight(2,26);
    const legend=[['登録完了','#d1fae5'],['仮押さえ','#fef3c7'],['申請待ち','#dbeafe'],['延長','#ede9fe'],['予備','#e2e8f0']];
    legend.forEach(([label,color],i)=>sheet.getRange(3,3+i*4,1,4).merge().setValue(label).setBackground(color).setHorizontalAlignment('center'));sheet.setRowHeight(3,24);sheet.setRowHeight(4,8);
    const values=data.values.map(row=>row.map(value=>/^[=+@\-\t\r]/.test(value)?"'"+value:value));
@@ -83,6 +84,6 @@ function ensureMirrorEditors(sheet){
 }
 function configureMirrorEditors(){
  const book=SpreadsheetApp.openById('1bEbV3bJvGIBhRdKnf3KwBIoJo-2EA-uXRNx2szq6Qx0');
- Object.keys(INVENTORY_TABS).forEach(name=>{const sheet=book.getSheetByName('ガント '+name.trim());if(sheet)ensureMirrorEditors(sheet);});
+ Object.keys(INVENTORY_TABS).forEach(name=>{const sheet=book.getSheetByName('ガント '+name.trim());if(sheet){ensureMirrorEditors(sheet);if(!sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET).every(p=>p.canEdit()))throw Error('Mirror editor access missing: '+sheet.getName());console.log(sheet.getName()+': designated administrator can edit');}});
  SpreadsheetApp.flush();
 }
