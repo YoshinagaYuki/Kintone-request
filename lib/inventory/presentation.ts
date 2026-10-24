@@ -8,4 +8,4 @@ export function boardSegments(lane:BoardLane,dates:string[],locked:(d:string)=>b
  for(const date of dates){const booking=bookingOn(lane,date),inactive=locked(date),previous=result[result.length-1];if(previous&&date!==options.breakAt&&previous.booking?.id===booking?.id&&previous.inactive===inactive&&(options.splitPhases===false||!booking||bookingPhase(previous.booking!,previous.date)===bookingPhase(booking,date)))previous.span++;else result.push({date,booking,span:1,inactive});}
  return result;
 }
-export function bookingLabel(b:BoardBooking,date:string){const phase=bookingPhase(b,date);return phase==='delivery'?'配送期間':phase==='return'?'返却期間':`${b.managementNo?b.managementNo+'：':b.kind!=='request'?'仮押さえ：':'番号未発行：'}${b.store}`;}
+export function bookingLabel(b:BoardBooking,date:string){const phase=bookingPhase(b,date);return phase==='delivery'?'配':phase==='return'?'返':`${b.managementNo?b.managementNo+'：':b.kind!=='request'?'(仮) ':'番号未発行：'}${b.store}`;}
