@@ -1,4 +1,5 @@
 "use client";
+import type {InventoryRecord} from '@/lib/inventory/model';
 import {useState,useRef,useLayoutEffect,Fragment} from "react";
 import {useRouter} from "next/navigation";
 import {type BoardBooking,type BoardLane} from "@/lib/inventory/board";
@@ -8,7 +9,7 @@ import {InventoryBookingEditor} from "./inventory-booking-editor";
 import {InventoryHoldForm} from "./inventory-hold-form";
 import {boardColor,boardSegments,laneLocked,bookingLabel} from "@/lib/inventory/presentation";
 const DENSITIES={compact:46,standard:64,wide:88} as const;
-export function InventoryBoard({item,items,dates,anchor,lanes,staff,version}:{item:CapacityItem;items:CapacityItem[];dates:string[];anchor:string;lanes:BoardLane[];staff:{id:string;name:string}[];version:number}){
+export function InventoryBoard({item,items,dates,anchor,lanes,staff,version,requests}:{item:CapacityItem;items:CapacityItem[];dates:string[];anchor:string;lanes:BoardLane[];staff:{id:string;name:string}[];version:number;requests:InventoryRecord[]}){
  const [density,setDensity]=useState<keyof typeof DENSITIES>("compact");const DAY=DENSITIES[density];
  const [preview,setPreview]=useState<{booking:BoardBooking;x:number;y:number}|null>(null);
  function showPreview(node:HTMLElement,booking:BoardBooking){const rect=node.getBoundingClientRect();setPreview({booking,x:Math.max(8,Math.min(rect.left,window.innerWidth-328)),y:Math.max(8,Math.min(rect.bottom+8,window.innerHeight-190))});}
@@ -59,7 +60,7 @@ export function InventoryBoard({item,items,dates,anchor,lanes,staff,version}:{it
   {preview&&!selection&&<aside id="inventory-booking-preview" role="tooltip" className="pointer-events-none fixed z-[60] w-80 max-w-[calc(100vw-16px)] rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-900 shadow-xl" style={{left:preview.x,top:preview.y}}><p className="break-words font-semibold">{preview.booking.managementNo?`${preview.booking.managementNo}：`:preview.booking.kind!=="request"?"(仮) ":""}{preview.booking.store}</p><p className="mt-2">担当者：{preview.booking.staff}</p><p className="mt-1 text-xs text-slate-600">利用：{preview.booking.start} 〜 {preview.booking.end}</p><p className="mt-1 text-xs text-slate-600">配送：{preview.booking.delivery||"未設定"} ／ 集荷：{preview.booking.pickup||"未設定"}</p><p className="mt-2 text-xs text-slate-500">クリックすると案件の詳細を確認できます</p></aside>}
   {selection&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4" onClick={()=>!busy&&setSelection(null)} onKeyDown={e=>{if(e.key==="Escape"&&!busy)setSelection(null);if(e.key==="Tab"){const focusable=Array.from(e.currentTarget.querySelectorAll<HTMLElement>('button:not([disabled]),a[href],input,select'));const first=focusable[0],last=focusable[focusable.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}}}><section role="dialog" aria-modal="true" aria-label={selection.booking?"予定の編集・番号指定":"仮押さえを追加"} className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-xl bg-white p-6 shadow-xl" onClick={e=>e.stopPropagation()}>
    <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold">{selection.booking?"予定の編集・番号指定":"仮押さえを追加"}</h2><button type="button" autoFocus disabled={busy} onClick={()=>setSelection(null)} className="rounded border px-3 py-1">閉じる</button></div>
-   {selection.booking?<InventoryBookingEditor key={selection.booking.key} booking={selection.booking} itemId={item.id} items={items} staff={staff} version={selection.version} onClose={()=>setSelection(null)}/>:<InventoryHoldForm items={items} staff={staff} version={selection.version} initialItemId={item.id} initialDate={selection.date} initialNumber={selection.number} onSaved={()=>setSelection(null)}/>}
+   {selection.booking?<InventoryBookingEditor requests={requests} key={selection.booking.key} booking={selection.booking} itemId={item.id} items={items} staff={staff} version={selection.version} onClose={()=>setSelection(null)}/>:<InventoryHoldForm items={items} staff={staff} version={selection.version} initialItemId={item.id} initialDate={selection.date} initialNumber={selection.number} onSaved={()=>setSelection(null)}/>}
 
   </section></div>}
  </>;
