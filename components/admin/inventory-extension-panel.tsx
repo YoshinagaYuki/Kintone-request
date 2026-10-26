@@ -11,7 +11,7 @@ export async function InventoryExtensionPanel({request,canManage}:{request:{id:s
   if(error)return <p role="alert" className="my-4 text-red-700">延長の状態を取得できませんでした。</p>;
   const incoming=data?.find(e=>e.child_request_id===request.id),outgoing=data?.find(e=>e.parent_request_id===request.id);
   const end=request.parsed_data["利用最終日"];
-  return <section className="my-6"><h2 className="text-lg font-bold">延長・集荷の引継ぎ</h2>
+  return <section id="inventory-extension" className="my-6"><h2 className="text-lg font-bold">延長・集荷の引継ぎ</h2>
     {incoming&&<div className="mt-2 rounded border border-purple-200 bg-purple-50 p-3 text-sm"><Link className="text-purple-800 underline" href={`/admin/requests/${incoming.parent_request_id}`}>延長元の申請を開く</Link><p>新規納品は不要です。配送・集荷先情報は空欄のため、必要な手配内容はkintoneで確認してください。</p>
       <p>{incoming.state==="complete"?"旧集荷の手配不要・新集荷日の登録まで完了しました。":"延長の外部連携が未完了です。完了するまで旧集荷の取消状況と新集荷の状態を確認してください。"}</p>
       {incoming.state!=="complete"&&canManage&&<InventoryExtensionRetry requestId={request.id}/>}

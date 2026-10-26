@@ -24,7 +24,7 @@ export function ganttEntry(request: InventoryRequest) {
   const delivery = text(L.deliveryDate), pickup = request.pickup_cancelled ? "" : text(L.pickupDate);
   const dates = [start, end, delivery, pickup].filter(validDate).sort();
   return {
-    ...request, start, end, delivery, pickup,
+    ...request, start, end, delivery, pickup, deliveryRequired:(request.inventory_parent_request_id||data['_inventory_delivery_required']===false)?false:undefined,pickupRequired:request.pickup_cancelled||data['_inventory_pickup_required']===false?false:undefined,
     from: dates[0], to: dates[dates.length - 1],
     store: text(L.eventBoothName) || text(L.eventBooth) || text(L.agencyName) || "店舗名未設定",
     staff: request.approved_staff_name || request.company_staff_name_input || text("担当者") || "担当者未設定",
