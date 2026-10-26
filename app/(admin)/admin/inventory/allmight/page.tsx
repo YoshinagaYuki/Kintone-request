@@ -4,15 +4,14 @@ import { InventoryWorkspace } from "@/components/admin/inventory-workspace";
 import { addDays, validDate } from "@/lib/inventory/gantt";
 
 export const dynamic = "force-dynamic";
-const PRESETS = { week: ["1週間", 7], fortnight: ["2週間", 14], month: ["1ヶ月", 1], quarter: ["3ヶ月", 3], half: ["6ヶ月", 6] } as const;
+const PRESETS = { quarter: ["3ヶ月", 3], half: ["6ヶ月", 6], year: ["12ヶ月", 12] } as const;
 export default async function Page({ searchParams }: { searchParams: Promise<{ start?: string; end?: string; period?: string; product?:string }> }) {
   const params = await searchParams;
   const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo" }).format(new Date());
   const start = validDate(params.start) && params.start >= "2000-01-01" && params.start <= "2100-01-01" ? params.start : today;
-  const period = params.period && Object.hasOwn(PRESETS, params.period) ? params.period as keyof typeof PRESETS : "month";
+  const period = params.period && Object.hasOwn(PRESETS, params.period) ? params.period as keyof typeof PRESETS : "quarter";
   let defaultEnd: string;
-  if (period === "week" || period === "fortnight") defaultEnd = addDays(start, PRESETS[period][1] - 1);
-  else {
+  {
     const d = new Date(`${start}T00:00:00Z`), day = d.getUTCDate();
     d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() + PRESETS[period][1]);
     const last = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
