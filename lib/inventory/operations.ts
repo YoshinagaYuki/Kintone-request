@@ -1,3 +1,4 @@
+import{unitSegments}from'./unit-switches';
 import{occupiedCycle}from'./occupied-cycle';
 import {validDate} from './gantt';
 import {stockOn} from './board';
@@ -21,11 +22,11 @@ export function unitNumber(value:unknown){if(value===null||value==='')return nul
 export function resolveUnitNumber(model:InventoryModel,r:InventoryRecord,value:unknown,existing=model.records){
  if(value!=='auto')return unitNumber(value);
  const item=model.items.find(i=>i.id===r.itemId);if(!item)throw Error('有効な商品を選択してください');
- for(let n=1;n<=250;n++){try{validateNumber(model,r,n);}catch{continue;}if(!existing.some(other=>other.itemId===r.itemId&&other.booking.group!==r.booking.group&&other.booking.unitNumber===n&&occupiedCycle(other.booking).from<=occupiedCycle(r.booking).to&&occupiedCycle(r.booking).from<=occupiedCycle(other.booking).to))return n;}
+ for(let n=1;n<=250;n++){const cycle=occupiedCycle(r.booking);if([cycle.from,...(item.schedule??[]).filter(s=>cycle.from<=s.effective_date&&s.effective_date<=cycle.to).map(s=>s.effective_date)].some(d=>n>(stockOn(item,d)?.usable??0)))break;try{validateNumber(model,r,n);}catch{continue;}if(!slotSchedule(existing).some(other=>slotSchedule([{...r,booking:{...r.booking,unitNumber:n}}]).some(candidate=>other.item_id===candidate.item_id&&other.group_key!==candidate.group_key&&other.unit_number===candidate.unit_number&&other.occupied_from<=candidate.occupied_to&&candidate.occupied_from<=other.occupied_to)))return n;}
  throw Error('確保期間を通して空いている番号がありません。日程を調整するか未割当を選択してください');
 }
-export function validateNumber(model:InventoryModel,r:InventoryRecord,n:number|null){if(n===null)return;const item=model.items.find(i=>i.id===r.itemId);if(!item)throw Error('有効な商品を選択してください');const cycle=occupiedCycle(r.booking);const checks=[cycle.from,...(item.schedule??[]).filter(s=>cycle.from<=s.effective_date&&s.effective_date<=cycle.to).map(s=>s.effective_date)];if(checks.some(d=>n>(stockOn(item,d)?.usable??0)))throw Error('この番号は確保期間中に予備・対象外になります');}
-export function slotSchedule(records:InventoryRecord[]){return records.filter(r=>!r.deleted&&r.booking.unitNumber!=null).map(r=>({item_id:r.itemId,unit_number:r.booking.unitNumber,group_key:r.booking.group,occupied_from:occupiedCycle(r.booking).from,occupied_to:occupiedCycle(r.booking).to}));}
+export function validateNumber(model:InventoryModel,r:InventoryRecord,n:number|null){const item=model.items.find(i=>i.id===r.itemId);if(!item)throw Error('有効な商品を選択してください');for(const segment of unitSegments({...r.booking,unitNumber:n})){const number=segment.unitNumber;if(number==null)continue;const cycle=occupiedCycle(segment);const checks=[cycle.from,...(item.schedule??[]).filter(s=>cycle.from<=s.effective_date&&s.effective_date<=cycle.to).map(s=>s.effective_date)];if(!Number.isInteger(number)||number<1||checks.some(d=>number>(stockOn(item,d)?.total??0)))throw Error('この機器番号は確保期間中の保有数を超えています');}}
+export function slotSchedule(records:InventoryRecord[]){return records.filter(r=>!r.deleted).flatMap(r=>unitSegments(r.booking).filter(b=>b.unitNumber!=null).map(b=>({item_id:r.itemId,unit_number:b.unitNumber,group_key:b.group,occupied_from:occupiedCycle(b).from,occupied_to:occupiedCycle(b).to})));}
 export function holdBatchInput(body:Record<string,unknown>){
  if(!uuid(body.batch_id)||!uuid(body.staff_id))throw Error('担当者を選択してください');
  const patch=bookingPatch({item_id:(body.lines as any[])?.[0]?.item_id,staff:'担当者',store:body.store_name,start:body.start,end:body.end,from:body.from,to:body.to,delivery:body.delivery??'',pickup:body.pickup??''});

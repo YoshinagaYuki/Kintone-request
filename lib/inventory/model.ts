@@ -13,6 +13,7 @@ export type InventoryModel={syncJobs?:InventorySyncJob[];accessories?:CapacityIt
 export function applyInventoryEdits(base:InventoryRecord[],edits:BookingEdit[],assignments:Assignment[]):InventoryRecord[]{
  return base.map(r=>{const edit=edits.find(e=>e.booking_key===r.booking.key),patch=edit?.patch??{};const itemId=typeof patch.item_id==='string'?patch.item_id:r.itemId;const b={...r.booking};for(const key of ['staff','store','start','end','from','to','delivery','pickup','status','managementNo'] as const)if(typeof patch[key]==='string')b[key]=patch[key] as string;
  for(const key of ['deliveryRequired','pickupRequired'] as const)if(typeof patch[key]==='boolean')b[key]=patch[key] as boolean;
+ if(Array.isArray(patch.unitSwitches))b.unitSwitches=patch.unitSwitches as import('./unit-switches').UnitSwitch[];
  if(Number.isInteger(patch.screenQuantity))b.screenQuantity=patch.screenQuantity as number;
  const a=assignments.find(a=>a.group_key===b.group&&a.item_id===itemId);b.unitNumber=a?a.unit_number:itemId===r.itemId?b.unitNumber??null:null;
  return {itemId,booking:b,deleted:edit?.deleted??false};});

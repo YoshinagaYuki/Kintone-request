@@ -17,7 +17,7 @@ export async function InventoryWorkspace({start,end,dates,product,period,customE
  {pending>0&&<p className="mb-2 text-[11px] text-amber-900">未割当は番号の確保完了ではありません。予定をクリックして番号を選ぶか、番号の行へドラッグしてください。</p>}
  {supportsScreen(selected.name)&&<p className="mb-3 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-900">背景スクリーン（大小共通）：保有 {(screen?stockOn(screen,start)?.total:undefined)??'未設定'}枚 ／ 開始日の確保 {screenUsage(model.records,start)}枚。貸出する予定で数量を指定してください。</p>}
  {supportsScreen(selected.name)&&screenOver.length>0&&<p role="alert" className="mb-3 rounded-lg bg-rose-50 p-3 text-xs text-rose-800">背景スクリーンが共通在庫を超える日があります（{screenOver[0]}ほか）。保有数・貸出予定を確認してください。</p>}
- <InventoryBoard key={selected.id} item={selected} items={model.items} dates={dates} anchor={start} lanes={lanes} staff={model.staff} version={model.version} requests={model.allRecords.filter(r=>r.booking.kind==='request')}/>
+ <InventoryBoard key={selected.id} item={selected} items={model.items} dates={dates} anchor={start} lanes={lanes} staff={model.staff} version={model.version} requests={model.allRecords}/>
  <details className="my-3 rounded-xl border bg-white p-3"><summary className="cursor-pointer text-xs text-slate-600">在庫数・予備数の設定</summary><InventoryControls key={selected.id} items={[...model.items,...(model.accessories??[])]} staff={model.staff} stocks={model.items.filter(i=>i.total_count!=null&&i.reserve_count!=null).map(i=>({item_id:i.id,total_count:i.total_count!,reserve_count:i.reserve_count!}))} plans={model.items.flatMap(i=>i.schedule??[])} initialItemId={selected.id} includeHolds={false}/></details>
  </>;
 }

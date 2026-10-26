@@ -7,7 +7,7 @@ import{getVersionedConfig}from'../form-types';
 import{equipmentLabel}from'../allmight-fmt';
 import{matchCapacityItem}from'./availability';
 export async function prepareCopySource(db:SupabaseClient,model:InventoryModel,key:string){
- const source=model.records.find(r=>r.booking.key===key);if(!source||source.booking.status==='blocked')throw Error('コピーする貸出予定を選択してください');
+ const source=model.records.find(r=>r.booking.key===key);if(source?.booking.unitSwitches?.length)throw Error('機器番号を切替済みの予定は、切り替えを解除してからコピーしてください');if(!source||source.booking.status==='blocked')throw Error('コピーする貸出予定を選択してください');
  const b=source.booking;if(b.status!=='registered'||!b.managementNo)throw Error('元の管理番号を確定してからコピーしてください');if(b.kind==='request'){const outgoing=await db.from('inventory_extensions').select('child_request_id').eq('parent_request_id',b.id).maybeSingle();if(outgoing.data)throw Error('この申請には延長先があります。最新の延長先からコピーしてください');}
  const form=await db.from('form_types').select('id,version,field_mapping').eq('kintone_app_id',10).single();if(form.error)throw Error('オールマイトの申請設定を確認してください');
  let parsed:Record<string,unknown>={},formId=form.data.id,version=form.data.version,recordId:string|null=null;
