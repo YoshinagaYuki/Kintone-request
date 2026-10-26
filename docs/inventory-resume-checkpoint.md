@@ -115,3 +115,10 @@
 - e8f6cde production verified at 844x390: close target44px, inputs44px and16px. Screenshot outputs/mobile-landscape-editor-844.png.
 - Delete confirmation still referred to the deleted-list UI removed by user request; updated explanation to retained record/audit history.
 - QA tabs closed; viewport reset. Next: mobile multi-product edit / reserve switch and12-month navigation. Goal ACTIVE through07:00, automation7 retained.
+
+### 2026-10-27 00:40 mobile multi-item / reserve switch
+- Production UI at320px: test hold e0dd65b1-9a3e-4b00-abf3-62e7e4c1263e, future2027-05-01..03, JET reserve16. Added same-product JET and different-product duck through editor and saved successfully. DB verified3 fixture records across2 products, auto units1 for additions.
+- On original fixture, mobile switch panel selected2027-05-02 / unit2. Save succeeded; board shows16 until5/1 and2 from5/2. Stored unitSwitches date/number confirmed; delivery4/30 and pickup5/4 unchanged. Screenshot outputs/mobile-reserve-switch-320.png.
+- All3 exact-marker fixture records soft-deleted after checks; remaining active count0. No customer request/kintone modified. Viewport reset and QA tab closed.
+- Concrete usability issue: additional-product Remove target measured24x44px. Changed minimum width44px, shrink0 to prevent tiny touch target. Build pending at session76811; log /tmp/mobile-equipment-build.txt. Commit/push after success, verify320px production row still fits.
+- Usage at00:35:54%5h used, reset1793044593. Keep headroom/checkpoint; automation7 remains through07:00.
