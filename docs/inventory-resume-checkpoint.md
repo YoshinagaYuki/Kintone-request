@@ -163,3 +163,10 @@
 - Production read-only DB:modelversion542, restoredunit7, importedsource present / overlay0, newdragassign0, activefixtures0, pendingsync0, queryerrors0.
 - Production390x844 JET:docwidth390,header61,selectedtabJET visible,touchpan-xpan-y,noeditoropen. Captured outputs/mobile-inventory-final-0700.png after page scroll; viewportreset andQAtabclosed.
 -99inventorytests pass;latestimplementationbuildpass;gitdiffcheckpass. Full evidence and real-device limitations recorded docs/mobile-inventory-qa-20261027.md. All implementation changes deployed and verified; final documentation commit pending then removeautomation7 / markgoalcomplete.
+
+### 2026-10-27 follow-up: past labels and zoom
+- User requested past labels only through2days after booking, and old compact as100% with50..150% slider/direct numeric entry.
+-2ae287b deployed: empty-cell label spill limited to2days; range+numeric controls replace density presets; table zoom scales cells/text together and preserves logical horizontal date position. Visible-width label measurement accounts for scale.
+- Production390px:100%=46px/day,left1380;75%=34.5px/day;150%=69px/day,left2070;50%=23px/day,left690. Enter retains position;200input clamps150. Returning100restores expected width. Document390px throughout.
+- At10/27 old999/855labels have0visible text width. Scrollright47px to10/28 hides942label(right128vscontentstart134,textwidth0), proving2day expiry boundary. No customer data changed.
+- Build passed;99inventorytests passed;gitdiffcheck passed. Screenshot outputs/inventory-zoom-100-mobile.png. QA tab closed andviewport reset. No automation created for this follow-up.
