@@ -80,3 +80,14 @@
 - layoutBoardとslotScheduleが同じ期間分割を使用。切替前日までは元番号、当日から切替先へ。Sheetsミラーも同じ描画。通常編集で商品/利用期間を変更する場合と延長コピーは切替解除を要求し、無言の変更を防ぐ。
 - 今日（anchor）の強制分割を廃止。配送/利用/集荷の色分けは維持。
 - 99 tests PASS、typecheck/build PASS。本番UIで検証用hold 7fbd5999-4c7a-2f0b-98c3-296d816fef28 をJET予備16号へ2/1〜2/3登録→2/2から1号に切替→1号は2/2〜、16号は前日まで表示を確認。元納品1/31・集荷2/4不変。解除をUI確認後、検証holdをsoft-delete済み。顧客データやkintoneへの検証書込なし。
+
+## 2026-10-27 00時台 スマホ改善・17:30復元・朝7時まで継続中
+- 最新ユーザー依頼: スマホのドラッグ移動を廃止。10/26 17:30以降の誤操作復元。10/27 07:00をゴールに一晩改善。goal ACTIVEを作成。07:00まで完了扱いにしない。
+- 17:30以降の監査494〜497を取得。実変更は494（request b039aeaf… unit7→4）と497（sheet6a5964… 新規unit2割当）の2件。495/496は同じ番号へのnoop。条件付きupdateで494をunit7へ、497を割当overlay削除し元シートの元番号へ復元済み。監査inventory_assignment_restore / restore_before_1730も記録。顧客申請・kintoneに変更なし。
+- バックアップはチャットwork/inventory-after1730-audit.json と inventory-1730-rollback-backup.json（0600）。復元済みなので再実行禁止。新しいユーザー変更を上書きしない。
+- 410c8f8 本番公開済み、実画面で『予定をタップして編集』確認。pointer handlers / pointercapture / drag state / assignment fetchを全削除。旧画面のPOST operations action=assignも410で拒否。手動番号編集/日付指定unit-switchesは残す。
+- 同commit: モバイルヘッダー60px固定+メニュー（1024px未満）。タップ44px、入力16px（iOS自動拡大抑制）、フォーム1列、日付パネル2列、予定セルpan-x pan-y、タブsticky60px、編集max90dvh。99 tests/typecheck/build PASS。
+- 本番スマホ検証: Chrome browser IDが旧3→現在1へ変化（Cua runtimeもreset）。Chrome1はログイン済み、IAB3はログイン切れ。CuaでChrome1選択・nameSession済み。mobileSignedTab=1093846964、/admin/inventory/allmight。viewport capability.set({width:390,height:844})で検証中、終了時reset必須。ページwidth/scrollWidthとも390、headerHeight61、gridtouchActionpan-x pan-yを実測。スマホメニュー表示、週間納品dialogの表示まで確認。顧客データは変更しない。
+- 未コミット追補: スマホdensityをselectにして操作バー1行化、編集ウィンドウヘッダーsticky+close44/nowrap、週間dialogボタン44/close nowrap、body:has(dialog[open]/inventory-editor)で背景スクロール固定。/tmp/mobile-controls-build.txtで先行typecheck/build PASS、nowrap/bodylock追補は小変更未再build。
+- 次: 追補をcommit/push、本番390/320/430幅を検証。週間dialog次週/閉じる、商品タブ、横縦スクロール、編集保存を検証用future hold（明示marker）で確認しsoft-delete cleanup。既存のcaseを検証書込しない。17:30復元のDB事後照合、Chromeviewportreset、画像保存。具体的問題があれば修正、無意味な変更はしない。
+- 継続heartbeat automation ID『7』 ACTIVE、30分毎、destination thread。07:00になったら最終監査・報告後automation7削除、goalを達成時のみcomplete。変化のない通知をしない。利用枠を随時確認し枯渇前にcheckpoint+実回復後再開予約。

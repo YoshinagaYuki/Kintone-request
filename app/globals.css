@@ -43,3 +43,7 @@
   .inventory-editor fieldset > .grid { grid-template-columns: minmax(0, 1fr); }
   .inventory-editor input, .inventory-editor select, .inventory-editor textarea { max-width: 100%; }
 }
+@media (max-width: 639px) {
+  .inventory-workspace dialog button { min-height: 44px; }
+}
+body:has(.inventory-editor), body:has(.inventory-workspace dialog[open]) { overflow: hidden; }
