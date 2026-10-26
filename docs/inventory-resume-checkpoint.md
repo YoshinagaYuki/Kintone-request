@@ -140,3 +140,26 @@
 - Found concrete issue: after scrolling to end of week and choosing next week, list retained scrollTop720 and first card y-507 (above view). Fix in InventoryDeliveries remounts list on week change and resets list scrollTop when reopened. No data write.
 - Build session3049 /tmp/mobile-week-reset-build.txt. Commit/push when passed, then verify next-week scrollTop0 and reopen0 on production. No other code changes. Checkpoint changes from01:35 included locally.
 - Usage70% at02:02, reset1793044593 (JST04:56:33). Preserve headroom; automation7 retained through07:00.
+
+### 2026-10-27 02:32 weekly reset verified
+- f236827 production at390x420: list scrolled840px, Next Week reset scrollTop0 and first card y213; close/reopen reset0 and heading This Week. Screenshot outputs/mobile-week-reset-390.png. QA tab closed and viewport reset. No data mutation.
+- Running inventory regression suite /tmp/mobile-night-final-tests.txt. No additional code change needed. At07:00 final audit restoration rows/no-assign, fixtures absent, sync health, branch/deploy state then report and removeautomation7.
+- Inventory regression result:99/99 passed,0failed,0skipped (02:33). Latest behavior fix build had passed before push. Remaining checks are final runtime/data integrity audit; do not churn code absent a concrete defect.
+
+### 2026-10-27 03:02 integrity check
+- Read-only production DB/model:version542; restored request remains unit7; restored imported source exists with0assignment overlays; assign audits since JSTmidnight0; active test markers0; pending kintone sync jobs0; query errors0.
+- Board source contains no pointer/drag handlers. Working tree only this checkpoint; no pending implementation changes.
+- Usage77%, reset04:56:33JST. Existing half-hour automation7 will recheck until07:00; preserve remaining headroom and avoid repeated full UI/test work absent changes. Final evidence audit remains scheduled for07:00.
+
+### 2026-10-27 05:00 reset / final audit preparation
+- Usage reset confirmed:primary0%used, ordinary usage allowed. No reset-credit purchase/use needed.
+- Added docs/mobile-inventory-qa-20261027.md collecting requirement-by-requirement evidence and real-device limitations. Final07:00 section deliberately pending; implementation unchanged. Local docs changes only; commit with final audit.
+
+### 2026-10-27 06:33 maximum-stock annual view
+- Production390x844, largest standard item25units/12months:397header cells,50body rows loaded. documentWidth390; today's initial scrollLeft1380. Native scroll moved left1770/top844 without opening editor; Today button restored left1380. No data writes.
+- QA tab closed, viewport reset. All planned responsive cases now exercised; final07:00 DB/runtime/branch audit remains. Only documentation pending in working tree.
+
+### 2026-10-27 07:03 final audit complete
+- Production read-only DB:modelversion542, restoredunit7, importedsource present / overlay0, newdragassign0, activefixtures0, pendingsync0, queryerrors0.
+- Production390x844 JET:docwidth390,header61,selectedtabJET visible,touchpan-xpan-y,noeditoropen. Captured outputs/mobile-inventory-final-0700.png after page scroll; viewportreset andQAtabclosed.
+-99inventorytests pass;latestimplementationbuildpass;gitdiffcheckpass. Full evidence and real-device limitations recorded docs/mobile-inventory-qa-20261027.md. All implementation changes deployed and verified; final documentation commit pending then removeautomation7 / markgoalcomplete.
