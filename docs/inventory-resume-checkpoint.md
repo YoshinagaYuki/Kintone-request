@@ -108,3 +108,10 @@
 - 横向きの在庫確保モーダルは351px高で画面内、背景スクロール固定。ただし閉じるボタン34pxだったため横向きスマホ／タッチタブレット向け44px、入力16pxを追加。ビルド成功。公開後に実測確認を残す。
 - 検証タブを閉じviewportリセット済。顧客予定の書込なし。
 - 次: 横向き44pxの本番確認、削除APIの一般エラーを検証専用データで原因調査。復元済みの17:30以降操作は再ロールバックしない。7:00まで目標継続、automation7維持。
+
+### 2026-10-27 00:35 mobile delete / landscape verified
+- Disposable hold 8658eb8b-1f6e-4264-a9ea-245bf467e816 (JET, 2027-04-01, unit 1) created for deletion QA. Deleted successfully through production UI at 390px. DB deleted=true and latest audit action=delete verified. Fixture is cleaned; no customer or kintone data changed.
+- Historical delete API error does not reproduce on current production after the copy-guard fix. DB conflict assertion with all 125 scheduled slots also succeeds.
+- e8f6cde production verified at 844x390: close target44px, inputs44px and16px. Screenshot outputs/mobile-landscape-editor-844.png.
+- Delete confirmation still referred to the deleted-list UI removed by user request; updated explanation to retained record/audit history.
+- QA tabs closed; viewport reset. Next: mobile multi-product edit / reserve switch and12-month navigation. Goal ACTIVE through07:00, automation7 retained.
