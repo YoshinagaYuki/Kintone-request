@@ -122,3 +122,9 @@
 - All3 exact-marker fixture records soft-deleted after checks; remaining active count0. No customer request/kintone modified. Viewport reset and QA tab closed.
 - Concrete usability issue: additional-product Remove target measured24x44px. Changed minimum width44px, shrink0 to prevent tiny touch target. Build pending at session76811; log /tmp/mobile-equipment-build.txt. Commit/push after success, verify320px production row still fits.
 - Usage at00:35:54%5h used, reset1793044593. Keep headroom/checkpoint; automation7 remains through07:00.
+
+### 2026-10-27 01:00 production follow-up
+- 5c32b37 build succeeded and pushed.320px production editor Remove button now44x44; both nested added-product sections fit256px with no internal or document overflow. Remove then Close without Save discarded staged change (no customer write).
+- Production period form switched to12months through UI:397 header cells (365 future days plus past month and fixed labels), document320px width unchanged; selected duck product persisted. Cleared optional end date before selecting year. No new layout defects found.
+- Locator clicks on long bookings whose DOM center lies behind sticky columns can miss in automation; direct tap on visible store at207,398 opened editor correctly. Actual visible touch area works; do not treat locator-center limitation as product bug.
+- QA tab closed; viewport reset. Usage61% at00:59, reset1793044593. No new customer/kintone writes or migration. Next: keyboard-height/short viewport dialog check and final restoration/sync audit near07:00. Automation7/goal remain active.
