@@ -1,0 +1,4 @@
+import{NextResponse}from'next/server';import{revalidatePath}from'next/cache';import{inventoryAccess}from'@/lib/inventory/access';import{createAdminClient}from'@/lib/supabase/admin';import{runInventoryChange}from'@/lib/inventory/change-runner';import{withInventorySheetPush}from'@/lib/inventory/sheet-push';
+export const maxDuration=60;
+async function handler(_req:Request,{params}:{params:Promise<{id:string}>}){const access=await inventoryAccess();if('error'in access)return NextResponse.json({error:access.error},{status:access.status});const{id}=await params;if(!/^[0-9a-f-]{36}$/i.test(id))return NextResponse.json({error:'変更番号が不正です'},{status:400});const result=await runInventoryChange(createAdminClient(),id,access.admin.auth_user_id);revalidatePath('/admin/inventory/allmight');revalidatePath('/admin/requests/[id]','page');return NextResponse.json(result);}
+export const POST=withInventorySheetPush(handler);

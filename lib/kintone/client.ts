@@ -171,3 +171,9 @@ export async function findRecords(
   );
   return body.records;
 }
+
+/** Commit related App10/App11 updates together; a revision conflict rolls back every update. */
+export async function updateRecordsAtomic(updates:{app:number;id:string;revision:string;record:import('./mapper').KintoneRecord}[]){
+ if(!updates.length||updates.length>20)throw Error('更新対象の件数が不正です');
+ return kintoneApi<{results:{revision:string}[]}>('POST','/k/v1/bulkRequest.json',{requests:updates.map(u=>({method:'PUT',api:'/k/v1/record.json',payload:u}))});
+}

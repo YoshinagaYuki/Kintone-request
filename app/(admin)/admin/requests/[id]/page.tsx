@@ -1,3 +1,4 @@
+import{InventorySyncStatus}from'@/components/admin/inventory-sync-status';
 import Link from "next/link";
 import {InventoryImportLinks} from "@/components/admin/inventory-import-links";
 import { InventoryExtensionPanel } from "@/components/admin/inventory-extension-panel";
@@ -360,6 +361,7 @@ export default async function RequestDetailPage({
     .filter((f) => f.value.trim() !== "" && !/[-‐-―ー－−]/.test(f.value))
     .map((f) => f.label);
 
+  const inventoryJobs=await supabase.from('inventory_change_jobs').select('id,request_id,status,error,created_at').eq('request_id',request.id).neq('status','succeeded');
   return (
     <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:py-10">
       <Link
@@ -369,6 +371,7 @@ export default async function RequestDetailPage({
         ← 申請一覧へ戻る
       </Link>
 
+      <InventorySyncStatus jobs={inventoryJobs.data??[]}/>
       {/* ヘッダー */}
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <h1 className="text-xl font-bold sm:text-2xl">

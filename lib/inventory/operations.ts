@@ -9,12 +9,13 @@ export function manualConfirmation(body:Record<string,unknown>){
  if(body.status==='registered'&&!/^\d{1,20}$/.test(managementNo))throw Error('本確定には管理番号を数字で入力してください');
  return{status:body.status as 'hold'|'registered',managementNo:body.status==='registered'?managementNo:''};
 }
-export function bookingPatch(body:Record<string,unknown>){
+export type BookingPatch={item_id:string;staff:string;store:string;start:string;end:string;from:string;to:string;delivery:string;pickup:string};
+export function bookingPatch(body:Record<string,unknown>):BookingPatch{
  if(!uuid(body.item_id))throw Error('商品を選択してください');const patch:Record<string,string>={item_id:body.item_id};
  for(const k of ['staff','store'] as const){if(typeof body[k]!=='string'||!(body[k] as string).trim()||(body[k] as string).length>200)throw Error('担当者・店舗名を入力してください');patch[k]=(body[k] as string).trim();}
  for(const k of ['start','end','from','to'] as const){if(!validDate(body[k])||(body[k] as string)<'2000-01-01'||(body[k] as string)>'2100-12-31')throw Error('利用・確保期間を確認してください');patch[k]=body[k] as string;}
  for(const k of ['delivery','pickup'] as const){if(body[k]!==''&&!validDate(body[k]))throw Error('配送・集荷日を確認してください');patch[k]=body[k] as string;}
- if(patch.end<patch.start||patch.to<patch.from||[patch.start,patch.end,patch.delivery,patch.pickup].filter(Boolean).some(d=>d<patch.from||d>patch.to))throw Error('確保期間には利用・配送・集荷日をすべて含めてください');return patch;
+ if(patch.end<patch.start||patch.to<patch.from||[patch.start,patch.end,patch.delivery,patch.pickup].filter(Boolean).some(d=>d<patch.from||d>patch.to))throw Error('確保期間には利用・配送・集荷日をすべて含めてください');return patch as BookingPatch;
 }
 export function unitNumber(value:unknown){if(value===null||value==='')return null;if(!Number.isInteger(value)||(value as number)<1||(value as number)>250)throw Error('番号は1〜250から選択してください');return value as number;}
 export function resolveUnitNumber(model:InventoryModel,r:InventoryRecord,value:unknown,existing=model.records){

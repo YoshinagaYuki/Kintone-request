@@ -1,0 +1,7 @@
+import{ALLMIGHT_FMT_LABELS as L,equipmentLabel}from'../allmight-fmt';
+export function updateRequestEquipment(parsed:Record<string,unknown>,slot:number,selected:string,additional:string[],patch:import('./operations').BookingPatch){
+ const data={...parsed};const equipment=Array.from({length:5},(_,i)=>typeof data[equipmentLabel(i+1)]==='string'?(data[equipmentLabel(i+1)]as string).trim():'');const count=equipment.filter(Boolean).length;
+ if(slot<0||slot>=5||!equipment[slot])throw Error('申請の機材枠が見つかりません');if(equipment.slice(0,count).some(v=>!v))throw Error('申請の機材枠を申請画面で確認してください');if(count+additional.length>5)throw Error('紐付いた申請は合計5台までです');equipment[slot]=selected;additional.forEach((name,i)=>equipment[count+i]=name);equipment.forEach((name,i)=>data[equipmentLabel(i+1)]=name);
+ Object.assign(data,{[L.eventBooth]:patch.store,[L.eventBoothName]:patch.store,[L.usageStart]:patch.start,[L.usageEnd]:patch.end,[L.deliveryDate]:patch.delivery,[L.pickupDate]:patch.pickup,'担当者':patch.staff});return{data,equipment,addedSlots:additional.map((_,i)=>count+i)};
+}
+export function rewriteInventoryFmt(raw:string,changed:Record<string,unknown>){const seen=new Set<string>();const lines=raw.split(/\r?\n/).map(line=>{const m=line.match(/^([^:：]+)[:：](.*)$/);if(!m)return line;const key=m[1].trim();if(!(key in changed))return line;seen.add(key);return `${key}：${String(changed[key]??'')}`;});for(const [key,value]of Object.entries(changed))if(!seen.has(key))lines.push(`${key}：${String(value??'')}`);return lines.join('\n');}
