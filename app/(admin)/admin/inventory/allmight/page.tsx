@@ -31,13 +31,14 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
   return <main className="mx-auto w-full max-w-[1900px] px-4 py-4 sm:px-6">
     <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold tracking-tight text-slate-900">オールマイト 在庫管理表</h1>
     <p className="mt-1 text-xs text-slate-500">貸出・仮押さえ・返却予定を、ひとつのスケジュールで。</p>
-    </div><div className="flex flex-wrap items-end gap-2"><InventoryDeliveries rows={deliveryRows(model.records,model.items)} today={today}/><form className=" flex flex-wrap items-end gap-2 rounded-2xl border border-slate-200 bg-white p-2 text-xs shadow-sm">
+    </div><form className=" flex flex-wrap items-end gap-2 rounded-2xl border border-slate-200 bg-white p-2 text-xs shadow-sm">
+      <InventoryDeliveries rows={deliveryRows(model.records,model.items)} today={today}/>
       {params.product&&<input type="hidden" name="product" value={params.product}/>}
       <label>開始日<input className="mt-1 block h-9 rounded-lg border px-2.5 text-sm" type="date" name="start" defaultValue={start} required /></label>
       <label>表示期間<select className="mt-1 block h-9 rounded-lg border px-2.5 text-sm" name="period" defaultValue={period}>{Object.entries(PRESETS).map(([key, [label]]) => <option key={key} value={key}>{label}</option>)}</select></label>
       <label>終了日（任意・優先）<input className="mt-1 block h-9 rounded-lg border px-2.5 text-sm" type="date" name="end" defaultValue={validDate(params.end) ? params.end : ""} /></label>
       <button className="h-9 rounded-lg bg-slate-900 px-5 text-sm font-medium text-white hover:bg-slate-700">表示</button>
-    </form></div></div>
+    </form></div>
     <InventoryWorkspace model={model} start={start} end={end} dates={dates} product={params.product} period={period} customEnd={validDate(params.end)?params.end:undefined}/>
 
   </main>;
