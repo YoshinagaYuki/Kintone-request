@@ -6,6 +6,8 @@ import { getVersionedConfig, isKintoneReady } from "@/lib/form-types";
 import type { FieldMapping } from "@/lib/kintone/mapper";
 import type { ParserConfig } from "@/types/request";
 
+export const maxDuration=60;
+
 /**
  * 承認: status=approved → kintone登録 → registered / register_failed。
  * レンタルプランを使う種別(てずくーる)は承認前にプラン確定が必須:

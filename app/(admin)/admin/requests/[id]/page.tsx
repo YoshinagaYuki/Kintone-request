@@ -1,3 +1,4 @@
+import{InventoryCopyPanel}from'@/components/admin/inventory-copy-panel';
 import{InventorySyncStatus}from'@/components/admin/inventory-sync-status';
 import Link from "next/link";
 import {InventoryImportLinks} from "@/components/admin/inventory-import-links";
@@ -371,7 +372,7 @@ export default async function RequestDetailPage({
         ← 申請一覧へ戻る
       </Link>
 
-      <InventorySyncStatus jobs={inventoryJobs.data??[]}/>
+      <InventoryCopyPanel requestId={request.id}/><InventorySyncStatus jobs={inventoryJobs.data??[]}/>
       {/* ヘッダー */}
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <h1 className="text-xl font-bold sm:text-2xl">

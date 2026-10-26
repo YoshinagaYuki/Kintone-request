@@ -61,6 +61,10 @@ export async function registerRequestToKintone(
     return { ok: false, error: "申請が見つかりません" };
   }
 
+  const copy=await supabase.from('inventory_copy_requests').select('id').eq('id',requestId).maybeSingle();
+  if(copy.error)return {ok:false,error:'コピー申請の連携設定を確認できませんでした'};
+  if(copy.data){const {runInventoryCopy}=await import('@/lib/inventory/copy-runner');return runInventoryCopy(requestId,actor);}
+
   if (request.inventory_parent_request_id) {
     const { runInventoryExtension } = await import("@/lib/inventory/extensions/runner");
     return runInventoryExtension(requestId, actor);

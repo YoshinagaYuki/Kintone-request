@@ -2,7 +2,7 @@ import type { KintoneRecord } from "@/lib/kintone/mapper";
 import type { KintoneRawRecord } from "@/lib/kintone/client";
 import { extensionShippingDraft } from "./model";
 export type Progress = { recordAttempted?: boolean; recordId?: string; managementNo?: string; shippingAttempted?: boolean; shippingId?: string; oldPickupCancelled?: boolean; carrierCancellationRequired?: boolean };
-export type ExtensionPlan = { childId: string; parentRecordId: string; parentNumber: string; parentUsageEnd: string; parentPickupDate: string; pickupDate: string; draft: KintoneRecord; progress: Progress };
+export type ExtensionPlan = { childId: string; parentRecordId: string; cancelParentPickup?:boolean;pickupRequired?:boolean;deliveryRequired?:boolean; parentNumber: string; parentUsageEnd: string; parentPickupDate: string; pickupDate: string; draft: KintoneRecord; progress: Progress };
 export interface ExtensionPorts {
   checkpoint(progress: Progress): Promise<void>;
   find(app: 10 | 11, key: string, value: string): Promise<KintoneRawRecord[]>;
@@ -65,6 +65,7 @@ export async function executeExtension(plan: ExtensionPlan, ports: ExtensionPort
     }
   }
   // 新旧の参照を確認してから旧集荷を切替。新レコードはこの時点では両方とも手配不要。
+  if(plan.cancelParentPickup!==false){
   const parent = await ports.get(10, plan.parentRecordId);
   if (value(parent, "管理番号") !== plan.parentNumber || value(parent, "日付_1") !== plan.parentUsageEnd || value(parent, "集荷_日付") !== plan.parentPickupDate) throw new Error("元案件の利用日・集荷日がkintone側で変更されています。内容を確認してください");
   const parentShippingId = await findOne(11, "管理番号", plan.parentNumber);
@@ -76,8 +77,9 @@ export async function executeExtension(plan: ExtensionPlan, ports: ExtensionPort
   await checkedUpdate(10, plan.parentRecordId, "管理番号", plan.parentNumber, { "集荷_手配種別": { value: "手配不要" } }, {"日付_1":plan.parentUsageEnd,"集荷_日付":plan.parentPickupDate});
   await checkedUpdate(11, parentShippingId, "管理番号", plan.parentNumber, { "集荷_手配種別": { value: "手配不要" } }, {"集荷_日付":plan.parentPickupDate});
   await checkpoint({ oldPickupCancelled: true });
-  const pickup = { "集荷_手配種別": { value: "通常配送" }, "集荷_日付": { value: plan.pickupDate }, "手配種別": { value: "手配不要" } };
+  }
+  const pickup = { "集荷_手配種別": { value: plan.pickupRequired===false?"手配不要":"通常配送" }, "集荷_日付": { value: plan.pickupRequired===false?'':plan.pickupDate }, "手配種別": { value: plan.deliveryRequired?"通常配送":"手配不要" } };
   await checkedUpdate(10, recordId, "external_project_id", marker, pickup);
   await checkedUpdate(11, progress.shippingId!, "管理番号", managementNo, { ...pickup, "ドロップダウン_1": { value: "入力完了" } });
-  return { recordId, managementNo, shippingId: progress.shippingId!, carrierCancellationRequired };
+  return { recordId, managementNo, shippingId: progress.shippingId!, carrierCancellationRequired:progress.carrierCancellationRequired??false };
 }

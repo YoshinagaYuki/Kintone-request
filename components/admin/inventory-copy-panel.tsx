@@ -1,0 +1,5 @@
+import{createClient}from'@/lib/supabase/server';
+export async function InventoryCopyPanel({requestId}:{requestId:string}){
+ const db=await createClient();const{data,error}=await db.from('inventory_copy_requests').select('state,source_snapshot,last_error,progress').eq('id',requestId).maybeSingle();if(error||!data)return null;
+ return <section className="my-4 rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm text-violet-950"><h2 className="font-semibold">コピーから作成した別の申請</h2><p className="mt-1">コピー元の管理番号：{data.source_snapshot.management_no||'未発行'}。元の請求月・管理番号を上書きせず、本確定で新しい管理番号を発行します。</p><p className="mt-1 text-xs">{data.state==='draft'?'現在は（仮）です。請求対象月・利用日・機器・担当者を確認し、下の承認操作で本確定してください。':data.state==='complete'?'新しい管理番号でkintone・配送管理への登録が完了しています。':'外部登録の処理状態を確認してください。失敗時は下の再実行操作で保存済みの進捗から再開します。'}</p>{data.progress?.carrierCancellationRequired&&<p className="mt-2 font-medium text-amber-900">元の集荷は運送会社への手配済み情報があります。kintone上は不要に切り替えていますが、運送会社への集荷取消も確認してください。</p>}{data.last_error&&<p role="alert" className="mt-2 text-rose-800">{data.last_error}</p>}</section>;
+}
