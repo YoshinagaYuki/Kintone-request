@@ -34,7 +34,7 @@ export default async function ItemsPage() {
         ← 申請一覧へ戻る
       </Link>
       <h1 className="mt-4 text-xl font-bold sm:text-2xl">名称マスター(機器商品/コンテンツ)</h1>
-      <p className="mt-3 text-sm text-gray-600">在庫数・内予備数は<Link className="text-blue-600 underline" href="/admin/inventory/allmight">在庫管理表</Link>で商品ごとに設定できます（設定完了後に利用可能）。</p>
+      <p className="mt-3 text-sm text-gray-600">在庫数・内予備数は<Link className="text-blue-600 underline" href="/admin/inventory/allmight">在庫管理表</Link>で商品ごとに設定できます。背景スクリーンは大小共通の備品です。下の在庫設定で保有数を入力してください。</p>
       <ItemMasterManager items={items} />
       {stockResult && (stockResult.error || plans?.error || (plans?.data?.length??0)>=1000 || (stockResult.data?.length ?? 0) >= 1000
         ? <p role="alert" className="mt-4 text-red-700">在庫数を取得できませんでした。DB設定・件数を確認してください。</p>

@@ -237,7 +237,7 @@ export default async function RequestDetailPage({
     request.form_types?.name === "オールマイト" ? "allmight" : "tezukuru";
   const { data: itemData } = await supabase
     .from("item_name_master")
-    .select("name, aliases, sort_order")
+    .select("name, aliases, sort_order").is("inventory_role",null)
     .eq("category", itemCategory)
     .eq("is_active", true)
     .order("sort_order", { ascending: true });

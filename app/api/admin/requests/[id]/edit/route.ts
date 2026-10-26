@@ -213,7 +213,7 @@ async function PATCHHandler(
   // スロット固有制約(てずくーる)
   const { data: slotItems } = await admin
     .from("item_name_master")
-    .select("name, excluded_slots")
+    .select("name, excluded_slots").is("inventory_role",null)
     .eq("category", "tezukuru")
     .eq("is_active", true);
   const excludedBy = new Map<string, number[]>(

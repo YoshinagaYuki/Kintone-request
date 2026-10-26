@@ -112,7 +112,7 @@ export default async function RequestEditPage({
   if (ft.kintone_app_id === 10) {
     const { data: itemData } = await admin
       .from("item_name_master")
-      .select("name, sort_order, is_active, category")
+      .select("name, sort_order, is_active, category").is("inventory_role",null)
       .eq("category", "allmight")
       .eq("is_active", true)
       .order("sort_order", { ascending: true })
@@ -195,7 +195,7 @@ export default async function RequestEditPage({
 
   const { data: itemData } = await admin
     .from("item_name_master")
-    .select("name, sort_order, is_active, category, excluded_slots")
+    .select("name, sort_order, is_active, category, excluded_slots").is("inventory_role",null)
     .eq("category", "tezukuru")
     .eq("is_active", true)
     .order("sort_order", { ascending: true })

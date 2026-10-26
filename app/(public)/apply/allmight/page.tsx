@@ -28,7 +28,7 @@ export default async function AllmightApplyPage() {
   // オールマイト商品マスター(有効・表示順)
   const { data: itemData } = await supabase
     .from("item_name_master")
-    .select("name, sort_order, is_active, category")
+    .select("name, sort_order, is_active, category").is("inventory_role",null)
     .eq("category", "allmight")
     .eq("is_active", true)
     .order("sort_order", { ascending: true })

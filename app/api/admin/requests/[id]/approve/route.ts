@@ -146,7 +146,7 @@ async function POSTHandler(
     if (entries.length > 0) {
       const { data: masterRows } = await supabase
         .from("item_name_master")
-        .select("name")
+        .select("name").is("inventory_role",null)
         .eq("is_active", true);
       const validNames = new Set((masterRows ?? []).map((r) => r.name as string));
       const invalid = entries.filter(([, name]) => !validNames.has(name));

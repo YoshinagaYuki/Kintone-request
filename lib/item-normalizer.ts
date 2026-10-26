@@ -234,7 +234,7 @@ export async function normalizeRecordItems(
   try {
     const { data, error } = await supabase
       .from("item_name_master")
-      .select("name, aliases")
+      .select("name, aliases").is("inventory_role",null)
       .eq("category", target.category)
       .eq("is_active", true);
     if (error) throw new Error(error.message);
