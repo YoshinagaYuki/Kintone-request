@@ -20,3 +20,26 @@
 .inventory-booking:focus-visible { outline: 2px solid #6366f1; outline-offset: -2px; }
 .inventory-product-tabs a { letter-spacing: .01em; }
 .admin-shell { background: #f5f7fb; }
+
+/* Touch screens scroll the schedule; equipment changes always use explicit forms. */
+.inventory-grid { touch-action: pan-x pan-y; -webkit-overflow-scrolling: touch; }
+@media (max-width: 639px) {
+  .inventory-workspace { padding: 12px 10px; }
+  .inventory-workspace h1 { font-size: 19px; }
+  .inventory-period-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  .inventory-period-controls > button:first-of-type { grid-column: 1 / -1; }
+  .inventory-period-controls label { min-width: 0; }
+  .inventory-period-controls input, .inventory-period-controls select { width: 100%; min-width: 0; }
+  .inventory-workspace input, .inventory-workspace select, .inventory-workspace textarea { font-size: 16px; min-height: 44px; }
+  .inventory-board-controls button { min-height: 44px; }
+  .inventory-board-controls > div:first-child { gap: 8px; }
+  .inventory-product-tabs { margin-bottom: 12px; border-radius: 12px; }
+  .inventory-product-tabs a { display: flex; min-height: 44px; align-items: center; }
+  .inventory-grid { max-height: 60dvh !important; min-height: 300px !important; }
+  .inventory-grid td { height: 30px; }
+  .inventory-grid td button { min-height: 28px; }
+  .inventory-editor { overscroll-behavior: contain; scroll-padding-bottom: 24px; }
+  .inventory-editor button { min-height: 44px; }
+  .inventory-editor fieldset > .grid { grid-template-columns: minmax(0, 1fr); }
+  .inventory-editor input, .inventory-editor select, .inventory-editor textarea { max-width: 100%; }
+}

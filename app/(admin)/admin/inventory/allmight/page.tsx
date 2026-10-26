@@ -28,10 +28,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
   const historyDays=Math.round((Date.parse(start)-Date.parse(scrollStart))/86400000);
   const dates = Array.from({ length: count+historyDays }, (_, i) => addDays(scrollStart, i));
   let model;try{model=await loadInventoryModel(await createClient());}catch(e){return <main className="p-6"><p role="alert" className="rounded-xl bg-rose-50 p-4 text-rose-800">{e instanceof Error?e.message:"在庫を取得できませんでした"}</p></main>;}
-  return <main className="mx-auto w-full max-w-[1900px] px-4 py-4 sm:px-6">
+  return <main className="inventory-workspace mx-auto w-full max-w-[1900px] px-4 py-4 sm:px-6">
     <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold tracking-tight text-slate-900">オールマイト 在庫管理表</h1>
     <p className="mt-1 text-xs text-slate-500">貸出・仮押さえ・返却予定を、ひとつのスケジュールで。</p>
-    </div><form className=" flex flex-wrap items-end gap-2 rounded-2xl border border-slate-200 bg-white p-2 text-xs shadow-sm">
+    </div><form className="inventory-period-controls flex flex-wrap items-end gap-2 rounded-2xl border border-slate-200 bg-white p-2 text-xs shadow-sm">
       <InventoryDeliveries rows={deliveryRows(model.records,model.items)} today={today}/>
       {params.product&&<input type="hidden" name="product" value={params.product}/>}
       <label>開始日<input className="mt-1 block h-9 rounded-lg border px-2.5 text-sm" type="date" name="start" defaultValue={start} required /></label>
