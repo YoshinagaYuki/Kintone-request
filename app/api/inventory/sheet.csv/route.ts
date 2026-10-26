@@ -14,7 +14,7 @@ export async function GET(req:NextRequest){
   const base=(process.env.APP_BASE_URL||req.nextUrl.origin).replace(/\/$/,"");
   const model=await loadInventoryModel(createAdminClient(),base);
   const boardBookings=model.records;
-  const entries:SheetEntry[]=model.records.map(({itemId,booking:b})=>({product:model.items.find(i=>i.id===itemId)?.name??"商品不明",staff:b.staff,store:b.store,managementNo:b.managementNo,start:b.start,end:b.end,delivery:b.delivery,pickup:b.pickup,status:b.status==="blocked"?"利用不可":b.kind==="hold"||!b.managementNo?"仮押さえ":"登録完了",quantity:1,requestUrl:b.href}));
+  const entries:SheetEntry[]=model.records.map(({itemId,booking:b})=>({product:model.items.find(i=>i.id===itemId)?.name??"商品不明",staff:b.staff,store:b.store,managementNo:b.managementNo,start:b.start,end:b.end,delivery:b.delivery,pickup:b.pickup,status:b.status==="blocked"?"利用不可":!b.managementNo?"仮押さえ":"登録完了",quantity:1,requestUrl:b.href}));
   entries.sort((a,b)=>a.start.localeCompare(b.start)||a.product.localeCompare(b.product)||a.store.localeCompare(b.store));
   const product=req.nextUrl.searchParams.get("product");
   const month=req.nextUrl.searchParams.get("month")||new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date()).slice(0,7);

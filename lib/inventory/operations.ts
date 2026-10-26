@@ -2,6 +2,12 @@ import {validDate} from './gantt';
 import {stockOn} from './board';
 import type {InventoryModel,InventoryRecord} from './model';
 const uuid=(v:unknown):v is string=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+export function manualConfirmation(body:Record<string,unknown>){
+ if(!['hold','registered'].includes(body.status as string))throw Error('仮押さえ・本確定を選択してください');
+ const managementNo=typeof body.managementNo==='string'?body.managementNo.normalize('NFKC').trim():'';
+ if(body.status==='registered'&&!/^\d{1,20}$/.test(managementNo))throw Error('本確定には管理番号を数字で入力してください');
+ return{status:body.status as 'hold'|'registered',managementNo:body.status==='registered'?managementNo:''};
+}
 export function bookingPatch(body:Record<string,unknown>){
  if(!uuid(body.item_id))throw Error('商品を選択してください');const patch:Record<string,string>={item_id:body.item_id};
  for(const k of ['staff','store'] as const){if(typeof body[k]!=='string'||!(body[k] as string).trim()||(body[k] as string).length>200)throw Error('担当者・店舗名を入力してください');patch[k]=(body[k] as string).trim();}
@@ -15,5 +21,5 @@ export function slotSchedule(records:InventoryRecord[]){return records.filter(r=
 export function holdBatchInput(body:Record<string,unknown>){
  if(!uuid(body.batch_id)||!uuid(body.staff_id))throw Error('担当者を選択してください');
  const patch=bookingPatch({item_id:(body.lines as any[])?.[0]?.item_id,staff:'担当者',store:body.store_name,start:body.start,end:body.end,from:body.from,to:body.to,delivery:body.delivery??'',pickup:body.pickup??''});
- if(!Array.isArray(body.lines)||body.lines.length<1||body.lines.length>20)throw Error('商品を1〜20行で指定してください');const lines=body.lines.map((line:any)=>{if(!uuid(line.item_id)||!Number.isInteger(line.quantity)||line.quantity<1||line.quantity>100)throw Error('商品・台数を確認してください');if(!Array.isArray(line.numbers)||line.numbers.length!==line.quantity)throw Error('台数分の番号を指定してください（未割当も選択できます）');return {item_id:line.item_id,quantity:line.quantity,numbers:line.numbers.map(unitNumber)};});if(lines.reduce((n,l)=>n+l.quantity,0)>100)throw Error('一度の仮押さえは100台までです');if(typeof body.note!=='string'||body.note.length>2000)throw Error('備考は2000文字までです');return {batch_id:body.batch_id,staff_id:body.staff_id,patch,lines,note:body.note};
+ if(!Array.isArray(body.lines)||body.lines.length<1||body.lines.length>20)throw Error('商品を1〜20行で指定してください');const lines=body.lines.map((line:any)=>{if(!uuid(line.item_id)||!Number.isInteger(line.quantity)||line.quantity<1||line.quantity>100)throw Error('商品・台数を確認してください');if(!Array.isArray(line.numbers)||line.numbers.length!==line.quantity)throw Error('台数分の番号を指定してください（未割当も選択できます）');return {item_id:line.item_id,quantity:line.quantity,numbers:line.numbers.map(unitNumber)};});if(lines.reduce((n,l)=>n+l.quantity,0)>100)throw Error('一度の仮押さえは100台までです');if(typeof body.note!=='string'||body.note.length>2000)throw Error('備考は2000文字までです');return {batch_id:body.batch_id,staff_id:body.staff_id,patch,lines,note:body.note,...manualConfirmation({status:body.status??'hold',managementNo:body.managementNo??''})};
 }
