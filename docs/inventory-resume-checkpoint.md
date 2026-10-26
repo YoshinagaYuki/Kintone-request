@@ -91,3 +91,14 @@
 - 未コミット追補: スマホdensityをselectにして操作バー1行化、編集ウィンドウヘッダーsticky+close44/nowrap、週間dialogボタン44/close nowrap、body:has(dialog[open]/inventory-editor)で背景スクロール固定。/tmp/mobile-controls-build.txtで先行typecheck/build PASS、nowrap/bodylock追補は小変更未再build。
 - 次: 追補をcommit/push、本番390/320/430幅を検証。週間dialog次週/閉じる、商品タブ、横縦スクロール、編集保存を検証用future hold（明示marker）で確認しsoft-delete cleanup。既存のcaseを検証書込しない。17:30復元のDB事後照合、Chromeviewportreset、画像保存。具体的問題があれば修正、無意味な変更はしない。
 - 継続heartbeat automation ID『7』 ACTIVE、30分毎、destination thread。07:00になったら最終監査・報告後automation7削除、goalを達成時のみcomplete。変化のない通知をしない。利用枠を随時確認し枯渇前にcheckpoint+実回復後再開予約。
+
+### 深夜の追加検証（10/27、00時台）
+- c879887: マスサイズをスマホselectにして操作バー1行、dialogボタン44px/nowrap、背景スクロール固定。
+- 089b989: 長期案件の先頭（管理番号）が横スクロール時に画面左へ隠れないよう、表示範囲でラベル幅を制限。先頭から表示・末尾省略を維持。
+- 1f6f53c: 編集ヘッダーをフォームのスクロール領域の外に分離。320px幅の長い新規フォームを下までスクロールしても『閉じる』が見えて操作可能なのをスクリーンショットとDOM座標で確認。
+- e7cdf87/e4d15ab: 選択中の製品タブを初期表示/端末回転時に画面内へ自動スクロール（縦のページ位置は変更しない）。JETタブが320px幅のnav内（x227〜303、nav10〜310）に収まることを実測。
+- 320/390/430px幅すべてdocument.scrollWidth==clientWidth。入力16px、メニュー61px。週間納品dialog全ボタン44px、前/次週・閉じる成功、bodyoverflowhidden。縦横スクロールでleft1380→1810、top0→474、編集dialogなし。深夜0時以降のaction=assign監査は0件。
+- 実画面の検証用hold c3616329-01f2-d60f-ad6e-dd611733835a（2027/3/1、動作検証専用_スマホ_20261027）をスマホUIから作成→店舗名だけ変更保存→同一ID patch更新をDB確認→soft-delete cleanup済み。顧客申請/kintoneへの検証書込なし。復元2件の事後照合も成功（request元7号、source新規overlayなし）。
+- 出力: outputs/mobile-inventory-night-390.png, mobile-delivery-390.png。Chrome viewportはreset済み。Cua signedInBrowser Chrome1 / mobileSignedTab1093846964 は当turnの一時タブなので次turnは必要なら新規作成。IAB3はログイン画面なのでChrome1で検証する。
+- 直近99 tests/typecheck/build PASS（/tmp/mobile-night-*）。未コミットのAdminHeader lg→xl変更は狭いタブレットでヘッダーが複数行となりsticky商品タブと重なるのを防ぐもの。次commitに含める。
+- automation7は『毎時00分/30分』に更新済み（7:00ちょうどの最終監査用）。goal ACTIVEを維持。07:00まで残りはタブレット幅/横向き、通常PCの回帰、12ヶ月表示、編集画面の複数商品と切替、既知のUI削除一般エラー（顧客データは触らずテスト用だけで）等を具体的問題がある場合に検証する。期限前は未完を完了扱いにしない。

@@ -29,14 +29,14 @@ export function AdminHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur">
-      <div className="relative flex h-[60px] items-center justify-between gap-2 px-4 lg:hidden">
+      <div className="relative flex h-[60px] items-center justify-between gap-2 px-4 xl:hidden">
         <Link href="/admin/inventory/allmight" className="text-sm font-bold text-slate-900">レンタル管理</Link>
         <div className="flex items-center gap-2"><Link href="/apply" className="flex min-h-11 items-center rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white">＋ 新規申請</Link>
         <details className="group"><summary className="flex min-h-11 cursor-pointer list-none items-center rounded-lg border bg-white px-3 text-sm font-medium">メニュー ▾</summary><nav aria-label="スマホ管理メニュー" className="absolute left-3 right-3 top-[56px] z-50 grid max-h-[75dvh] grid-cols-2 gap-1 overflow-y-auto rounded-xl border bg-white p-2 shadow-xl">
           {[{href:'/admin/inventory/allmight',label:'オールマイト在庫'},{href:'/admin/inventory/tezukuru',label:'てずくーる!!在庫'},...NAV_ITEMS].map(item=><Link key={item.href} href={item.href} onClick={e=>{const d=e.currentTarget.closest('details');if(d)d.open=false;}} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${pathname===item.href?'bg-indigo-50 font-semibold text-indigo-700':'text-slate-700 hover:bg-slate-50'}`}>{item.label}</Link>)}
         </nav></details></div>
       </div>
-      <div className="mx-auto hidden lg:flex min-h-[60px] max-w-[1900px] flex-wrap items-center justify-between gap-1.5 px-3 sm:gap-3 sm:px-6">
+      <div className="mx-auto hidden xl:flex min-h-[60px] max-w-[1900px] flex-wrap items-center justify-between gap-1.5 px-3 sm:gap-3 sm:px-6">
         <Link href="/admin/requests" className="mr-2 flex items-center gap-2 text-sm font-bold tracking-tight text-slate-900"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-white"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span><span className="hidden xl:inline">レンタル管理</span></Link>
         <nav className="flex min-w-0 flex-1 flex-wrap items-center gap-0.5" aria-label="管理メニュー">
           <details className="group relative shrink-0" onMouseEnter={(e) => { e.currentTarget.open = true; }} onMouseLeave={(e) => { if (!e.currentTarget.contains(document.activeElement)) e.currentTarget.open = false; }} onKeyDown={(e) => { if (e.key === "Escape") { e.currentTarget.open = false; e.currentTarget.querySelector("summary")?.focus(); } }}>
