@@ -30,6 +30,8 @@ export async function executeExtension(plan: ExtensionPlan, ports: ExtensionPort
     if (Object.entries(fields).every(([k, v]) => value(r, k) === v.value)) return;
     await ports.update(app, id, fields, value(r, "$revision"));
   };
+  // Validate the source again at approval, before creating a new bill or issuing a number.
+  if(plan.parentRecordId&&!progress.recordId){const source=await ports.get(10,plan.parentRecordId);if(value(source,'管理番号')!==plan.parentNumber||value(source,'日付_1')!==plan.parentUsageEnd||value(source,'集荷_日付')!==plan.parentPickupDate)throw Error('元案件の利用日・集荷日がkintone側で変更されています。内容を確認してください');}
   if (!progress.recordId) {
     const recovered = await findOne(10, "external_project_id", marker);
     if (recovered) await checkpoint({ recordId: recovered });
