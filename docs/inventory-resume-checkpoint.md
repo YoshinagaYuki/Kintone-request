@@ -102,3 +102,9 @@
 - 出力: outputs/mobile-inventory-night-390.png, mobile-delivery-390.png。Chrome viewportはreset済み。Cua signedInBrowser Chrome1 / mobileSignedTab1093846964 は当turnの一時タブなので次turnは必要なら新規作成。IAB3はログイン画面なのでChrome1で検証する。
 - 直近99 tests/typecheck/build PASS（/tmp/mobile-night-*）。未コミットのAdminHeader lg→xl変更は狭いタブレットでヘッダーが複数行となりsticky商品タブと重なるのを防ぐもの。次commitに含める。
 - automation7は『毎時00分/30分』に更新済み（7:00ちょうどの最終監査用）。goal ACTIVEを維持。07:00まで残りはタブレット幅/横向き、通常PCの回帰、12ヶ月表示、編集画面の複数商品と切替、既知のUI削除一般エラー（顧客データは触らずテスト用だけで）等を具体的問題がある場合に検証する。期限前は未完を完了扱いにしない。
+
+### 2026-10-27 深夜 継続検証（横向き・タブレット）
+- 本番 d5571a7 の在庫画面を Chrome で 844×390、1024×768、768×1024 で確認。すべて document.scrollWidth == innerWidth、ヘッダー61px、タブレットメニュー44px。
+- 横向きの在庫確保モーダルは351px高で画面内、背景スクロール固定。ただし閉じるボタン34pxだったため横向きスマホ／タッチタブレット向け44px、入力16pxを追加。ビルド成功。公開後に実測確認を残す。
+- 検証タブを閉じviewportリセット済。顧客予定の書込なし。
+- 次: 横向き44pxの本番確認、削除APIの一般エラーを検証専用データで原因調査。復元済みの17:30以降操作は再ロールバックしない。7:00まで目標継続、automation7維持。

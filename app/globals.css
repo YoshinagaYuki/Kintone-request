@@ -47,3 +47,12 @@
   .inventory-workspace dialog button { min-height: 44px; }
 }
 body:has(.inventory-editor), body:has(.inventory-workspace dialog[open]) { overflow: hidden; }
+/* Phones held sideways and touch tablets retain the same usable form targets. */
+@media (max-width: 1279px) and (pointer: coarse), (max-width: 1023px) and (max-height: 500px) {
+  .inventory-editor button, .inventory-workspace dialog button { min-height: 44px; }
+  .inventory-editor input, .inventory-editor select, .inventory-editor textarea {
+    font-size: 16px;
+    min-height: 44px;
+    max-width: 100%;
+  }
+}
