@@ -1,3 +1,5 @@
+import{InventoryDeliveries}from'./inventory-deliveries';
+import{deliveryRows}from'@/lib/inventory/deliveries';
 import{InventorySyncStatus}from'./inventory-sync-status';
 import{supportsScreen,screenUsage}from'@/lib/inventory/shared-screen';
 import Link from 'next/link';import{createClient}from'@/lib/supabase/server';import{loadInventoryModel}from'@/lib/inventory/model';import{layoutBoard,stockOn}from'@/lib/inventory/board';import{InventoryBoard}from'./inventory-board';import{InventoryControls}from'./inventory-controls';
@@ -7,6 +9,7 @@ export async function InventoryWorkspace({start,end,dates,product,period,customE
  const stock=stockOn(selected,start),pending=new Set(bookings.filter(b=>b.unitNumber==null&&b.from<=end&&b.to>=dates[0]).map(b=>b.group)).size;const conflicts=lanes.filter(l=>l.kind==='overflow').length;
  const screen=model.accessories?.find(i=>i.inventory_role==='background_screen');const screenOver=screen?dates.filter(d=>{const s=stockOn(screen,d);return s&&screenUsage(model.records,d)>s.usable;}):[];
  return <>
+ <div className="mb-3 flex justify-end"><InventoryDeliveries rows={deliveryRows(model.records,model.items)} today={new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date())}/></div>
  <InventorySyncStatus jobs={model.syncJobs??[]}/>
  <nav role="tablist" aria-label="コンテンツ切り替え" className="inventory-product-tabs sticky top-[60px] z-40 mb-4 flex gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white/95 p-1.5 shadow-sm backdrop-blur">{model.items.map(i=><Link key={i.id} role="tab" aria-selected={i.id===selected.id} scroll={false} href={`?${new URLSearchParams({start,period,product:i.id,...(customEnd?{end:customEnd}:{})})}`} className={`shrink-0 rounded-lg px-3 py-2 text-xs font-medium ${i.id===selected.id?'bg-indigo-600 text-white shadow-sm':'text-slate-500 hover:bg-slate-100'}`}>{i.name}</Link>)}</nav>
  <div className="mb-3 flex flex-wrap items-end justify-between gap-2"><div><h2 className="text-base font-semibold">{selected.name}</h2><p className="mt-1 text-xs text-slate-500">{start} 〜 {end} · 在庫 {stock?.total??'—'}台 ／ 内予備 {stock?.reserve??'—'}台</p></div><div className="flex flex-wrap gap-3 text-xs text-slate-600"><span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-emerald-100"/>確定・管理番号あり</span><span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-amber-100"/>仮押さえ</span><span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-blue-100"/>申請待ち</span><span><i className="mr-1 inline-block h-2.5 w-2.5 rounded-sm bg-slate-200"/>予備・対象外</span></div></div>
