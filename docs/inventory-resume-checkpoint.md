@@ -128,3 +128,15 @@
 - Production period form switched to12months through UI:397 header cells (365 future days plus past month and fixed labels), document320px width unchanged; selected duck product persisted. Cleared optional end date before selecting year. No new layout defects found.
 - Locator clicks on long bookings whose DOM center lies behind sticky columns can miss in automation; direct tap on visible store at207,398 opened editor correctly. Actual visible touch area works; do not treat locator-center limitation as product bug.
 - QA tab closed; viewport reset. Usage61% at00:59, reset1793044593. No new customer/kintone writes or migration. Next: keyboard-height/short viewport dialog check and final restoration/sync audit near07:00. Automation7/goal remain active.
+
+### 2026-10-27 01:35 short viewport / date input
+- Tested production390x420 (limited viewport analogous to keyboard space; actual OS keyboard/iPhone hardware not simulated). Inventory modal fits y21..399; Close remains y37..81/44px, scrollable body301px, last Save y339..383 reachable while notes focused. Document width390. Screenshot outputs/mobile-short-viewport-390.png.
+- Native keyboard ArrowUp on usage start/end updated React state and automatic shipping/bounds: use2027-10-27, delivery/from2027-10-26, pickup/to2027-10-28. Closed without Save; no record created or modified.
+- Cua fill on date inputs changes DOM value but not React state on this Chrome path; rerender reverted it. This is an automation limitation, not a product date-default defect. Use native press/date picker for future date QA, and verify persisted payload when saving fixtures.
+- QA tab closed and viewport reset. No code change warranted by this check. Remaining next checks: weekly dialog at short height, desktop navigation regression, final DB restoration/no-assign audit near07:00.
+
+### 2026-10-27 02:10 weekly dialog scroll correction
+-390x420 delivery dialog fits x16..374/y15..405, headerClose44px retained while list scrolls840px.1280x800 desktop header61px/nav36px and no document horizontal overflow.
+- Found concrete issue: after scrolling to end of week and choosing next week, list retained scrollTop720 and first card y-507 (above view). Fix in InventoryDeliveries remounts list on week change and resets list scrollTop when reopened. No data write.
+- Build session3049 /tmp/mobile-week-reset-build.txt. Commit/push when passed, then verify next-week scrollTop0 and reopen0 on production. No other code changes. Checkpoint changes from01:35 included locally.
+- Usage70% at02:02, reset1793044593 (JST04:56:33). Preserve headroom; automation7 retained through07:00.
