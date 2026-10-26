@@ -37,10 +37,9 @@ function syncInventory() {
    return {name,data,hash:Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,raw))};
   });
   for(const plan of plans){
-   const name='ガント '+plan.name.trim(),data=plan.data;let sheet=book.getSheetByName(name);
-   if(sheet)ensureMirrorEditors(sheet);
-   if(sheet&&props.getProperty('mirror:'+name)===plan.hash)continue;
-   if(!sheet)sheet=book.insertSheet(name);
+   const data=plan.data;let sheet=resolveMirrorSheet(book,props,plan.name,data.product);const name='ガント '+plan.name.trim();
+   if(sheet&&props.getProperty('mirror:'+name)===plan.hash){ensureMirrorEditors(sheet);continue;}
+   // resolveMirrorSheet pins the immutable sheet ID, including after a user rename.
    const needed=data.values.length+4,oldRows=Number(props.getProperty('mirrorRows:'+name)||0);
    if(sheet.getMaxRows()<needed)sheet.insertRowsAfter(sheet.getMaxRows(),needed-sheet.getMaxRows());
    if(sheet.getMaxColumns()<33)sheet.insertColumnsAfter(sheet.getMaxColumns(),33-sheet.getMaxColumns());
@@ -84,6 +83,27 @@ function ensureMirrorEditors(sheet){
 }
 function configureMirrorEditors(){
  const book=SpreadsheetApp.openById('1bEbV3bJvGIBhRdKnf3KwBIoJo-2EA-uXRNx2szq6Qx0');
- Object.keys(INVENTORY_TABS).forEach(name=>{const sheet=book.getSheetByName('ガント '+name.trim());if(sheet){ensureMirrorEditors(sheet);if(!sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET).every(p=>p.canEdit()))throw Error('Mirror editor access missing: '+sheet.getName());console.log(sheet.getName()+': designated administrator can edit');}});
+ Object.keys(INVENTORY_TABS).forEach(name=>{const sheet=resolveMirrorSheet(book,PropertiesService.getScriptProperties(),name,INVENTORY_TABS[name]);if(sheet){ensureMirrorEditors(sheet);if(!sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET).every(p=>p.canEdit()))throw Error('Mirror editor access missing: '+sheet.getName());console.log(sheet.getName()+': designated administrator can edit');}});
  SpreadsheetApp.flush();
+}
+
+/** Names are user-editable. Bind each product once to its immutable Google sheet ID. */
+function resolveMirrorSheet(book,props,source,product){
+ const key='mirrorId:'+source.trim(),saved=props.getProperty(key);
+ if(saved){const sheet=book.getSheets().find(s=>String(s.getSheetId())===saved);if(!sheet)throw Error('Bound mirror missing: '+source);return sheet;}
+ const candidates=book.getSheets().filter(s=>s.getRange('A1').getDisplayValue()==='在庫管理表'&&s.getRange('C1').getDisplayValue()===product&&s.getRange('A2').getDisplayValue()==='自動更新');
+ const preferred=candidates.filter(s=>s.getName().trim()==='【'+source.trim()+'】');
+ const renamed=candidates.filter(s=>s.getName()!=='ガント '+source.trim());
+ let sheet;if(preferred.length===1)sheet=preferred[0];else if(renamed.length===1)sheet=renamed[0];else if(candidates.length===1)sheet=candidates[0];else if(candidates.length>1)throw Error('Multiple mirror candidates: '+source);
+ if(!sheet){const existing=book.getSheetByName('ガント '+source.trim());if(existing)throw Error('Unrecognized mirror tab: '+source);sheet=book.insertSheet('ガント '+source.trim());}
+ props.setProperty(key,String(sheet.getSheetId()));return sheet;
+}
+/** Reversible cleanup: keep user-renamed mirrors visible; never delete a tab or touch original inputs. */
+function repairMirrorBindings(){
+ const lock=LockService.getScriptLock();if(!lock.tryLock(25000))throw Error('busy');
+ try{const book=SpreadsheetApp.openById('1bEbV3bJvGIBhRdKnf3KwBIoJo-2EA-uXRNx2szq6Qx0'),props=PropertiesService.getScriptProperties();
+ Object.entries(INVENTORY_TABS).forEach(([source,product])=>{const primary=resolveMirrorSheet(book,props,source,product),name='ガント '+source.trim();props.deleteProperty('mirror:'+name);
+ const duplicate=book.getSheetByName(name);if(duplicate&&duplicate.getSheetId()!==primary.getSheetId()&&duplicate.getRange('A1').getDisplayValue()==='在庫管理表'&&duplicate.getRange('C1').getDisplayValue()===product&&duplicate.getRange('A2').getDisplayValue()==='自動更新'){primary.showSheet();duplicate.hideSheet();}
+ console.log(product+': '+primary.getName()+' (#'+primary.getSheetId()+')');});SpreadsheetApp.flush();
+ }finally{lock.releaseLock();}syncInventory();
 }
