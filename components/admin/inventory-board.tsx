@@ -1,4 +1,5 @@
 "use client";
+import type{ScreenDay}from'@/lib/inventory/shared-screen';
 import type {InventoryRecord} from '@/lib/inventory/model';
 import {useState,useRef,useLayoutEffect,Fragment} from "react";
 import {useRouter} from "next/navigation";
@@ -9,7 +10,7 @@ import {InventoryBookingEditor} from "./inventory-booking-editor";
 import {InventoryHoldForm} from "./inventory-hold-form";
 import {boardColor,boardSegments,laneLocked,bookingLabel} from "@/lib/inventory/presentation";
 const DAY=46;
-export function InventoryBoard({item,items,dates,anchor,lanes,staff,version,requests}:{item:CapacityItem;items:CapacityItem[];dates:string[];anchor:string;lanes:BoardLane[];staff:{id:string;name:string}[];version:number;requests:InventoryRecord[]}){
+export function InventoryBoard({item,items,dates,anchor,lanes,staff,version,requests,backgroundDays}:{backgroundDays?:ScreenDay[];item:CapacityItem;items:CapacityItem[];dates:string[];anchor:string;lanes:BoardLane[];staff:{id:string;name:string}[];version:number;requests:InventoryRecord[]}){
  const [zoom,setZoom]=useState(100),[zoomInput,setZoomInput]=useState("100");const scale=zoom/100;const previousView=useRef({anchor:"",scale});
  function changeZoom(value:number){const next=Math.max(50,Math.min(150,Math.round(value)));setZoom(next);setZoomInput(String(next));}
  const [preview,setPreview]=useState<{booking:BoardBooking;x:number;y:number}|null>(null);
@@ -32,7 +33,7 @@ export function InventoryBoard({item,items,dates,anchor,lanes,staff,version,requ
   <div ref={scrollRef} onScroll={()=>setPreview(null)} className="inventory-grid overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm" style={{maxHeight:"calc(100dvh - 330px)",minHeight:320}}>
    <table className="border-separate border-spacing-0 text-sm" style={{width:120+dates.length*DAY,marginRight:trailingSpace,tableLayout:"fixed",zoom:scale}} aria-label={`${item.name} 台数別の在庫管理表`}>
     <colgroup><col style={{width:36}}/><col style={{width:84}}/>{dates.map(d=><col key={d} style={{width:DAY}}/>)}</colgroup>
-    <thead className="sticky top-0 z-30"><tr><th className="sticky left-0 z-40 border-b border-r border-slate-200 bg-slate-50 py-2 text-xs">枠</th><th className="sticky left-9 z-40 border-b border-r border-slate-200 bg-slate-50 px-1 text-[11px]">{item.name}</th>{dates.map(d=>{const day=new Date(`${d}T00:00:00Z`).getUTCDay();return <th key={d} aria-current={d===today?"date":undefined} className={`border-b border-r py-1.5 text-[10px] font-medium ${d===today?"border-t-2 border-t-blue-600 bg-blue-50 text-blue-700":day===0?"bg-rose-50 text-rose-600":day===6?"bg-sky-50 text-sky-700":"bg-slate-50 text-slate-600"}`}><span className="block font-semibold">{Number(d.slice(5,7))}/{Number(d.slice(8))}</span><span className="block text-[9px]">{"日月火水木金土"[day]}</span></th>;})}</tr></thead>
+    <thead className="sticky top-0 z-30"><tr><th className="sticky left-0 z-40 border-b border-r border-slate-200 bg-slate-50 py-2 text-xs">枠</th><th className="sticky left-9 z-40 border-b border-r border-slate-200 bg-slate-50 px-1 text-[11px]">{item.name}</th>{dates.map(d=>{const day=new Date(`${d}T00:00:00Z`).getUTCDay();return <th key={d} aria-current={d===today?"date":undefined} className={`border-b border-r py-1.5 text-[10px] font-medium ${d===today?"border-t-2 border-t-blue-600 bg-blue-50 text-blue-700":day===0?"bg-rose-50 text-rose-600":day===6?"bg-sky-50 text-sky-700":"bg-slate-50 text-slate-600"}`}><span className="block font-semibold">{Number(d.slice(5,7))}/{Number(d.slice(8))}</span><span className="block text-[9px]">{"日月火水木金土"[day]}</span></th>;})}</tr>{backgroundDays&&<tr aria-label="背景残数" className="bg-indigo-50 text-indigo-950"><th scope="row" colSpan={2} className="sticky left-0 z-40 border-b border-r border-indigo-100 bg-indigo-50 px-1 text-center text-[10px] font-medium" style={{height:20,lineHeight:'18px',paddingTop:0,paddingBottom:0}}>背景残数</th>{backgroundDays.map(d=><td key={d.date} aria-label={`${d.date} 背景残数 ${d.remaining===null?'未設定':`${d.remaining}枚`}`} title={d.remaining===null?'背景スクリーンの在庫が未設定です':`大小共通：保有${d.total}枚 − 予備${d.reserve}枚 − 確保${d.used}枚`} className={`border-b border-r border-indigo-100 text-center text-[11px] font-medium tabular-nums ${d.remaining!==null&&d.remaining<0?'bg-rose-100 text-rose-700':d.remaining===0?'bg-amber-100 text-amber-900':''}`} style={{height:20,lineHeight:'18px',padding:0}}>{d.remaining??'—'}</td>)}</tr>}</thead>
     <tbody>{lanes.map((lane,index)=>{
      const reserve=lane.kind==="reserve",extra=lane.kind==="overflow",unconfigured=lane.kind==="unconfigured",unassigned=lane.kind==="unassigned";
      const labelBg=reserve?"bg-slate-200":extra?"bg-rose-100":"bg-slate-50";

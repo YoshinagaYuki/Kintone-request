@@ -1,10 +1,10 @@
 import{InventorySyncStatus}from'./inventory-sync-status';
-import{supportsScreen,screenUsage}from'@/lib/inventory/shared-screen';
+import{supportsScreen,screenUsage,screenDays,currentStockRows}from'@/lib/inventory/shared-screen';
 import{InventoryProductTabs}from'./inventory-product-tabs';import type{InventoryModel}from'@/lib/inventory/model';import{layoutBoard,stockOn}from'@/lib/inventory/board';import{InventoryBoard}from'./inventory-board';import{InventoryControls}from'./inventory-controls';
 export async function InventoryWorkspace({model,start,end,dates,product,period,customEnd}:{model:InventoryModel;start:string;end:string;dates:string[];product?:string;period:string;customEnd?:string}){
  const selected=model.items.find(i=>i.id===product)??model.items[0];if(!selected)return <p>商品マスタに在庫商品を登録してください。</p>;const bookings=model.records.filter(r=>r.itemId===selected.id).map(r=>r.booking);let lanes;try{lanes=layoutBoard(selected,dates,bookings);}catch(e){return <p role="alert">{e instanceof Error?e.message:'表示できませんでした'}</p>;}
  const stock=stockOn(selected,start),pending=new Set(bookings.filter(b=>b.unitNumber==null&&b.from<=end&&b.to>=dates[0]).map(b=>b.group)).size;const conflicts=lanes.filter(l=>l.kind==='overflow').length;
- const screen=model.accessories?.find(i=>i.inventory_role==='background_screen');const screenOver=screen?dates.filter(d=>{const s=stockOn(screen,d);return s&&screenUsage(model.records,d)>s.usable;}):[];
+ const allItems=[...model.items,...(model.accessories??[])];const screen=model.accessories?.find(i=>i.inventory_role==='background_screen');const backgroundDays=supportsScreen(selected.name)?screenDays(screen,model.records,dates):undefined;const screenOver=backgroundDays?.filter(d=>d.remaining!==null&&d.remaining<0)??[];
  return <>
  <InventorySyncStatus jobs={model.syncJobs??[]}/>
  <InventoryProductTabs items={model.items} selected={selected.id} start={start} period={period} customEnd={customEnd}/>
@@ -12,8 +12,8 @@ export async function InventoryWorkspace({model,start,end,dates,product,period,c
  <div className="mb-3 flex flex-wrap gap-2 text-xs"><span className="rounded-lg border bg-white px-3 py-1.5 text-slate-600">通常在庫 <strong>{stock?.usable??'—'}台</strong></span><span className={`rounded-lg border px-3 py-1.5 ${pending?'border-amber-200 bg-amber-50 text-amber-900':'bg-white text-slate-600'}`}>未割当 <strong>{pending}件</strong></span>{conflicts>0&&<span role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-rose-800">番号・日程の競合 {conflicts}件</span>}<span className="rounded-lg border bg-white px-3 py-1.5 text-slate-500">空き番号を自動選択 · 手動変更可</span></div>
  {pending>0&&<p className="mb-2 text-[11px] text-amber-900">未割当は番号の確保完了ではありません。予定をクリックして番号を選ぶか、編集画面で機器番号を選択してください。</p>}
  {supportsScreen(selected.name)&&<p className="mb-3 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-900">背景スクリーン（大小共通）：保有 {(screen?stockOn(screen,start)?.total:undefined)??'未設定'}枚 ／ 開始日の確保 {screenUsage(model.records,start)}枚。貸出する予定で数量を指定してください。</p>}
- {supportsScreen(selected.name)&&screenOver.length>0&&<p role="alert" className="mb-3 rounded-lg bg-rose-50 p-3 text-xs text-rose-800">背景スクリーンが共通在庫を超える日があります（{screenOver[0]}ほか）。保有数・貸出予定を確認してください。</p>}
- <InventoryBoard key={selected.id} item={selected} items={model.items} dates={dates} anchor={start} lanes={lanes} staff={model.staff} version={model.version} requests={model.allRecords}/>
- <details className="my-3 rounded-xl border bg-white p-3"><summary className="cursor-pointer text-xs text-slate-600">在庫数・予備数の設定</summary><InventoryControls key={selected.id} items={[...model.items,...(model.accessories??[])]} staff={model.staff} stocks={model.items.filter(i=>i.total_count!=null&&i.reserve_count!=null).map(i=>({item_id:i.id,total_count:i.total_count!,reserve_count:i.reserve_count!}))} plans={model.items.flatMap(i=>i.schedule??[])} initialItemId={selected.id} includeHolds={false}/></details>
+ {supportsScreen(selected.name)&&screenOver.length>0&&<p role="alert" className="mb-3 rounded-lg bg-rose-50 p-3 text-xs text-rose-800">背景スクリーンが共通在庫を超える日があります（{screenOver[0].date}ほか）。保有数・貸出予定を確認してください。</p>}
+ <InventoryBoard key={selected.id} item={selected} items={model.items} dates={dates} anchor={start} lanes={lanes} staff={model.staff} version={model.version} requests={model.allRecords} backgroundDays={backgroundDays}/>
+ <details className="my-3 rounded-xl border bg-white p-3"><summary className="cursor-pointer text-xs text-slate-600">在庫数・予備数の設定</summary><InventoryControls key={selected.id} items={allItems} staff={model.staff} stocks={currentStockRows(allItems,start)} plans={allItems.flatMap(i=>i.schedule??[])} initialItemId={selected.id} includeHolds={false}/></details>
  </>;
 }
