@@ -266,7 +266,7 @@ async function POSTHandler(
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 502 });
   }
-  return NextResponse.json({ ok: true, recordId: result.recordId });
+  return NextResponse.json({ ok: true, recordId: result.recordId, inventoryWarning: result.inventoryWarning });
 }
 
 export const POST=withInventorySheetPush(POSTHandler);

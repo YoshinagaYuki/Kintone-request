@@ -28,9 +28,9 @@ type Row = {
 export default async function RequestsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; inventory?:string }>;
 }) {
-  const { status } = await searchParams;
+  const { status, inventory } = await searchParams;
   const statusFilter = REQUEST_STATUSES.includes(status as RequestStatus)
     ? (status as RequestStatus)
     : null;
@@ -63,6 +63,7 @@ export default async function RequestsPage({
     <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:py-10">
       {/* 初回のみ通知許可バナー(許可済みなら購読を自動メンテナンス) */}
       <PushPermission />
+      {inventory==="unassigned"&&<p role="alert" className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">承認・kintone登録は完了しましたが、4日間の間隔を満たす空き機器がないか、自動割当に失敗したため未割当があります。在庫管理表で機器番号を確認してください。</p>}
 
       <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="text-xl font-bold sm:text-2xl">申請一覧</h1>

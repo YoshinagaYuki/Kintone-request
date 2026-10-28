@@ -117,6 +117,7 @@ export function ApproveActions({
   ) {
     setSubmitting(true);
     setError(null);
+    let succeeded = false;
     try {
       const res = await fetch(`/api/admin/requests/${requestId}/${action}`, {
         method: "POST",
@@ -127,13 +128,15 @@ export function ApproveActions({
       if (!res.ok) {
         setError(body?.error ?? "処理に失敗しました");
       } else {
-        setDone(true); // 成功: ボタンを「登録完了」に固定(二重登録防止)
+        setDone(true);
+        succeeded = true;
+        router.push(body?.inventoryWarning ? '/admin/requests?inventory=unassigned' : '/admin/requests'); // 成功: ボタンを「登録完了」に固定(二重登録防止)
       }
     } catch {
       setError("通信エラーが発生しました");
     } finally {
       setSubmitting(false);
-      router.refresh();
+      if (!succeeded) router.refresh();
     }
   }
 

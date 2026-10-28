@@ -2,7 +2,7 @@ import { ALLMIGHT_FMT_LABELS as L, equipmentLabel } from "@/lib/allmight-fmt";
 
 export type InventoryRequest = {
   inventory_parent_request_id?: string | null; inventory_root_id?: string; pickup_cancelled?: boolean;
-  id: string; status: string; management_no: string | null;
+  approved_contents?:Record<string,string>|null; id: string; status: string; management_no: string | null;
   parsed_data: Record<string, unknown> | null;
   approved_staff_name: string | null; company_staff_name_input: string | null;
 };

@@ -41,10 +41,10 @@ import { notificationFromKintoneRecord } from "../notify/kintone-record";
 const MANAGEMENT_NO_FIELD_APP10 = "管理番号";
 
 export type RegisterResult =
-  | { ok: true; recordId: string; managementNo: string }
+  | { ok: true; recordId: string; managementNo: string; inventoryWarning?:string }
   | { ok: false; error: string };
 
-export async function registerRequestToKintone(
+async function registerRequestInternal(
   supabase: SupabaseClient,
   requestId: string,
   actor: string
@@ -386,4 +386,22 @@ export async function registerRequestToKintone(
   }
 
   return { ok: true, recordId, managementNo };
+}
+
+export async function registerRequestToKintone(supabase:SupabaseClient,requestId:string,actor:string):Promise<RegisterResult>{
+ const result=await registerRequestInternal(supabase,requestId,actor);if(!result.ok)return result;
+ try{
+  const kind=await supabase.from('requests').select('form_types(kintone_app_id)').eq('id',requestId).single();
+  if(kind.error)throw Error('申請種別を確認できませんでした');
+  const type=kind.data.form_types as unknown as {kintone_app_id:number}|null;
+  if(type?.kintone_app_id!==10)return result;
+  const {createAdminClient}=await import('../supabase/admin');
+  const {autoAssignRequest}=await import('../inventory/auto-assign-request');
+  const allocation=await autoAssignRequest(createAdminClient(),requestId,actor);
+  if(allocation.unassigned)return {...result,inventoryWarning:'auto_unassigned'};
+ }catch{
+  await supabase.from('request_histories').insert({request_id:requestId,action:'inventory_auto_assignment_failed',actor,detail:{message:'機器番号の自動割当を完了できませんでした。手動確認が必要です。'}});
+  return {...result,inventoryWarning:'auto_unassigned'};
+ }
+ return result;
 }

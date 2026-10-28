@@ -1,6 +1,6 @@
 import{unitSegments}from'./unit-switches';
 import{occupiedCycle}from'./occupied-cycle';
-import {validDate} from './gantt';
+import {addDays,validDate} from './gantt';
 import {stockOn} from './board';
 import type {InventoryModel,InventoryRecord} from './model';
 const uuid=(v:unknown):v is string=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
@@ -22,7 +22,7 @@ export function unitNumber(value:unknown){if(value===null||value==='')return nul
 export function resolveUnitNumber(model:InventoryModel,r:InventoryRecord,value:unknown,existing=model.records){
  if(value!=='auto')return unitNumber(value);
  const item=model.items.find(i=>i.id===r.itemId);if(!item)throw Error('有効な商品を選択してください');
- for(let n=1;n<=250;n++){const cycle=occupiedCycle(r.booking);if([cycle.from,...(item.schedule??[]).filter(s=>cycle.from<=s.effective_date&&s.effective_date<=cycle.to).map(s=>s.effective_date)].some(d=>n>(stockOn(item,d)?.usable??0)))break;try{validateNumber(model,r,n);}catch{continue;}if(!slotSchedule(existing).some(other=>slotSchedule([{...r,booking:{...r.booking,unitNumber:n}}]).some(candidate=>other.item_id===candidate.item_id&&other.group_key!==candidate.group_key&&other.unit_number===candidate.unit_number&&other.occupied_from<=candidate.occupied_to&&candidate.occupied_from<=other.occupied_to)))return n;}
+ for(let n=1;n<=250;n++){const cycle=occupiedCycle(r.booking);if([cycle.from,...(item.schedule??[]).filter(s=>cycle.from<=s.effective_date&&s.effective_date<=cycle.to).map(s=>s.effective_date)].some(d=>n>(stockOn(item,d)?.usable??0)))break;try{validateNumber(model,r,n);}catch{continue;}if(automaticNumberAvailable(model,r,n,existing))return n;}
  throw Error('確保期間を通して空いている番号がありません。日程を調整するか未割当を選択してください');
 }
 export function validateNumber(model:InventoryModel,r:InventoryRecord,n:number|null){const item=model.items.find(i=>i.id===r.itemId);if(!item)throw Error('有効な商品を選択してください');for(const segment of unitSegments({...r.booking,unitNumber:n})){const number=segment.unitNumber;if(number==null)continue;const cycle=occupiedCycle(segment);const checks=[cycle.from,...(item.schedule??[]).filter(s=>cycle.from<=s.effective_date&&s.effective_date<=cycle.to).map(s=>s.effective_date)];if(!Number.isInteger(number)||number<1||checks.some(d=>number>(stockOn(item,d)?.total??0)))throw Error('この機器番号は確保期間中の保有数を超えています');}}
@@ -31,4 +31,22 @@ export function holdBatchInput(body:Record<string,unknown>){
  if(!uuid(body.batch_id)||!uuid(body.staff_id))throw Error('担当者を選択してください');
  const patch=bookingPatch({item_id:(body.lines as any[])?.[0]?.item_id,staff:'担当者',store:body.store_name,start:body.start,end:body.end,from:body.from,to:body.to,delivery:body.delivery??'',pickup:body.pickup??''});
  if(!Array.isArray(body.lines)||body.lines.length<1||body.lines.length>20)throw Error('商品を1〜20行で指定してください');const lines=body.lines.map((line:any)=>{if(!uuid(line.item_id)||!Number.isInteger(line.quantity)||line.quantity<1||line.quantity>100)throw Error('商品・台数を確認してください');if(!Array.isArray(line.numbers)||line.numbers.length!==line.quantity)throw Error('台数分の番号を指定してください（未割当も選択できます）');if(!Number.isInteger(line.screen_quantity??0)||(line.screen_quantity??0)<0||(line.screen_quantity??0)>line.quantity)throw Error('背景スクリーンは貸出機器の台数以下で指定してください');return {item_id:line.item_id,quantity:line.quantity,screen_quantity:line.screen_quantity??0,numbers:line.numbers.map((n:unknown)=>n==='auto'?'auto' as const:unitNumber(n))};});if(lines.reduce((n,l)=>n+l.quantity,0)>100)throw Error('一度の仮押さえは100台までです');if(typeof body.note!=='string'||body.note.length>2000)throw Error('備考は2000文字までです');return {batch_id:body.batch_id,staff_id:body.staff_id,patch,lines,note:body.note,...manualConfirmation({status:body.status??'hold',managementNo:body.managementNo??''})};
+}
+
+/** Four calendar days between pickup and the next delivery (1st -> 5th).
+ * Only automatic selection uses this buffer; explicit manual numbers keep normal overlap checks. */
+export function automaticSchedule(records:InventoryRecord[]){
+ return slotSchedule(records).map(s=>({...s,occupied_from:addDays(s.occupied_from,-3),occupied_to:addDays(s.occupied_to,3)}));
+}
+export function automaticNumberAvailable(model:InventoryModel,record:InventoryRecord,number:number,existing=model.records){
+ const related=model.records.filter(r=>r.itemId===record.itemId&&r.booking.group===record.booking.group);
+ const candidates=(related.length?related.map(r=>r.booking.key===record.booking.key?record:r):[record]).map(r=>({...r,booking:{...r.booking,unitNumber:number}}));
+ const item=model.items.find(i=>i.id===record.itemId);if(!item)return false;
+ for(const candidate of candidates){
+  const cycle=occupiedCycle(candidate.booking);
+  const checks=[cycle.from,...(item.schedule??[]).filter(s=>cycle.from<=s.effective_date&&s.effective_date<=cycle.to).map(s=>s.effective_date)];
+  if(checks.some(d=>number>(stockOn(item,d)?.usable??0)))return false;
+  try{validateNumber(model,candidate,number);}catch{return false;}
+ }
+ return !automaticSchedule(existing).some(other=>slotSchedule(candidates).some(s=>s.item_id===other.item_id&&s.unit_number===other.unit_number&&s.group_key!==other.group_key&&s.occupied_from<=other.occupied_to&&s.occupied_to>=other.occupied_from));
 }
