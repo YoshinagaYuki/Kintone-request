@@ -6,9 +6,11 @@ const max=(...dates:string[])=>dates.filter(validDate).sort().at(-1)??'';
 export function initialInventoryDates(start:string,end=start,delivery='',pickup='',from=start,to=end,deliveryRequired=true,pickupRequired=true):InventoryDates{
  const d=deliveryRequired?(delivery||offset(start,-1)):'',p=pickupRequired?(pickup||offset(end,1)):'';return{start,end,delivery:d,pickup:p,from:min(from,start,d),to:max(to,end,p),deliveryRequired,pickupRequired};
 }
-/** Only automatic dates follow the usage period. Custom delivery/pickup and extra inspection padding survive edits. */
-export function changeInventoryDate(previous:InventoryDates,key:keyof InventoryDates,value:string):InventoryDates{
+/** Shipping edits drive the adjacent usage date; usage edits retain custom shipping and inspection padding. */
+export function changeInventoryDate(previous:InventoryDates,key:keyof InventoryDates,value:string,options:{fixedStart?:boolean}={}):InventoryDates{
  const next={...previous,[key]:value};
+ if(key==='delivery'&&validDate(value)&&previous.deliveryRequired!==false&&!options.fixedStart)next.start=offset(value,1);
+ if(key==='pickup'&&validDate(value)&&previous.pickupRequired!==false)next.end=offset(value,-1);
  if(key==='start'&&previous.deliveryRequired!==false&&(!previous.delivery||previous.delivery===offset(previous.start,-1)))next.delivery=offset(value,-1);
  if(key==='end'&&previous.pickupRequired!==false&&(!previous.pickup||previous.pickup===offset(previous.end,1)))next.pickup=offset(value,1);
  const priorFrom=min(previous.start,previous.delivery),priorTo=max(previous.end,previous.pickup);
