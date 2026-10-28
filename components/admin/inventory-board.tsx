@@ -9,7 +9,7 @@ import {InventoryBookingLabel} from "./inventory-booking-label";
 import {InventoryBookingEditor} from "./inventory-booking-editor";
 import {InventoryHoldForm} from "./inventory-hold-form";
 import {boardColor,boardSegments,laneLocked,bookingLabel} from "@/lib/inventory/presentation";
-import {pinchViewport} from "@/lib/inventory/pinch";
+import {pinchViewport,pinchTransform} from "@/lib/inventory/pinch";
 const DAY=46;
 export function InventoryBoard({item,items,dates,anchor,lanes,staff,version,requests,backgroundDays}:{backgroundDays?:ScreenDay[];item:CapacityItem;items:CapacityItem[];dates:string[];anchor:string;lanes:BoardLane[];staff:{id:string;name:string}[];version:number;requests:InventoryRecord[]}){
  const [zoom,setZoom]=useState(100),[zoomInput,setZoomInput]=useState("100");const scale=zoom/100;const previousView=useRef({anchor:"",scale});const zoomRef=useRef(zoom);zoomRef.current=zoom;const pinchView=useRef<{left:number;top:number}|null>(null);
@@ -21,32 +21,52 @@ export function InventoryBoard({item,items,dates,anchor,lanes,staff,version,requ
  useLayoutEffect(()=>{const node=scrollRef.current;if(!node)return;const observer=new ResizeObserver(()=>setViewportWidth(node.clientWidth));observer.observe(node);setViewportWidth(node.clientWidth);return()=>observer.disconnect();},[]);
  const trailingSpace=Math.max(0,viewportWidth/scale-(120+(dates.length-Math.max(0,dates.indexOf(anchor)))*DAY));
  const anchorOffset=Math.max(0,dates.indexOf(anchor))*DAY;
- useLayoutEffect(()=>{const node=scrollRef.current;if(!node)return;const key=`${anchor}:${dates[0]}`;if(pinchView.current){node.scrollLeft=pinchView.current.left;node.scrollTop=pinchView.current.top;pinchView.current=null;}else node.scrollLeft=previousView.current.anchor===key?node.scrollLeft*scale/previousView.current.scale:anchorOffset*scale;previousView.current={anchor:key,scale};},[anchorOffset,dates[0],anchor,scale]);
+ useLayoutEffect(()=>{const node=scrollRef.current;if(!node)return;const key=`${anchor}:${dates[0]}`;if(pinchView.current){const table=node.querySelector("table");if(table){table.style.transform="";table.style.transformOrigin="";table.style.willChange="";}node.scrollLeft=pinchView.current.left;node.scrollTop=pinchView.current.top;pinchView.current=null;}else node.scrollLeft=previousView.current.anchor===key?node.scrollLeft*scale/previousView.current.scale:anchorOffset*scale;previousView.current={anchor:key,scale};},[anchorOffset,dates[0],anchor,scale]);
  // Only two-finger gestures change the chart scale; single-finger scrolling stays native.
  useEffect(()=>{
   const node=scrollRef.current;if(!node)return;
-  let gesture:{distance:number;zoom:number;x:number;y:number}|null=null,suppressClickUntil=0;
+  const table=node.querySelector('table');if(!table)return;
+  let gesture:{distance:number;zoom:number;x:number;y:number}|null=null,suppressClickUntil=0,frame=0;
+  let latest:{distance:number;center:{x:number;y:number}}|null=null;
   const distance=(touches:TouchList)=>Math.hypot(touches[0].clientX-touches[1].clientX,touches[0].clientY-touches[1].clientY);
+  const center=(touches:TouchList)=>{const rect=node.getBoundingClientRect();return {x:(touches[0].clientX+touches[1].clientX)/2-rect.left,y:(touches[0].clientY+touches[1].clientY)/2-rect.top};};
+  // Preview with a compositor transform, without laying out thousands of cells or
+  // rendering React on each touchmove. Commit real table geometry only on release.
+  const paint=()=>{
+   frame=0;if(!gesture||!latest)return;
+   const next=pinchViewport(gesture,latest.distance,latest.center);
+   table.style.transform=pinchTransform(gesture,next.zoom,latest.center,{left:node.scrollLeft,top:node.scrollTop});
+  };
+  const end=()=>{
+   if(frame)cancelAnimationFrame(frame);frame=0;
+   if(gesture&&latest){
+    const next=pinchViewport(gesture,latest.distance,latest.center),zoom=Math.round(next.zoom);
+    const target={left:Math.max(0,gesture.x*zoom/100-latest.center.x),top:Math.max(0,gesture.y*zoom/100-latest.center.y)};
+    if(zoom!==zoomRef.current){pinchView.current=target;changeZoom(zoom);}
+    else{table.style.transform='';table.style.transformOrigin='';table.style.willChange='';node.scrollLeft=target.left;node.scrollTop=target.top;}
+    suppressClickUntil=Date.now()+700;
+   }
+   gesture=null;latest=null;
+  };
   const begin=(event:TouchEvent)=>{
-   if(event.touches.length!==2){gesture=null;return;}
+   if(event.touches.length!==2){end();return;}
    if(event.cancelable)event.preventDefault();
-   const rect=node.getBoundingClientRect(),x=(event.touches[0].clientX+event.touches[1].clientX)/2-rect.left,y=(event.touches[0].clientY+event.touches[1].clientY)/2-rect.top;
-   gesture={distance:Math.max(1,distance(event.touches)),zoom:zoomRef.current,x:(node.scrollLeft+x)/(zoomRef.current/100),y:(node.scrollTop+y)/(zoomRef.current/100)};
+   const point=center(event.touches);
+   gesture={distance:Math.max(1,distance(event.touches)),zoom:zoomRef.current,x:(node.scrollLeft+point.x)/(zoomRef.current/100),y:(node.scrollTop+point.y)/(zoomRef.current/100)};
+   latest={distance:gesture.distance,center:point};table.style.transformOrigin='0 0';table.style.willChange='transform';
    suppressClickUntil=Date.now()+700;setPreview(null);
   };
   const move=(event:TouchEvent)=>{
    if(event.touches.length!==2)return;
    if(event.cancelable)event.preventDefault();
    if(!gesture){begin(event);return;}
-   const rect=node.getBoundingClientRect(),x=(event.touches[0].clientX+event.touches[1].clientX)/2-rect.left,y=(event.touches[0].clientY+event.touches[1].clientY)/2-rect.top;
-   const next=pinchViewport(gesture,distance(event.touches),{x,y});
-   if(next.zoom!==zoomRef.current){pinchView.current={left:next.left,top:next.top};changeZoom(next.zoom);}
+   latest={distance:distance(event.touches),center:center(event.touches)};
+   if(!frame)frame=requestAnimationFrame(paint);
    suppressClickUntil=Date.now()+700;
   };
-  const end=()=>{if(gesture)suppressClickUntil=Date.now()+700;gesture=null;};
   const click=(event:MouseEvent)=>{if(Date.now()<suppressClickUntil){event.preventDefault();event.stopPropagation();}};
   node.addEventListener('touchstart',begin,{passive:false});node.addEventListener('touchmove',move,{passive:false});node.addEventListener('touchend',end);node.addEventListener('touchcancel',end);node.addEventListener('click',click,true);
-  return()=>{node.removeEventListener('touchstart',begin);node.removeEventListener('touchmove',move);node.removeEventListener('touchend',end);node.removeEventListener('touchcancel',end);node.removeEventListener('click',click,true);};
+  return()=>{if(frame)cancelAnimationFrame(frame);table.style.transform="";table.style.transformOrigin="";table.style.willChange="";node.removeEventListener('touchstart',begin);node.removeEventListener('touchmove',move);node.removeEventListener('touchend',end);node.removeEventListener('touchcancel',end);node.removeEventListener('click',click,true);};
  },[]);
  const today=new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date());
  const router=useRouter();const [selection,setSelection]=useState<{date:string;booking?:BoardBooking;number:number|null;version:number;status:'hold'|'registered';copy?:boolean}|null>(null);const [busy,setBusy]=useState(false);const [error,setError]=useState("");
