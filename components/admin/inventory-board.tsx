@@ -1,7 +1,7 @@
 "use client";
 import type{ScreenDay}from'@/lib/inventory/shared-screen';
 import type {InventoryRecord} from '@/lib/inventory/model';
-import {useState,useRef,useLayoutEffect,Fragment} from "react";
+import {useState,useRef,useLayoutEffect,useEffect,Fragment} from "react";
 import {useRouter} from "next/navigation";
 import {type BoardBooking,type BoardLane} from "@/lib/inventory/board";
 import type {CapacityItem} from "@/lib/inventory/availability";
@@ -9,9 +9,10 @@ import {InventoryBookingLabel} from "./inventory-booking-label";
 import {InventoryBookingEditor} from "./inventory-booking-editor";
 import {InventoryHoldForm} from "./inventory-hold-form";
 import {boardColor,boardSegments,laneLocked,bookingLabel} from "@/lib/inventory/presentation";
+import {pinchViewport} from "@/lib/inventory/pinch";
 const DAY=46;
 export function InventoryBoard({item,items,dates,anchor,lanes,staff,version,requests,backgroundDays}:{backgroundDays?:ScreenDay[];item:CapacityItem;items:CapacityItem[];dates:string[];anchor:string;lanes:BoardLane[];staff:{id:string;name:string}[];version:number;requests:InventoryRecord[]}){
- const [zoom,setZoom]=useState(100),[zoomInput,setZoomInput]=useState("100");const scale=zoom/100;const previousView=useRef({anchor:"",scale});
+ const [zoom,setZoom]=useState(100),[zoomInput,setZoomInput]=useState("100");const scale=zoom/100;const previousView=useRef({anchor:"",scale});const zoomRef=useRef(zoom);zoomRef.current=zoom;const pinchView=useRef<{left:number;top:number}|null>(null);
  function changeZoom(value:number){const next=Math.max(50,Math.min(150,Math.round(value)));setZoom(next);setZoomInput(String(next));}
  const [preview,setPreview]=useState<{booking:BoardBooking;x:number;y:number}|null>(null);
  function showPreview(node:HTMLElement,booking:BoardBooking){const rect=node.getBoundingClientRect();setPreview({booking,x:Math.max(8,Math.min(rect.left,window.innerWidth-328)),y:Math.max(8,Math.min(rect.bottom+8,window.innerHeight-190))});}
@@ -20,7 +21,33 @@ export function InventoryBoard({item,items,dates,anchor,lanes,staff,version,requ
  useLayoutEffect(()=>{const node=scrollRef.current;if(!node)return;const observer=new ResizeObserver(()=>setViewportWidth(node.clientWidth));observer.observe(node);setViewportWidth(node.clientWidth);return()=>observer.disconnect();},[]);
  const trailingSpace=Math.max(0,viewportWidth/scale-(120+(dates.length-Math.max(0,dates.indexOf(anchor)))*DAY));
  const anchorOffset=Math.max(0,dates.indexOf(anchor))*DAY;
- useLayoutEffect(()=>{const node=scrollRef.current;if(!node)return;const key=`${anchor}:${dates[0]}`;node.scrollLeft=previousView.current.anchor===key?node.scrollLeft*scale/previousView.current.scale:anchorOffset*scale;previousView.current={anchor:key,scale};},[anchorOffset,dates[0],anchor,scale]);
+ useLayoutEffect(()=>{const node=scrollRef.current;if(!node)return;const key=`${anchor}:${dates[0]}`;if(pinchView.current){node.scrollLeft=pinchView.current.left;node.scrollTop=pinchView.current.top;pinchView.current=null;}else node.scrollLeft=previousView.current.anchor===key?node.scrollLeft*scale/previousView.current.scale:anchorOffset*scale;previousView.current={anchor:key,scale};},[anchorOffset,dates[0],anchor,scale]);
+ // Only two-finger gestures change the chart scale; single-finger scrolling stays native.
+ useEffect(()=>{
+  const node=scrollRef.current;if(!node)return;
+  let gesture:{distance:number;zoom:number;x:number;y:number}|null=null,suppressClickUntil=0;
+  const distance=(touches:TouchList)=>Math.hypot(touches[0].clientX-touches[1].clientX,touches[0].clientY-touches[1].clientY);
+  const begin=(event:TouchEvent)=>{
+   if(event.touches.length!==2){gesture=null;return;}
+   if(event.cancelable)event.preventDefault();
+   const rect=node.getBoundingClientRect(),x=(event.touches[0].clientX+event.touches[1].clientX)/2-rect.left,y=(event.touches[0].clientY+event.touches[1].clientY)/2-rect.top;
+   gesture={distance:Math.max(1,distance(event.touches)),zoom:zoomRef.current,x:(node.scrollLeft+x)/(zoomRef.current/100),y:(node.scrollTop+y)/(zoomRef.current/100)};
+   suppressClickUntil=Date.now()+700;setPreview(null);
+  };
+  const move=(event:TouchEvent)=>{
+   if(event.touches.length!==2)return;
+   if(event.cancelable)event.preventDefault();
+   if(!gesture){begin(event);return;}
+   const rect=node.getBoundingClientRect(),x=(event.touches[0].clientX+event.touches[1].clientX)/2-rect.left,y=(event.touches[0].clientY+event.touches[1].clientY)/2-rect.top;
+   const next=pinchViewport(gesture,distance(event.touches),{x,y});
+   if(next.zoom!==zoomRef.current){pinchView.current={left:next.left,top:next.top};changeZoom(next.zoom);}
+   suppressClickUntil=Date.now()+700;
+  };
+  const end=()=>{if(gesture)suppressClickUntil=Date.now()+700;gesture=null;};
+  const click=(event:MouseEvent)=>{if(Date.now()<suppressClickUntil){event.preventDefault();event.stopPropagation();}};
+  node.addEventListener('touchstart',begin,{passive:false});node.addEventListener('touchmove',move,{passive:false});node.addEventListener('touchend',end);node.addEventListener('touchcancel',end);node.addEventListener('click',click,true);
+  return()=>{node.removeEventListener('touchstart',begin);node.removeEventListener('touchmove',move);node.removeEventListener('touchend',end);node.removeEventListener('touchcancel',end);node.removeEventListener('click',click,true);};
+ },[]);
  const today=new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date());
  const router=useRouter();const [selection,setSelection]=useState<{date:string;booking?:BoardBooking;number:number|null;version:number;status:'hold'|'registered';copy?:boolean}|null>(null);const [busy,setBusy]=useState(false);const [error,setError]=useState("");
  const normalCount=lanes.filter(l=>l.kind==="normal").length;
