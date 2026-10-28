@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   buildAllmightFmt,
@@ -125,6 +125,11 @@ export function AllmightApplyForm({
 
   const [customerRequests, setCustomerRequests] = useState(iv.customerRequests ?? "");
   const [errors, setErrors] = useState<string[]>([]);
+  const formRef = useRef<HTMLFormElement>(null);
+  const inventoryMode = !!inventory;
+  useEffect(() => {
+    if (inventoryMode && errors.length) formRef.current?.querySelector('[role="alert"]')?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [errors, inventoryMode]);
   const [submitting, setSubmitting] = useState(false);
 
   // 集荷の実効値(「配送情報と同じ」時は配送の値を使用。チェックOFF時は個別入力値)。
@@ -326,7 +331,7 @@ export function AllmightApplyForm({
   const filledCount = validEquipments(effectiveEquipments).length;
 
   return (
-    <form onSubmit={handleSubmit} className="mt-6 space-y-6"><fieldset disabled={submitting} className="space-y-6">
+    <form ref={formRef} onSubmit={handleSubmit} className="mt-6 space-y-6"><fieldset disabled={submitting} className="space-y-6">
       <button
         type="button"
         onClick={handleBack}
@@ -341,7 +346,7 @@ export function AllmightApplyForm({
       )}
 
       {errors.length > 0 && (
-        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+        <div role="alert" className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
           <ul className="list-disc pl-5">
             {errors.map((e, i) => (
               <li key={i}>{e}</li>
