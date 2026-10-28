@@ -1,7 +1,7 @@
 "use client";
 import type{ScreenDay}from'@/lib/inventory/shared-screen';
 import type {InventoryRecord} from '@/lib/inventory/model';
-import {useState,useRef,useLayoutEffect,useEffect,Fragment} from "react";
+import {useState,useRef,useLayoutEffect,useEffect,useSyncExternalStore,Fragment} from "react";
 import {useRouter} from "next/navigation";
 import {type BoardBooking,type BoardLane} from "@/lib/inventory/board";
 import type {CapacityItem} from "@/lib/inventory/availability";
@@ -10,20 +10,26 @@ import {InventoryBookingEditor} from "./inventory-booking-editor";
 import {InventoryHoldForm} from "./inventory-hold-form";
 import {boardColor,boardSegments,laneLocked,bookingLabel} from "@/lib/inventory/presentation";
 import {pinchViewport,pinchTransform} from "@/lib/inventory/pinch";
+import {InventoryMobileBoard} from "./inventory-mobile-board";
+const mobileQuery='(max-width: 639px), (pointer: coarse)';
+const subscribeMobile=(notify:()=>void)=>{const query=window.matchMedia(mobileQuery);query.addEventListener('change',notify);return()=>query.removeEventListener('change',notify);};
+const mobileSnapshot=()=>window.matchMedia(mobileQuery).matches;
 const DAY=46;
 export function InventoryBoard({item,items,dates,anchor,lanes,staff,version,requests,backgroundDays}:{backgroundDays?:ScreenDay[];item:CapacityItem;items:CapacityItem[];dates:string[];anchor:string;lanes:BoardLane[];staff:{id:string;name:string}[];version:number;requests:InventoryRecord[]}){
+ const mobile=useSyncExternalStore(subscribeMobile,mobileSnapshot,()=>false);
  const [zoom,setZoom]=useState(100),[zoomInput,setZoomInput]=useState("100");const scale=zoom/100;const previousView=useRef({anchor:"",scale});const zoomRef=useRef(zoom);zoomRef.current=zoom;const pinchView=useRef<{left:number;top:number}|null>(null);
  function changeZoom(value:number){const next=Math.max(50,Math.min(150,Math.round(value)));setZoom(next);setZoomInput(String(next));}
  const [preview,setPreview]=useState<{booking:BoardBooking;x:number;y:number}|null>(null);
  function showPreview(node:HTMLElement,booking:BoardBooking){const rect=node.getBoundingClientRect();setPreview({booking,x:Math.max(8,Math.min(rect.left,window.innerWidth-328)),y:Math.max(8,Math.min(rect.bottom+8,window.innerHeight-190))});}
  const scrollRef=useRef<HTMLDivElement>(null);
  const [viewportWidth,setViewportWidth]=useState(0);
- useLayoutEffect(()=>{const node=scrollRef.current;if(!node)return;const observer=new ResizeObserver(()=>setViewportWidth(node.clientWidth));observer.observe(node);setViewportWidth(node.clientWidth);return()=>observer.disconnect();},[]);
+ useLayoutEffect(()=>{const node=scrollRef.current;if(!node)return;const observer=new ResizeObserver(()=>setViewportWidth(node.clientWidth));observer.observe(node);setViewportWidth(node.clientWidth);return()=>observer.disconnect();},[mobile]);
  const trailingSpace=Math.max(0,viewportWidth/scale-(120+(dates.length-Math.max(0,dates.indexOf(anchor)))*DAY));
  const anchorOffset=Math.max(0,dates.indexOf(anchor))*DAY;
- useLayoutEffect(()=>{const node=scrollRef.current;if(!node)return;const key=`${anchor}:${dates[0]}`;if(pinchView.current){const table=node.querySelector("table");if(table){table.style.transform="";table.style.transformOrigin="";table.style.willChange="";}node.scrollLeft=pinchView.current.left;node.scrollTop=pinchView.current.top;pinchView.current=null;}else node.scrollLeft=previousView.current.anchor===key?node.scrollLeft*scale/previousView.current.scale:anchorOffset*scale;previousView.current={anchor:key,scale};},[anchorOffset,dates[0],anchor,scale]);
+ useLayoutEffect(()=>{const node=scrollRef.current;if(!node)return;const key=`${anchor}:${dates[0]}`;if(pinchView.current){const table=node.querySelector("table");if(table){table.style.transform="";table.style.transformOrigin="";table.style.willChange="";}node.scrollLeft=pinchView.current.left;node.scrollTop=pinchView.current.top;pinchView.current=null;}else node.scrollLeft=previousView.current.anchor===key?node.scrollLeft*scale/previousView.current.scale:anchorOffset*scale;previousView.current={anchor:key,scale};},[anchorOffset,dates[0],anchor,scale,mobile]);
  // Only two-finger gestures change the chart scale; single-finger scrolling stays native.
  useEffect(()=>{
+  if(mobile)return;
   const node=scrollRef.current;if(!node)return;
   const table=node.querySelector('table');if(!table)return;
   let gesture:{distance:number;zoom:number;x:number;y:number}|null=null,suppressClickUntil=0,frame=0;
@@ -67,7 +73,7 @@ export function InventoryBoard({item,items,dates,anchor,lanes,staff,version,requ
   const click=(event:MouseEvent)=>{if(Date.now()<suppressClickUntil){event.preventDefault();event.stopPropagation();}};
   node.addEventListener('touchstart',begin,{passive:false});node.addEventListener('touchmove',move,{passive:false});node.addEventListener('touchend',end);node.addEventListener('touchcancel',end);node.addEventListener('click',click,true);
   return()=>{if(frame)cancelAnimationFrame(frame);table.style.transform="";table.style.transformOrigin="";table.style.willChange="";node.removeEventListener('touchstart',begin);node.removeEventListener('touchmove',move);node.removeEventListener('touchend',end);node.removeEventListener('touchcancel',end);node.removeEventListener('click',click,true);};
- },[]);
+ },[mobile]);
  const today=new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Tokyo"}).format(new Date());
  const router=useRouter();const [selection,setSelection]=useState<{date:string;booking?:BoardBooking;number:number|null;version:number;status:'hold'|'registered';copy?:boolean}|null>(null);const [busy,setBusy]=useState(false);const [error,setError]=useState("");
  const normalCount=lanes.filter(l=>l.kind==="normal").length;
@@ -77,7 +83,7 @@ export function InventoryBoard({item,items,dates,anchor,lanes,staff,version,requ
  return <>
   {error&&<p role="alert" className="mb-2 rounded-xl bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
   <div className="inventory-board-controls mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500"><div className="flex items-center gap-3"><span className="hidden sm:inline">予定をタップして編集</span><button className="rounded-lg bg-indigo-600 px-3 py-1.5 text-white" onClick={()=>open(anchor)}>＋ 在庫確保</button><button className="rounded-md border bg-white px-2 py-1 text-slate-700" onClick={()=>{const index=dates.indexOf(today);if(index>=0){scrollRef.current?.scrollTo({left:index*DAY*scale,behavior:"auto"});}else{const params=new URLSearchParams(window.location.search);params.set("start",today);params.delete("end");router.push(`?${params}`);}}}>本日に戻す</button></div><div className="inventory-zoom flex min-w-0 items-center gap-2 rounded-lg border bg-white px-2 py-1 text-slate-700"><input aria-label="表示倍率" type="range" min={50} max={150} step={1} value={zoom} onChange={e=>changeZoom(Number(e.target.value))} className="w-12 min-w-0 accent-indigo-600 sm:w-24"/><label className="flex items-center gap-0.5"><input aria-label="表示倍率（パーセント）" type="number" inputMode="numeric" min={50} max={150} step={1} value={zoomInput} onChange={e=>{setZoomInput(e.target.value);const n=Number(e.target.value);if(e.target.value!==''&&Number.isFinite(n)&&n>=50&&n<=150)setZoom(n);}} onBlur={()=>changeZoom(zoomInput===''?zoom:Number(zoomInput))} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();e.currentTarget.blur();}}} className="w-12 rounded border px-1 py-1 text-right"/><span>%</span></label></div></div>
-  <div ref={scrollRef} onScroll={()=>setPreview(null)} className="inventory-grid overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm" style={{maxHeight:"calc(100dvh - 330px)",minHeight:320}}>
+  {mobile?<InventoryMobileBoard item={item} dates={dates} lanes={lanes} backgroundDays={backgroundDays} today={today} zoom={zoom} scrollRef={scrollRef} trailingSpace={trailingSpace} onOpen={clickBooking} onZoom={(next,left,top)=>{if(next!==zoomRef.current)pinchView.current={left,top};changeZoom(next);}}/>:<div ref={scrollRef} onScroll={()=>setPreview(null)} className="inventory-grid overflow-auto rounded-2xl border border-slate-200 bg-white shadow-sm" style={{maxHeight:"calc(100dvh - 330px)",minHeight:320}}>
    <table className="border-separate border-spacing-0 text-sm" style={{width:120+dates.length*DAY,marginRight:trailingSpace,tableLayout:"fixed",zoom:scale}} aria-label={`${item.name} 台数別の在庫管理表`}>
     <colgroup><col style={{width:36}}/><col style={{width:84}}/>{dates.map(d=><col key={d} style={{width:DAY}}/>)}</colgroup>
     <thead className="sticky top-0 z-30"><tr><th className="sticky left-0 z-40 border-b border-r border-slate-200 bg-slate-50 py-2 text-xs">枠</th><th className="sticky left-9 z-40 border-b border-r border-slate-200 bg-slate-50 px-1 text-[11px]">{item.name}</th>{dates.map(d=>{const day=new Date(`${d}T00:00:00Z`).getUTCDay();return <th key={d} aria-current={d===today?"date":undefined} className={`border-b border-r py-1.5 text-[10px] font-medium ${d===today?"border-t-2 border-t-blue-600 bg-blue-50 text-blue-700":day===0?"bg-rose-50 text-rose-600":day===6?"bg-sky-50 text-sky-700":"bg-slate-50 text-slate-600"}`}><span className="block font-semibold">{Number(d.slice(5,7))}/{Number(d.slice(8))}</span><span className="block text-[9px]">{"日月火水木金土"[day]}</span></th>;})}</tr>{backgroundDays&&<tr aria-label="背景残数" className="bg-indigo-50 text-indigo-950"><th scope="row" colSpan={2} className="sticky left-0 z-40 border-b border-r border-indigo-100 bg-indigo-50 px-1 text-center text-[10px] font-medium" style={{height:20,lineHeight:'18px',paddingTop:0,paddingBottom:0}}>背景残数</th>{backgroundDays.map(d=><td key={d.date} aria-label={`${d.date} 背景残数 ${d.remaining===null?'未設定':`${d.remaining}枚`}`} title={d.remaining===null?'背景スクリーンの在庫が未設定です':`大小共通：保有${d.total}枚 − 予備${d.reserve}枚 − 確保${d.used}枚`} className={`border-b border-r border-indigo-100 text-center text-[11px] font-medium tabular-nums ${d.remaining!==null&&d.remaining<0?'bg-rose-100 text-rose-700':d.remaining===0?'bg-amber-100 text-amber-900':''}`} style={{height:20,lineHeight:'18px',padding:0}}>{d.remaining??'—'}</td>)}</tr>}</thead>
@@ -98,7 +104,7 @@ export function InventoryBoard({item,items,dates,anchor,lanes,staff,version,requ
     })}</tbody>
    </table>
    {lanes.length===0&&<p className="p-8 text-center text-sm text-slate-600">表示する在庫枠がありません。下の在庫設定で台数を登録してください。</p>}
-  </div>
+  </div>}
   <p className="mt-2 text-xs text-slate-500">空き番号を自動選択し、保存後は固定します。番号の変更は予定の編集画面で行います。未割当は下段、競合は赤い行に表示します。</p>
   {preview&&!selection&&<aside id="inventory-booking-preview" role="tooltip" className="pointer-events-none fixed z-[60] w-80 max-w-[calc(100vw-16px)] rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-900 shadow-xl" style={{left:preview.x,top:preview.y}}><p className="break-words font-semibold">{preview.booking.managementNo?`${preview.booking.managementNo}：`:(preview.booking.kind!=="request"||preview.booking.status==='hold')?"(仮) ":""}{preview.booking.store}</p><p className="mt-2">担当者：{preview.booking.staff}</p><p className="mt-1 text-xs text-slate-600">利用：{preview.booking.start} 〜 {preview.booking.end}</p><p className="mt-1 text-xs text-slate-600">配送：{preview.booking.deliveryRequired===false?"なし":preview.booking.delivery||"未設定"} ／ 集荷：{preview.booking.pickupRequired===false?"なし":preview.booking.pickup||"未設定"}</p><p className="mt-2 text-xs text-slate-500">タップすると案件の詳細を確認できます</p></aside>}
   {selection&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-4" onClick={()=>!busy&&setSelection(null)} onKeyDown={e=>{if(e.key==="Escape"&&!busy)setSelection(null);if(e.key==="Tab"){const focusable=Array.from(e.currentTarget.querySelectorAll<HTMLElement>('button:not([disabled]),a[href],input,select,textarea'));const first=focusable[0],last=focusable[focusable.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}}}><section role="dialog" aria-modal="true" aria-label={selection.copy?"コピーから新規申請":selection.booking?"予定の編集・番号指定":selection.status==='registered'?"確定分を追加":"在庫確保"} className="inventory-editor flex max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-xl bg-white shadow-xl" onClick={e=>e.stopPropagation()}>
