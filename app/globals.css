@@ -60,7 +60,7 @@ body:has(.inventory-editor), body:has(.inventory-workspace dialog[open]) { overf
 /* Rental workspace: compact desktop command bar and touch-sized mobile actions. */
 .inventory-workspace { --inventory-accent: #5043e8; }
 .inventory-page-heading { padding-block: 4px; }
-.inventory-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px; background: #fff; border: 1px solid #e2e7f0; border-radius: 16px; box-shadow: 0 3px 12px #14254404; }
+.inventory-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding: 10px; background: #fff; border: 1px solid #e2e7f0; border-radius: 16px; box-shadow: 0 3px 12px #14254404; }
 .inventory-quick-actions { display: flex; gap: 8px; align-items: center; }
 .inventory-action { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 7px; white-space: nowrap; border: 1px solid #e0e2f5; border-radius: 11px; background: #f8f8ff; padding: 8px 12px; color: #4338ca; font-size: 12px; font-weight: 600; transition: background-color .15s, border-color .15s; }
 .inventory-action:hover { background: #eeedff; border-color: #c4bfff; }
@@ -69,7 +69,17 @@ body:has(.inventory-editor), body:has(.inventory-workspace dialog[open]) { overf
 .inventory-action-holds:hover { background: #fff6df; border-color: #e8ce91; }
 .inventory-action-holds .inventory-action-count { background: #f8edcf; }
 .inventory-range-toggle { display: none; }
-.inventory-period-controls label { color: #64748b; font-size: 10px; }
+.inventory-period-controls label { display: flex; flex-direction: column; gap: 4px; color: #64748b; font-size: 10px; }
+.inventory-period-controls input, .inventory-period-controls select { height: 40px; margin-top: 0; line-height: normal; }
+.inventory-period-controls input[type="date"] { display: inline-flex; align-items: center; padding-block: 0; }
+.inventory-period-controls input[type="date"]::-webkit-date-and-time-value { margin: 0; text-align: left; }
+.inventory-period-controls input[type="date"]::-webkit-datetime-edit { display: inline-flex; align-items: center; padding: 0; }
+.inventory-period-controls input[type="date"]::-webkit-datetime-edit-fields-wrapper { padding: 0; }
+.inventory-period-controls input[type="date"]::-webkit-datetime-edit-year-field,
+.inventory-period-controls input[type="date"]::-webkit-datetime-edit-month-field,
+.inventory-period-controls input[type="date"]::-webkit-datetime-edit-day-field,
+.inventory-period-controls input[type="date"]::-webkit-datetime-edit-text { padding-block: 0; }
+.inventory-period-controls > button { flex-shrink: 0; }
 .inventory-period-controls label:first-of-type input, .inventory-period-controls label:last-of-type input { max-width: 140px; }
 .inventory-product-tabs { border-color: #e1e6ee; box-shadow: 0 2px 6px #15253c04; }
 .inventory-product-tabs a { border-radius: 10px; }
