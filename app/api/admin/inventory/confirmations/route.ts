@@ -32,7 +32,7 @@ async function handler(req:NextRequest){const a=await inventoryAccess();if('erro
  const prior=await db.from('inventory_confirmation_sources').select('request_id,input_hash,created_by').eq('request_id',body.id).limit(1).maybeSingle();if(prior.error)throw Error('本登録の設定を確認してください');
  if(prior.data){if(prior.data.input_hash!==hash||prior.data.created_by!==a.admin.auth_user_id)throw Error('保存済みの申請を確認してください');const r=await db.from('requests').select('status,deleted_at').eq('id',body.id).single();if(r.error||r.data.deleted_at)throw Error('保存済み申請を申請一覧から確認してください');return NextResponse.json({ok:true,requestId:body.id,status:r.data.status});}
  const model=await loadInventoryModel(a.db),p=confirmationSource(model,body.key),b=p.source.booking;
- if(body.baseline!==p.baseline)return NextResponse.json({error:'仮押さえの内容が変更されています。入力内容を控え、最新の予定を確認してください。入力は保持しています。'},{status:409});
+ if(body.baseline!==p.baseline)return NextResponse.json({code:'target_changed',latestBaseline:p.baseline,latest:p.records.map(r=>({name:model.items.find(i=>i.id===r.itemId)!.name,number:r.booking.unitNumber??null,store:r.booking.store,start:r.booking.start,end:r.booking.end})),deliveryRequired:b.deliveryRequired!==false,pickupRequired:b.pickupRequired!==false,error:'仮押さえの内容が変更されています。最新内容を確認してから保存してください。入力は保持しています。'},{status:409});
  const input=body.payload,staff=model.staff.find(s=>s.name===input.company_staff_name);if(!staff)throw Error('担当者マスターの正式名称を選択してください');
  for(const [key,max]of[['applicant_name',100],['applicant_phone',30],['applicant_email',254]]as const)if(typeof input[key]!=='string'||!input[key].trim()||input[key].length>max)throw Error('入力者の氏名・電話番号・メールを入力してください');
  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.applicant_email))throw Error('メールアドレスを確認してください');

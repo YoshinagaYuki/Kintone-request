@@ -72,7 +72,7 @@ export function AllmightApplyForm({
   initialValues?: AllmightInitialValues;
   /** 編集開始時の updated_at(楽観ロック用。mode="edit" で渡す) */
   baseUpdatedAt?: string;
-  inventory?: {deliveryRequired:boolean;pickupRequired:boolean;staff:{id:string;name:string}[];onBack:()=>void;onSubmit:(payload:Record<string,unknown>)=>Promise<void>};
+  inventory?: {equipments:string[];deliveryRequired:boolean;pickupRequired:boolean;staff:{id:string;name:string}[];onBack:()=>void;onSubmit:(payload:Record<string,unknown>)=>Promise<void>};
 }) {
   const router = useRouter();
   const iv = initialValues ?? {};
@@ -97,6 +97,8 @@ export function AllmightApplyForm({
   const [equipments, setEquipments] = useState<string[]>(
     iv.equipments && iv.equipments.length > 0 ? iv.equipments : [""]
   );
+
+  const effectiveEquipments=inventory?.equipments??equipments;
 
   // 配送
   const [deliveryDate, setDeliveryDate] = useState(iv.deliveryDate ?? "");
@@ -196,7 +198,7 @@ export function AllmightApplyForm({
     }
 
     // 機器商品（1枠1台、同じ商品も複数枠に選択可）
-    const filled = validEquipments(equipments);
+    const filled = validEquipments(effectiveEquipments);
     if (filled.length === 0) errs.push("機器商品を1つ以上選択してください。");
 
 
@@ -236,7 +238,7 @@ export function AllmightApplyForm({
     setErrors([]);
 
     const rawText = buildAllmightFmt({
-      equipments,
+      equipments:effectiveEquipments,
       eventBooth,
       agencyName,
       billingMonth,
@@ -321,7 +323,7 @@ export function AllmightApplyForm({
     "mt-1 w-full rounded-md border border-gray-200 bg-gray-100 p-2.5 text-sm text-gray-600";
   const labelClass = "block text-sm font-medium text-gray-700";
   const req = <span className="text-red-600">*</span>;
-  const filledCount = validEquipments(equipments).length;
+  const filledCount = validEquipments(effectiveEquipments).length;
 
   return (
     <form onSubmit={handleSubmit} className="mt-6 space-y-6"><fieldset disabled={submitting} className="space-y-6">
@@ -436,7 +438,7 @@ export function AllmightApplyForm({
         </div>
         <p className="mt-1 text-xs text-gray-500">機材を選択してください(最大{ALLMIGHT_MAX_EQUIPMENT}台・同じ商品を複数選択できます)。</p>
         <div className="mt-3 space-y-2">
-          {equipments.map((eq, i) => (
+          {effectiveEquipments.map((eq, i) => (
             <div key={i} className="flex items-center gap-2">
               <span className="w-6 shrink-0 text-xs text-gray-400">{i + 1}.</span>
               <select
