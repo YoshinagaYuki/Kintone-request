@@ -1,0 +1,58 @@
+import{NextRequest,NextResponse}from'next/server';
+import{createHash}from'node:crypto';
+import{revalidatePath}from'next/cache';
+import{inventoryAccess}from'@/lib/inventory/access';
+import{createAdminClient}from'@/lib/supabase/admin';
+import{loadInventoryModel,type InventoryRecord}from'@/lib/inventory/model';
+import{confirmationSource}from'@/lib/inventory/confirmation';
+import{ALLMIGHT_FMT_LABELS as L,equipmentLabel}from'@/lib/allmight-fmt';
+import{parseFmt}from'@/lib/parser/fmt-parser';
+import{bookingPatch,slotSchedule,validateNumber}from'@/lib/inventory/operations';
+import{assertScreenCapacity}from'@/lib/inventory/shared-screen';
+import{isKintoneReady}from'@/lib/form-types';
+import{withInventorySheetPush}from'@/lib/inventory/sheet-push';
+export const maxDuration=60;
+async function formConfig(db:ReturnType<typeof createAdminClient>,adminId:string){
+ const f=await db.from('form_types').select('id,version,parser_config,field_mapping').eq('kintone_app_id',10).single();
+ if(f.error||!isKintoneReady(f.data.field_mapping))throw Error('オールマイトの申請設定を確認してください');
+ const grant=await db.from('admin_user_businesses').select('admin_user_id').eq('admin_user_id',adminId).eq('form_type_id',f.data.id).maybeSingle();
+ if(grant.error||!grant.data)throw Error('オールマイトの管理権限が必要です');return f.data;
+}
+export async function GET(req:NextRequest){const a=await inventoryAccess();if('error'in a)return NextResponse.json({error:a.error},{status:a.status});try{
+ const db=createAdminClient(),key=req.nextUrl.searchParams.get('key')??'',f=await formConfig(db,a.admin.id);
+ const previous=await db.from('inventory_confirmation_sources').select('request_id').eq('source_key',key).maybeSingle();if(previous.error)throw Error('本登録の設定を確認してください');if(previous.data)return NextResponse.json({existingRequestId:previous.data.request_id});
+ const model=await loadInventoryModel(a.db),p=confirmationSource(model,key),b=p.source.booking;
+ const clean=(s:string)=>s.normalize('NFKC').replace(/[\s()（）]/g,'');const staff=model.staff.filter(s=>clean(s.name).startsWith(clean(b.staff)));const names=p.records.map(r=>model.items.find(i=>i.id===r.itemId)!.name);
+ return NextResponse.json({formTypeId:f.id,version:model.version,baseline:p.baseline,staff:model.staff,deliveryRequired:b.deliveryRequired!==false,pickupRequired:b.pickupRequired!==false,lines:p.records.map((r,i)=>({name:names[i],number:r.booking.unitNumber??null})),initialValues:{applicantName:a.admin.display_name||'',applicantEmail:a.admin.email,companyStaffName:staff.length===1?staff[0].name:'',eventBooth:b.store,usageStart:b.start,usageEnd:b.end,deliveryDate:b.delivery,pickupDate:b.pickup,billingMonth:`${Number(b.start.slice(5,7))}月分`,equipments:names}});
+ }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'本登録の情報を取得できません'},{status:400});}}
+async function handler(req:NextRequest){const a=await inventoryAccess();if('error'in a)return NextResponse.json({error:a.error},{status:a.status});try{
+ const text=await req.text();if(text.length>50000)throw Error('入力内容が長すぎます');const body=JSON.parse(text);
+ if(!/^[0-9a-f-]{36}$/i.test(body.id??'')||typeof body.key!=='string'||typeof body.baseline!=='string'||typeof body.payload!=='object'||!body.payload)throw Error('入力情報を確認してください');
+ const db=createAdminClient(),f=await formConfig(db,a.admin.id),hash=createHash('sha256').update(JSON.stringify(body)).digest('hex');
+ const prior=await db.from('inventory_confirmation_sources').select('request_id,input_hash,created_by').eq('request_id',body.id).limit(1).maybeSingle();if(prior.error)throw Error('本登録の設定を確認してください');
+ if(prior.data){if(prior.data.input_hash!==hash||prior.data.created_by!==a.admin.auth_user_id)throw Error('保存済みの申請を確認してください');const r=await db.from('requests').select('status,deleted_at').eq('id',body.id).single();if(r.error||r.data.deleted_at)throw Error('保存済み申請を申請一覧から確認してください');return NextResponse.json({ok:true,requestId:body.id,status:r.data.status});}
+ const model=await loadInventoryModel(a.db),p=confirmationSource(model,body.key),b=p.source.booking;
+ if(body.baseline!==p.baseline)return NextResponse.json({error:'仮押さえの内容が変更されています。入力内容を控え、最新の予定を確認してください。入力は保持しています。'},{status:409});
+ const input=body.payload,staff=model.staff.find(s=>s.name===input.company_staff_name);if(!staff)throw Error('担当者マスターの正式名称を選択してください');
+ for(const [key,max]of[['applicant_name',100],['applicant_phone',30],['applicant_email',254]]as const)if(typeof input[key]!=='string'||!input[key].trim()||input[key].length>max)throw Error('入力者の氏名・電話番号・メールを入力してください');
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.applicant_email))throw Error('メールアドレスを確認してください');
+ if(input.customer_requests!=null&&(typeof input.customer_requests!=='string'||input.customer_requests.length>2000))throw Error('要望・連絡事項は2000文字までです');
+ const deliveryRequired=b.deliveryRequired!==false,pickupRequired=b.pickupRequired!==false;
+ const shipping=[...(!deliveryRequired?[L.deliveryDate,L.deliveryPostal,L.deliveryAddress,L.deliveryReceiver,L.deliveryContact]:[]),...(!pickupRequired?[L.pickupDate,L.pickupPostal,L.pickupAddress,L.pickupHandover,L.pickupContact]:[])];
+ const parsed=parseFmt(input.raw_text,{...f.parser_config,required_labels:(f.parser_config?.required_labels??[]).filter((v:string)=>!shipping.includes(v as any))});if(!parsed.ok)throw Error(parsed.errors.join(' '));const data:Record<string,unknown>={...parsed.data};
+ for(const key of[L.agencyName,L.eventBooth,L.billingMonth,...(deliveryRequired?[L.deliveryDate,L.deliveryPostal,L.deliveryAddress,L.deliveryReceiver,L.deliveryContact]:[]),...(pickupRequired?[L.pickupDate,L.pickupPostal,L.pickupAddress,L.pickupHandover,L.pickupContact]:[])])if(typeof data[key]!=='string'||!String(data[key]).trim())throw Error(`${key}を入力してください`);
+ if(!/^(?:[1-9]|1[0-2])月分$/.test(String(data[L.billingMonth])))throw Error('請求対象月を選択してください');
+ const names=p.records.map(r=>model.items.find(i=>i.id===r.itemId)!.name);for(let i=1;i<=5;i++)if(String(data[equipmentLabel(i)]??'')!==(names[i-1]??''))throw Error('商品は仮押さえの編集画面で変更してから本登録してください');
+ for(const key of shipping)delete data[key];
+ const patch=bookingPatch({item_id:p.source.itemId,staff:staff.name,store:data[L.eventBooth],start:data[L.usageStart],end:data[L.usageEnd],delivery:data[L.deliveryDate]??'',pickup:data[L.pickupDate]??'',deliveryRequired,pickupRequired,from:[String(data[L.usageStart]),String(data[L.deliveryDate]??'')].filter(Boolean).sort()[0],to:[String(data[L.usageEnd]),String(data[L.pickupDate]??'')].filter(Boolean).sort().at(-1)});
+ // Preserve explicitly reserved transit/inspection padding if usage/shipping dates are unchanged.
+ if(patch.start===b.start&&patch.end===b.end&&patch.delivery===b.delivery&&patch.pickup===b.pickup){patch.from=b.from;patch.to=b.to;}
+ const keys=p.records.map(r=>r.booking.key!);Object.assign(data,{[L.eventBoothName]:patch.store,'担当者':staff.name,_inventory_delivery_required:deliveryRequired,_inventory_pickup_required:pickupRequired,_inventory_confirmation_keys:keys});
+ const candidates:InventoryRecord[]=p.records.map((r,i)=>({itemId:r.itemId,booking:{...r.booking,...patch,key:`request:${body.id}:${i}`,id:body.id,group:`${body.id}:${i}`,kind:'request',managementNo:'',status:'hold'}}));
+ const existing=model.records.filter(r=>!keys.includes(r.booking.key!));for(const r of candidates)validateNumber(model,r,r.booking.unitNumber??null);assertScreenCapacity(model,candidates,existing);
+ const slots=candidates.map((r,i)=>({slot:i,source_key:keys[i],item_id:r.itemId,unit_number:r.booking.unitNumber??null,patch:{from:patch.from,to:patch.to,deliveryRequired,pickupRequired,screenQuantity:r.booking.screenQuantity??0}}));
+ const saved=await db.rpc('create_inventory_confirmation',{p_actor:a.admin.auth_user_id,p_id:body.id,p_hash:hash,p_expected:model.version,p_form:f.id,p_version:f.version,p_parsed:data,p_raw:input.raw_text,p_input:{...input,staff:staff.name},p_slots:slots,p_candidate:slotSchedule(candidates),p_existing:slotSchedule(existing)});
+ if(saved.error){if(saved.error.message.includes('inventory_stale'))return NextResponse.json({code:'inventory_stale',error:'在庫の更新を確認しています。入力は保持しています。'},{status:409});if(saved.error.message.includes('source_already_confirmed')||saved.error.code==='23505')throw Error('この仮押さえは本登録の申請が作成済みです。申請一覧を確認してください');if(saved.error.message.includes('inventory_conflict'))throw Error('機器番号が別の予定と重なっています。日程・機器番号を確認してください');throw Error('申請を保存できませんでした。入力は保持しています');}
+ revalidatePath('/admin/inventory/allmight');revalidatePath('/admin/requests');return NextResponse.json({ok:true,requestId:body.id,status:'pending'});
+ }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'入力内容を確認してください'},{status:400});}}
+export const POST=withInventorySheetPush(handler);

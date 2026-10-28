@@ -59,6 +59,7 @@ export function AllmightApplyForm({
   requestId,
   initialValues,
   baseUpdatedAt,
+  inventory,
 }: {
   formTypeId: string;
   /** 機器商品の選択肢(オールマイト商品マスターの正式名称) */
@@ -71,6 +72,7 @@ export function AllmightApplyForm({
   initialValues?: AllmightInitialValues;
   /** 編集開始時の updated_at(楽観ロック用。mode="edit" で渡す) */
   baseUpdatedAt?: string;
+  inventory?: {deliveryRequired:boolean;pickupRequired:boolean;staff:{id:string;name:string}[];onBack:()=>void;onSubmit:(payload:Record<string,unknown>)=>Promise<void>};
 }) {
   const router = useRouter();
   const iv = initialValues ?? {};
@@ -152,6 +154,7 @@ export function AllmightApplyForm({
   }
   function handleBack() {
     if (submitting) return;
+    if(inventory){if(!window.confirm("入力内容は保存されません。予定の編集に戻りますか？"))return;inventory.onBack();return;}
     // 編集モードは申請詳細へ戻る(新規は事業選択へ)
     if (mode === "edit") {
       if (!window.confirm("編集内容は保存されません。申請詳細に戻りますか?")) return;
@@ -198,12 +201,15 @@ export function AllmightApplyForm({
 
 
     // 配送(必須)
+    if(!inventory||inventory.deliveryRequired){
     if (!deliveryDate.trim()) errs.push("配送日付を入力してください。");
     if (!deliveryPostal.trim()) errs.push("配送の郵便番号を入力してください。");
     if (!deliveryAddress.trim()) errs.push("配送先住所を入力してください。");
     if (!deliveryReceiver.trim()) errs.push("配送の受領者氏名を入力してください。");
     if (!deliveryContact.trim()) errs.push("配送の連絡先を入力してください。");
 
+    }
+    if(!inventory||inventory.pickupRequired){
     // 集荷(必須。実効値で判定=「配送情報と同じ」時は配送の値)
     if (!pickupDate.trim()) errs.push("集荷日付を入力してください。");
     if (!effPickupPostal.trim()) errs.push("集荷の郵便番号を入力してください。");
@@ -211,6 +217,7 @@ export function AllmightApplyForm({
     if (!effPickupReceiver.trim()) errs.push("集荷の受領者氏名を入力してください。");
     if (!effPickupContact.trim()) errs.push("集荷の連絡先を入力してください。");
 
+    }
     if (customerRequests.length > MAX_CUSTOMER_REQUESTS)
       errs.push(`要望・連絡事項は${MAX_CUSTOMER_REQUESTS}文字以内で入力してください。`);
     return errs;
@@ -269,6 +276,7 @@ export function AllmightApplyForm({
     };
 
     try {
+      if(inventory){await inventory.onSubmit(payload);return;}
       // 編集モード: 管理者編集API(PATCH)。成功時は申請詳細へ戻る(メール再送なし)。
       if (mode === "edit" && requestId) {
         const res = await fetch(`/api/admin/requests/${requestId}/edit`, {
@@ -300,8 +308,8 @@ export function AllmightApplyForm({
       }
       setErrors(body?.errors ?? ["送信に失敗しました。時間をおいて再度お試しください。"]);
       window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch {
-      setErrors(["通信エラーが発生しました。時間をおいて再度お試しください。"]);
+    } catch (error) {
+      setErrors([error instanceof Error ? error.message : "通信エラーが発生しました。入力は保持しています。"]);
     } finally {
       setSubmitting(false);
     }
@@ -316,13 +324,13 @@ export function AllmightApplyForm({
   const filledCount = validEquipments(equipments).length;
 
   return (
-    <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+    <form onSubmit={handleSubmit} className="mt-6 space-y-6"><fieldset disabled={submitting} className="space-y-6">
       <button
         type="button"
         onClick={handleBack}
         className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
       >
-        ← {mode === "edit" ? "申請詳細に戻る" : "事業選択に戻る"}
+        ← {inventory ? "予定の編集に戻る" : mode === "edit" ? "申請詳細に戻る" : "事業選択に戻る"}
       </button>
       {mode === "edit" && (
         <p className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
@@ -359,7 +367,7 @@ export function AllmightApplyForm({
           </div>
           <div>
             <label className={labelClass}>弊社担当者氏名 {req}</label>
-            <input type="text" value={companyStaffName} onChange={(e) => setCompanyStaffName(e.target.value)} maxLength={100} placeholder="例：吉永、田中、山田太郎" className={inputClass} />
+            {inventory?<select aria-label="弊社担当者氏名" value={companyStaffName} onChange={e=>setCompanyStaffName(e.target.value)} className={inputClass}><option value="">正式名称を選択</option>{inventory.staff.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</select>:<input type="text" value={companyStaffName} onChange={(e) => setCompanyStaffName(e.target.value)} maxLength={100} placeholder="例：吉永、田中、山田太郎" className={inputClass} />}
             <p className="mt-1 text-xs text-gray-500">弊社の担当者名をご入力ください(社内で正式名称に確認・修正します)。</p>
           </div>
         </div>
@@ -432,6 +440,7 @@ export function AllmightApplyForm({
             <div key={i} className="flex items-center gap-2">
               <span className="w-6 shrink-0 text-xs text-gray-400">{i + 1}.</span>
               <select
+                disabled={!!inventory}
                 value={eq}
                 onChange={(e) => updateEquipment(i, e.target.value)}
                 className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white p-2.5 text-sm focus:border-blue-500 focus:outline-none"
@@ -444,7 +453,7 @@ export function AllmightApplyForm({
               <button
                 type="button"
                 onClick={() => removeEquipment(i)}
-                disabled={equipments.length <= 1}
+                disabled={!!inventory || equipments.length <= 1}
                 aria-label={`機材${i + 1}を削除`}
                 className="shrink-0 rounded-md border border-gray-300 px-2 py-2 text-xs text-gray-500 hover:bg-gray-50 disabled:opacity-40"
               >
@@ -453,7 +462,7 @@ export function AllmightApplyForm({
             </div>
           ))}
         </div>
-        {equipments.length < ALLMIGHT_MAX_EQUIPMENT && (
+        {!inventory && equipments.length < ALLMIGHT_MAX_EQUIPMENT && (
           <button
             type="button"
             onClick={addEquipment}
@@ -465,8 +474,8 @@ export function AllmightApplyForm({
       </section>
 
       {/* 配送 */}
-      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-semibold text-gray-800">配送</h2>
+      <fieldset disabled={inventory?.deliveryRequired===false}><section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-gray-800">配送{inventory?.deliveryRequired===false?"（不要）":""}</h2>
         <div className="mt-3 space-y-3">
           <div>
             <label className={labelClass}>配送日付 {req}</label>
@@ -491,9 +500,10 @@ export function AllmightApplyForm({
         </div>
       </section>
 
+      </fieldset>
       {/* 集荷 */}
-      <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-semibold text-gray-800">集荷</h2>
+      <fieldset disabled={inventory?.pickupRequired===false}><section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-gray-800">集荷{inventory?.pickupRequired===false?"（不要）":""}</h2>
 
         <label className="mt-3 flex cursor-pointer items-center gap-2 rounded-md border border-blue-200 bg-blue-50 p-2.5 text-sm font-medium text-blue-800">
           <input
@@ -530,6 +540,7 @@ export function AllmightApplyForm({
         </div>
       </section>
 
+      </fieldset>
       {/* 伝票番号連絡先(任意) */}
       <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-gray-800">
@@ -601,8 +612,8 @@ export function AllmightApplyForm({
       >
         {submitting
           ? (mode === "edit" ? "保存中..." : "送信中...")
-          : (mode === "edit" ? "編集内容を保存" : "申請する")}
+          : (inventory ? "本登録してkintone連携・管理番号を発行" : mode === "edit" ? "編集内容を保存" : "申請する")}
       </button>
-    </form>
+    </fieldset></form>
   );
 }

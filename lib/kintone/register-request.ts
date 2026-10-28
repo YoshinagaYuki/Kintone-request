@@ -1,3 +1,4 @@
+import{confirmationMapping,applyConfirmationShipping}from'../inventory/confirmation-shipping';
 /**
  * 申請の kintone 連携パイプライン(approve / retry 共通)。
  *
@@ -191,7 +192,7 @@ async function registerRequestInternal(
   let recordId = request.kintone_record_id as string | null;
 
   if (!recordId) {
-    const mapped = buildKintoneRecord(parsedData, fieldMapping);
+    const mapped = buildKintoneRecord(parsedData, appId===10?confirmationMapping(fieldMapping,parsedData):fieldMapping);
     if (!mapped.ok) {
       const msg = `マッピングエラー: ${mapped.errors.join(" / ")}`;
       await markFailed("mapping", msg);
@@ -253,6 +254,8 @@ async function registerRequestInternal(
         ),
       };
     }
+
+    if(appId===10)applyConfirmationShipping(mapped.record,parsedData,fieldMapping);
 
     // オールマイトのみ: API登録ではkintone JSが発火しないため、
     // 利用日数・利用金額①〜⑤をサーバー側で計算して補完(計算/配送費/調整額には触れない)
