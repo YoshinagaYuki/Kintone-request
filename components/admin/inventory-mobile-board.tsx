@@ -44,10 +44,11 @@ export function InventoryMobileBoard(props:Props){
     }
     for(const [staff,segments] of [[true,scene.staff],[false,scene.events]] as const){
      for(let i=0;i<segments.length;i++){
-      const seg=segments[i];if(!seg.booking)continue;const day=seg.day,x=LABEL+day*DAY-l,span=seg.span*DAY;if(x+span<LABEL||x>w)continue;
+      const seg=segments[i];if(!seg.booking)continue;const day=seg.day,x=LABEL+day*DAY-l,span=seg.span*DAY;
+      const next=segments[i+1],spill=!staff&&next&&!next.booking&&!next.inactive?Math.min(next.span,2)*DAY:0;
+      if(x+span+spill<LABEL||x>w)continue;
       const b=seg.booking,yy=y+(staff?0:30),color=seg.inactive?'#e2e8f0':overflow?'#ffe4e6':boardColor(b,staff?b.start:seg.date);
       fill(x,yy,span,30,color);
-      const next=segments[i+1],spill=!staff&&next&&!next.booking&&!next.inactive?Math.min(next.span,2)*DAY:0;
       const tx=Math.max(LABEL,x);
       text(staff?(b.staff==='担当者未設定'?'要確認':b.staff):bookingLabel(b,seg.date),tx+2,yy+15,Math.min(span+spill,x+span+spill-tx)-4,11,b.staff==='担当者未設定'&&staff?'#dc2626':'#1e293b');
      }
@@ -96,5 +97,5 @@ export function InventoryMobileBoard(props:Props){
  },[props.scrollRef]);
  useLayoutEffect(()=>sync.current?.(),[props.zoom,props.dates,props.lanes,props.backgroundDays,props.trailingSpace]);
  const bookings=[...new Map(props.lanes.flatMap(l=>l.bookings.map(b=>[b.key??b.id,b] as const))).values()];
- return <><div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div ref={props.scrollRef} tabIndex={0} className="inventory-grid overflow-auto" style={{height:'60dvh',minHeight:300,touchAction:'pan-x pan-y'}} aria-label={`${props.item.name} 在庫ガントチャート。1本指でスクロール、2本指で拡大・縮小`}><div ref={spaceRef}/></div><canvas ref={canvasRef} className="pointer-events-none absolute left-0 top-0" aria-hidden="true"/></div><label className="sr-only focus-within:not-sr-only">予定を選択して編集<select aria-label="予定を選択して編集" value="" onChange={e=>{const b=bookings.find(b=>(b.key??b.id)===e.target.value);if(b)props.onOpen(b.start,b,b.unitNumber??null);}}><option value="">予定を選択</option>{bookings.map(b=><option key={b.key??b.id} value={b.key??b.id}>{b.staff} {b.start}〜{b.end} {b.managementNo} {b.store}</option>)}</select></label></>;
+ return <><div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div ref={props.scrollRef} role="region" tabIndex={0} className="inventory-grid overflow-auto" style={{height:'60dvh',minHeight:300,touchAction:'pan-x pan-y'}} aria-label={`${props.item.name} 在庫ガントチャート。1本指でスクロール、2本指で拡大・縮小`}><div ref={spaceRef}/></div><canvas ref={canvasRef} className="pointer-events-none absolute left-0 top-0" aria-hidden="true"/></div><label className="sr-only focus-within:not-sr-only">予定を選択して編集<select aria-label="予定を選択して編集" value="" onChange={e=>{const b=bookings.find(b=>(b.key??b.id)===e.target.value);if(b)props.onOpen(b.start,b,b.unitNumber??null);}}><option value="">予定を選択</option>{bookings.map(b=><option key={b.key??b.id} value={b.key??b.id}>{b.staff} {b.start}〜{b.end} {b.managementNo} {b.store}</option>)}</select></label></>;
 }
