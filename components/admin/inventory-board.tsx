@@ -17,7 +17,7 @@ const mobileSnapshot=()=>window.matchMedia(mobileQuery).matches;
 const DAY=46;
 export function InventoryBoard({item,items,dates,anchor,lanes,staff,version,requests,backgroundDays}:{backgroundDays?:ScreenDay[];item:CapacityItem;items:CapacityItem[];dates:string[];anchor:string;lanes:BoardLane[];staff:{id:string;name:string}[];version:number;requests:InventoryRecord[]}){
  const mobile=useSyncExternalStore(subscribeMobile,mobileSnapshot,()=>false);
- const [zoom,setZoom]=useState(100),[zoomInput,setZoomInput]=useState("100");const scale=zoom/100;const previousView=useRef({anchor:"",scale});const zoomRef=useRef(zoom);zoomRef.current=zoom;const pinchView=useRef<{left:number;top:number}|null>(null);
+ const [zoom,setZoom]=useState(100),[zoomInput,setZoomInput]=useState("100");const scale=zoom/100;const previousView=useRef({anchor:"",scale});const viewNode=useRef<HTMLDivElement|null>(null);const zoomRef=useRef(zoom);zoomRef.current=zoom;const pinchView=useRef<{left:number;top:number}|null>(null);
  function changeZoom(value:number){const next=Math.max(50,Math.min(150,Math.round(value)));setZoom(next);setZoomInput(String(next));}
  const [preview,setPreview]=useState<{booking:BoardBooking;x:number;y:number}|null>(null);
  function showPreview(node:HTMLElement,booking:BoardBooking){const rect=node.getBoundingClientRect();setPreview({booking,x:Math.max(8,Math.min(rect.left,window.innerWidth-328)),y:Math.max(8,Math.min(rect.bottom+8,window.innerHeight-190))});}
@@ -26,7 +26,7 @@ export function InventoryBoard({item,items,dates,anchor,lanes,staff,version,requ
  useLayoutEffect(()=>{const node=scrollRef.current;if(!node)return;const observer=new ResizeObserver(()=>setViewportWidth(node.clientWidth));observer.observe(node);setViewportWidth(node.clientWidth);return()=>observer.disconnect();},[mobile]);
  const trailingSpace=Math.max(0,viewportWidth/scale-(120+(dates.length-Math.max(0,dates.indexOf(anchor)))*DAY));
  const anchorOffset=Math.max(0,dates.indexOf(anchor))*DAY;
- useLayoutEffect(()=>{const node=scrollRef.current;if(!node)return;const key=`${anchor}:${dates[0]}`;if(pinchView.current){const table=node.querySelector("table");if(table){table.style.transform="";table.style.transformOrigin="";table.style.willChange="";}node.scrollLeft=pinchView.current.left;node.scrollTop=pinchView.current.top;pinchView.current=null;}else node.scrollLeft=previousView.current.anchor===key?node.scrollLeft*scale/previousView.current.scale:anchorOffset*scale;previousView.current={anchor:key,scale};},[anchorOffset,dates[0],anchor,scale,mobile]);
+ useLayoutEffect(()=>{const node=scrollRef.current;if(!node)return;const key=`${anchor}:${dates[0]}`;if(pinchView.current){const table=node.querySelector("table");if(table){table.style.transform="";table.style.transformOrigin="";table.style.willChange="";}node.scrollLeft=pinchView.current.left;node.scrollTop=pinchView.current.top;pinchView.current=null;}else node.scrollLeft=viewNode.current===node&&previousView.current.anchor===key?node.scrollLeft*scale/previousView.current.scale:anchorOffset*scale;previousView.current={anchor:key,scale};viewNode.current=node;},[anchorOffset,dates[0],anchor,scale,mobile]);
  // Only two-finger gestures change the chart scale; single-finger scrolling stays native.
  useEffect(()=>{
   if(mobile)return;
