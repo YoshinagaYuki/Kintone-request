@@ -4,12 +4,12 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "案件申請受付",
   robots: { index: false, follow: false },
-  manifest: "/manifest.webmanifest?v=3",
+  manifest: "/manifest.webmanifest?v=4",
   // iPhone Safari のWeb Pushは「ホーム画面に追加」したPWAでのみ動作する
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "申請管理",
+    title: "レンタル管理",
   },
   // ?v=3 はキャッシュ破棄用(アイコン差し替え時は数値を上げる)
   icons: {

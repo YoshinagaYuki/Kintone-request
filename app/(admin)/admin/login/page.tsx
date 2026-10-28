@@ -28,7 +28,8 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/admin/requests");
+    const standalone=window.matchMedia("(display-mode: standalone)").matches||(navigator as Navigator&{standalone?:boolean}).standalone===true;
+    router.push(standalone?"/admin/launch":"/admin/requests");
     router.refresh();
   }
 

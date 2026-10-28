@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { href: "/admin/admin-users", icon: "🛡️", label: "管理者", shortLabel: "権限" },
   { href: "/admin/email-templates", icon: "✉️", label: "メールテンプレート", shortLabel: "メール" },
   { href: "/admin/settings", icon: "⚙️", label: "システム設定", shortLabel: "システム" },
+  { href: "/admin/home-screen", icon: "⌂", label: "ホーム画面の設定", shortLabel: "起動先" },
 ] as const;
 
 export function AdminHeader() {
