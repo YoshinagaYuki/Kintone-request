@@ -25,7 +25,7 @@ export async function prepareCopySource(db:SupabaseClient,model:InventoryModel,k
  if(b.kind!=='request')for(const m of mapping.mappings){const value=remote.record[m.kintone_code]?.value;if(typeof value==='string')parsed[m.fmt_label]=value;}
  if(tezu){billingType||=String(remote.record['イベント種類']?.value)==='有償イベント'?'paid':'free';if(!rentalPlanId){const plan=await db.from('rental_plans').select('id').eq('name',parsed['レンタルプラン']).maybeSingle();rentalPlanId=plan.data?.id??'';}}
  const names=tezu?related.map(r=>model.items.find(i=>i.id===r.itemId)!.name):Array.from({length:5},(_,i)=>mapping.mappings.find(m=>m.fmt_label===equipmentLabel(i+1))).map(m=>m?String(remote!.record[m.kintone_code]?.value??''):'').filter(Boolean);
- const expected=names.map(n=>matchCapacityItem(n,model.items)?.id);const actual=related.map(r=>r.itemId);if(expected.some(id=>!id)||expected.length!==actual.length||[...expected].sort().join()!==[...actual].sort().join())throw Error('同じ管理番号の機器をすべて確認できません。機器の紐付け・番号を確認してください');
+ const expected=names.map(n=>matchCapacityItem(n,model.items.filter(i=>tezu?i.inventory_role==='rental_kit':i.inventory_role!=='rental_kit'))?.id);const actual=related.map(r=>r.itemId);if(expected.some(id=>!id)||expected.length!==actual.length||[...expected].sort().join()!==[...actual].sort().join())throw Error('同じ管理番号の機器をすべて確認できません。機器の紐付け・番号を確認してください');
  }
  if(tezu)related=related.map(r=>({...r,booking:{...r.booking,unitNumber:[...(r.booking.sourceUnitSwitches??[])].filter(s=>s.date<=r.booking.end).at(-1)?.number??r.booking.unitNumber}}));
  if(related.length<1||related.length>5||related.some(r=>r.booking.end!==b.end))throw Error('同じ申請の全機器は共通の利用終了日・最大5台でコピーしてください');
