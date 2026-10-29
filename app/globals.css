@@ -138,3 +138,6 @@ body:has(.inventory-editor), body:has(.inventory-workspace dialog[open]) { overf
  .inventory-action{min-height:34px;padding:6px 9px}
  .inventory-period-controls input,.inventory-period-controls select{height:34px}
 }
+
+.inventory-dense tbody td{padding:0}
+.inventory-dense thead tr:first-child th{line-height:14px;padding-top:4px;padding-bottom:4px}
