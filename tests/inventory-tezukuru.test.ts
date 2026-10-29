@@ -45,3 +45,8 @@ test('source delivery/pickup wishes join the adjacent rental and maintenance sta
  const normalized=normalizeKitSourceEntries([row('d','納品希望','2026-11-20'),row('e','店舗','2026-11-21','2026-11-23'),row('p','集荷希望','2026-11-24'),row('b','貸出不可','2026-12-01'),row('m','むさし村山 中3日','2026-12-02')]);
  assert.equal(normalized.length,3);const event=normalized.find(e=>e.source_key==='e')!;assert.equal(event.start_date,'2026-11-20');assert.equal(event.end_date,'2026-11-24');const raw=JSON.parse(event.source_raw!);assert.equal(raw.usageStart,'2026-11-21');assert.equal(raw.delivery,'2026-11-20');assert.equal(raw.pickup,'2026-11-24');assert.equal(raw.transportNotes.length,2);assert.equal(normalized.find(e=>e.source_key==='b')?.state,'blocked');assert.equal(normalized.find(e=>e.source_key==='m')?.state,'blocked');
 });
+
+test('an unsuffixed material count is never an issued management number',()=>{
+ const entry:any={source_key:'source',source_tab:'スクイーズLAB',source_cell:'X115',source_lane:'8',item_id:'kit',staff_name:'担当',store_name:'ワイモバイル山梨中央・通常版300',management_no:'300',start_date:'2026-11-21',end_date:'2026-11-23',request_id:null,state:'hold'};
+ assert.equal(normalizeKitSourceEntries([entry])[0].management_no,'');assert.equal(entry.management_no,'300');
+});

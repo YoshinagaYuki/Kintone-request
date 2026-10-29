@@ -56,7 +56,7 @@ for tab in tabs:
    start=min(before) if before else a;end=max(after) if after else b
    selected=range(start,end+1);owned.update(selected)
    staff=next((norm(cell(last_staff,d+4)[0]) for d in range(a,b+1) if norm(cell(last_staff,d+4)[0])),'担当者未設定')
-   number=re.search(r'(?<!\d)(\d{3,6})(?!\d|個|名|台|枚|円)',value)
+   number=re.search(r'(?<!\d)(\d{3,6})(?!\d|個|名|台|枚|円)',re.sub(r'(?:通常版|数量|計|各)\d+','',value))
    date=lambda d:f'2026-{month:02d}-{d+1:02d}'
    cells=sorted(set(refs[d] for d in selected if vals[d]));key=hashlib.sha256(('tezukuru:'+tab+':'+','.join(cells)+':'+str(month)+':'+lane).encode()).hexdigest()
    raw={'cells':cells,'text':{refs[d]:vals[d] for d in selected if vals[d]},'usageStart':date(a),'usageEnd':date(b),'delivery':date(max(delivery) if delivery else max(before)) if before else '', 'pickup':date(min(pickup) if pickup else min(after)) if after else '', 'sourceRow':r,'annotation':bool(re.search('休業|祝日|年末年始|シルバーウィーク',value))}

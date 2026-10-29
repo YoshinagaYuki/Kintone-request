@@ -24,6 +24,7 @@ export function normalizeKitSourceEntries(entries:(ImportedEntry&{source_lane:st
  const blocked=(s:string)=>/^(?:貸出不可|使用不可|予備)$/.test(s)||/中\d+日$/.test(s);
  for(const note of rows){
   if(!TEZUKURU_KITS.includes(note.source_tab as any))continue;
+  const materialCount=note.store_name.normalize('NFKC').match(/通常版(\d+)/)?.[1];if(materialCount&&note.management_no===materialCount)note.management_no='';
   if(blocked(note.store_name)){note.state='blocked';continue;}
   if(!transport(note.store_name))continue;
   note.state='blocked';if(!note.source_lane)continue;
