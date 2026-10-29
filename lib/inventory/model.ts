@@ -27,7 +27,7 @@ export function applyInventoryEdits(base:InventoryRecord[],edits:BookingEdit[],a
  if(itemId!==r.itemId)b.sourceUnitSwitches=undefined;
  if(Array.isArray(patch.unitSwitches)){b.sourceUnitSwitches=undefined;b.unitSwitches=patch.unitSwitches as import('./unit-switches').UnitSwitch[];}
  if(Number.isInteger(patch.screenQuantity))b.screenQuantity=patch.screenQuantity as number;
- const a=assignments.find(a=>a.group_key===b.group&&a.item_id===itemId);b.unitNumber=a?a.unit_number:itemId===r.itemId?b.unitNumber??null:null;
+ const a=assignments.find(a=>a.group_key===b.group&&a.item_id===itemId);if(a&&a.unit_number!==(b.unitNumber??null))b.sourceUnitSwitches=undefined;b.unitNumber=a?a.unit_number:itemId===r.itemId?b.unitNumber??null:null;
  return {itemId,booking:b,deleted:edit?.deleted??false};});
 }
 export async function loadInventoryModel(db:SupabaseClient,baseUrl='',business:InventoryBusiness|'all'='allmight'):Promise<InventoryModel>{

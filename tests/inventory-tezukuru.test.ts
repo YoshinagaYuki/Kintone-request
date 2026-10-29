@@ -1,3 +1,4 @@
+import{applyInventoryEdits}from'../lib/inventory/model';
 import{test}from'node:test';import assert from'node:assert/strict';
 import{tezukuruKitNames}from'../lib/inventory/business';import{ganttEntry}from'../lib/inventory/gantt';import{linkedKitTracks,normalizeKitSourceEntries}from'../lib/inventory/tezukuru-source';import{updateRequestEquipment}from'../lib/inventory/request-change';import{applyConfirmationShipping}from'../lib/inventory/confirmation-shipping';
 test('consumable quantities do not create hundreds of rental kits; generic plans share one kit',()=>{
@@ -49,4 +50,10 @@ test('source delivery/pickup wishes join the adjacent rental and maintenance sta
 test('an unsuffixed material count is never an issued management number',()=>{
  const entry:any={source_key:'source',source_tab:'スクイーズLAB',source_cell:'X115',source_lane:'8',item_id:'kit',staff_name:'担当',store_name:'ワイモバイル山梨中央・通常版300',management_no:'300',start_date:'2026-11-21',end_date:'2026-11-23',request_id:null,state:'hold'};
  assert.equal(normalizeKitSourceEntries([entry])[0].management_no,'');assert.equal(entry.management_no,'300');
+});
+
+test('explicitly changing a source unit clears its old source-only transfer, keeping unchanged units intact',()=>{
+ const base:any=[{itemId:'kit',booking:{key:'request:r:0',group:'r:0',kind:'request',id:'r',unitNumber:4,sourceUnitSwitches:[{date:'2026-11-01',number:14}]}}];
+ assert.deepEqual(applyInventoryEdits(base,[],[{group_key:'r:0',item_id:'kit',unit_number:4}])[0].booking.sourceUnitSwitches,base[0].booking.sourceUnitSwitches);
+ assert.equal(applyInventoryEdits(base,[],[{group_key:'r:0',item_id:'kit',unit_number:3}])[0].booking.sourceUnitSwitches,undefined);
 });
