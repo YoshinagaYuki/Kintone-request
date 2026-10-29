@@ -114,3 +114,5 @@ body:has(.inventory-editor), body:has(.inventory-workspace dialog[open]) { overf
  .inventory-list-dialog button, .inventory-list-dialog .inventory-close { min-height: 44px; }
  .inventory-case-card { padding: 14px; }
 }
+
+@media(max-width:639px){.inventory-action-intake{grid-column:1 / -1;justify-content:center;min-height:44px}}
