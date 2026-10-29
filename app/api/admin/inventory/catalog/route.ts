@@ -1,0 +1,3 @@
+import{quickHoldCatalog}from'@/lib/inventory/quick-hold';
+import{NextResponse}from'next/server';import{inventoryAccess}from'@/lib/inventory/access';
+export async function GET(){const access=await inventoryAccess();if('error'in access)return NextResponse.json({error:access.error},{status:access.status});const r=await access.db.from('item_name_master').select('id,name,category,inventory_role').eq('is_active',true).in('category',['allmight','tezukuru']).order('sort_order');if(r.error)return NextResponse.json({error:'レンタル品を取得できませんでした'},{status:500});return NextResponse.json({items:quickHoldCatalog(r.data)},{headers:{'Cache-Control':'no-store'}});}
