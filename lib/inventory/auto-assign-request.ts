@@ -5,7 +5,7 @@ import {planRequestAllocation} from './auto-allocation';
 /** Each guarded write uses the same DB lock/version as manual edits. A stale partial attempt is re-planned, never overwritten. */
 export async function autoAssignRequest(db:SupabaseClient,requestId:string,actor:string){
  for(let attempt=0;attempt<4;attempt++){
-  const model=await loadInventoryModel(db);const plan=planRequestAllocation(model,requestId);
+  const model=await loadInventoryModel(db,'','all');const plan=planRequestAllocation(model,requestId);
   if(!plan.assigned.length)return {unassigned:plan.unavailable.length};
   let version=model.version,stale=false;
   const groups=new Set(plan.assigned.map(r=>r.booking.group));

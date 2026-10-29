@@ -64,7 +64,7 @@ async function registerRequestInternal(
 
   const copy=await supabase.from('inventory_copy_requests').select('id').eq('id',requestId).maybeSingle();
   if(copy.error)return {ok:false,error:'コピー申請の連携設定を確認できませんでした'};
-  if(copy.data){const {runInventoryCopy}=await import('@/lib/inventory/copy-runner');return runInventoryCopy(requestId,actor);}
+  if(copy.data&&(request.form_types as unknown as {kintone_app_id:number})?.kintone_app_id!==49){const {runInventoryCopy}=await import('@/lib/inventory/copy-runner');return runInventoryCopy(requestId,actor);}
 
   if (request.inventory_parent_request_id) {
     const { runInventoryExtension } = await import("@/lib/inventory/extensions/runner");
@@ -192,7 +192,7 @@ async function registerRequestInternal(
   let recordId = request.kintone_record_id as string | null;
 
   if (!recordId) {
-    const mapped = buildKintoneRecord(parsedData, appId===10?confirmationMapping(fieldMapping,parsedData):fieldMapping);
+    const mapped = buildKintoneRecord(parsedData, confirmationMapping(fieldMapping,parsedData));
     if (!mapped.ok) {
       const msg = `マッピングエラー: ${mapped.errors.join(" / ")}`;
       await markFailed("mapping", msg);
@@ -255,7 +255,7 @@ async function registerRequestInternal(
       };
     }
 
-    if(appId===10)applyConfirmationShipping(mapped.record,parsedData,fieldMapping);
+    if([10,49].includes(appId))applyConfirmationShipping(mapped.record,parsedData,fieldMapping);
 
     // オールマイトのみ: API登録ではkintone JSが発火しないため、
     // 利用日数・利用金額①〜⑤をサーバー側で計算して補完(計算/配送費/調整額には触れない)
@@ -321,6 +321,7 @@ async function registerRequestInternal(
     return { ok: false, error: msg };
   }
 
+  if(copy.data&&appId===49){try{const{finishTezukuruCopy}=await import('../inventory/tezukuru-copy');await finishTezukuruCopy(supabase,requestId,actor);}catch(e){const msg=message(e);await markFailed('inventory_copy',msg);return{ok:false,error:msg};}}
   // ---- 完了 ----
   const { error: updateError } = await supabase
     .from("requests")
@@ -397,7 +398,7 @@ export async function registerRequestToKintone(supabase:SupabaseClient,requestId
   const kind=await supabase.from('requests').select('form_types(kintone_app_id)').eq('id',requestId).single();
   if(kind.error)throw Error('申請種別を確認できませんでした');
   const type=kind.data.form_types as unknown as {kintone_app_id:number}|null;
-  if(type?.kintone_app_id!==10)return result;
+  if(![10,49].includes(type?.kintone_app_id??0))return result;
   const {createAdminClient}=await import('../supabase/admin');
   const {autoAssignRequest}=await import('../inventory/auto-assign-request');
   const allocation=await autoAssignRequest(createAdminClient(),requestId,actor);

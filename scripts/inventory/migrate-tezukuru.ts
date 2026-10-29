@@ -1,0 +1,26 @@
+/** Read-only preview unless --apply is explicitly supplied. Original Google workbook is never written. */
+import{readFileSync,writeFileSync}from'node:fs';import{createHash}from'node:crypto';import{createClient}from'@supabase/supabase-js';import{loadEnvLocal}from'../load-env';import{tezukuruKitNames}from'../../lib/inventory/business';
+loadEnvLocal();
+const normalize=(value:string)=>value.normalize('NFKC').toLowerCase().replace(/\([^)]*\)|（[^）]*）/g,'').replace(/(?:有償|無償|要確認|延長|継続)/g,'').replace(/^\d{3,6}[:：]?/,'').replace(/^(?:ソフトバンク|softbank|sb|sbs|ドコモショップ|ドコモ|auショップ|au)/,'').replace(/[\s・_：:／/\-]/g,'').replace(/\d+個.*$/,'');
+async function main(){
+ const input=process.argv.find(s=>s.endsWith('.json'));if(!input)throw Error('候補JSONを指定してください');const candidate=JSON.parse(readFileSync(input,'utf8'));if(Object.values(candidate.coverage as any).some((c:any)=>c.uncovered.length))throw Error('未回収の元セルがあります');
+ const db=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,process.env.SUPABASE_SERVICE_ROLE_KEY!,{auth:{persistSession:false}});
+ const [forms,requests,admins]=await Promise.all([db.from('form_types').select('id,kintone_app_id'),db.from('requests').select('id,form_type_id,management_no,status,deleted_at,parsed_data,approved_contents,approved_staff_name').is('deleted_at',null).neq('status','rejected').limit(5000),db.from('admin_users').select('auth_user_id').eq('email','y-yoshinaga@unity-corp.jp').eq('status','active').single()]);
+ if(forms.error||requests.error||admins.error)throw Error('移行照合用データを完全に取得できません');const formIds=new Set(forms.data.filter(f=>f.kintone_app_id===49).map(f=>f.id));const reqs=requests.data.filter(r=>formIds.has(r.form_type_id)).map(r=>({...r,data:{...r.parsed_data,...r.approved_contents}}));
+ const report:any={matched:[],ambiguous:[],unmatchedRequests:[],unmatchedSource:[],sourceNotes:candidate.notes};
+ for(const e of candidate.entries){
+  let matches=reqs.filter(r=>e.management_no&&r.management_no===e.management_no),reason='management_number';
+  if(!matches.length&&!e.management_no){const name=normalize(e.store_name);if(name.length>=4){matches=reqs.filter(r=>{const d=r.data,from=d['配送日付'],to=d['集荷日付'];if(!from||!to||from>e.end_date||to<e.start_date)return false;const target=normalize(d['イベントブース名']??d['取次店名']??'');return target.length>=4&&name===target;});reason='exact_store_and_dates';
+   if(!matches.length){matches=reqs.filter(r=>{const d=r.data,from=d['配送日付'],to=d['集荷日付'];if(!from||!to||from>e.end_date||to<e.start_date)return false;const target=normalize(d['イベントブース名']??'');if(target.length<5||!(name.startsWith(target)||target.startsWith(name)))return false;const kits=tezukuruKitNames(d);return kits.includes(e.source_tab)||(e.source_tab==='スクイーズLAB(ベルパーク様)'&&kits.includes('スクイーズLAB'));});reason='unique_store_prefix_dates_and_kit';}
+   if(!matches.length&&name.length>=3){matches=reqs.filter(r=>{const d=r.data;if(!d['配送日付']||!d['集荷日付']||d['配送日付']>e.end_date||d['集荷日付']<e.start_date)return false;const kits=tezukuruKitNames(d);if(!kits.includes(e.source_tab)&&!(e.source_tab==='スクイーズLAB(ベルパーク様)'&&kits.includes('スクイーズLAB')))return false;return ['配送住所','集荷住所'].some(k=>normalize(String(d[k]??'')).includes(name));});reason='delivery_address_store_dates_and_kit';}
+  }}
+  if(matches.length===1){e.request_id=matches[0].id;e.state='linked';report.matched.push({key:e.source_key,request:e.request_id,reason,tab:e.source_tab,cell:e.source_cell});}
+  else if(matches.length>1)report.ambiguous.push({key:e.source_key,tab:e.source_tab,cell:e.source_cell,requests:matches.map(r=>r.id)});
+  else report.unmatchedSource.push(e.source_key);
+ }
+ for(const r of reqs)if(!candidate.entries.some((e:any)=>e.request_id===r.id))report.unmatchedRequests.push({id:r.id,management_no:r.management_no,kits:tezukuruKitNames(r.data)});
+ const sourceHash=createHash('sha256').update(JSON.stringify(candidate.source_data)).digest('hex');const summary={sourceHash,items:candidate.stocks.length,sourceEntries:candidate.entries.length,coveredCells:Object.values(candidate.coverage as any).reduce((n:number,c:any)=>n+c.coveredCells,0),linkedSource:report.matched.length,linkedRequests:new Set(report.matched.map((m:any)=>m.request)).size,unmatchedRequests:report.unmatchedRequests.length,ambiguous:report.ambiguous.length,missingNumbers:candidate.entries.filter((e:any)=>!e.source_lane).length};
+ writeFileSync('/tmp/tezukuru-migration-prepared.json',JSON.stringify({...candidate,report,sourceHash,summary}),{mode:0o600});console.log(JSON.stringify(summary));
+ if(process.argv.includes('--apply')){const result=await db.rpc('import_tezukuru_inventory',{p_actor:admins.data.auth_user_id,p_hash:sourceHash,p_url:'https://docs.google.com/spreadsheets/d/1bEbV3bJvGIBhRdKnf3KwBIoJo-2EA-uXRNx2szq6Qx0/edit',p_items:candidate.stocks,p_entries:candidate.entries,p_snapshot:candidate.source_data,p_summary:summary});if(result.error)throw Error(result.error.message);console.log(JSON.stringify({import:result.data}));const verify=await db.from('inventory_sheet_entries').select('source_key,item_id,request_id').in('item_id',candidate.stocks.map((i:any)=>i.id));if(verify.error||verify.data.length!==candidate.entries.length)throw Error('移行件数が一致しません');console.log('PASS exact source count verified');}
+}
+main().catch(e=>{console.error(e.message);process.exitCode=1});

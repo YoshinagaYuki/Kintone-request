@@ -229,7 +229,7 @@ async function POSTHandler(req: NextRequest) {
   // 画面①〜⑩は位置を保持して登録するため、スロットに存在しない商品は拒否する。
   const { data: slotItems } = await supabase
     .from("item_name_master")
-    .select("name, excluded_slots")
+    .select("name, excluded_slots").is("inventory_role",null)
     .eq("category", "tezukuru")
     .eq("is_active", true);
   const excludedBy = new Map<string, number[]>(

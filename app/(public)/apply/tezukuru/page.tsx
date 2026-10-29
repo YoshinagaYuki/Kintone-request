@@ -61,7 +61,7 @@ export default async function TezukuruApplyPage() {
   const { data: itemData } = await supabase
     .from("item_name_master")
     .select("name, sort_order, is_active, category, excluded_slots")
-    .eq("category", "tezukuru")
+    .eq("category", "tezukuru").is("inventory_role",null)
     .eq("is_active", true)
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });

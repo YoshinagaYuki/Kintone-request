@@ -106,7 +106,7 @@ export function ApplyForm({
   mode = "create",
   requestId,
   initialValues,
-  baseUpdatedAt,
+  baseUpdatedAt,inventory,
 }: {
   formTypes: ApplyFormType[];
   rentalPlans: RentalPlan[];
@@ -124,6 +124,7 @@ export function ApplyForm({
   initialValues?: TezukuruInitialValues;
   /** 編集開始時の updated_at(楽観ロック用。mode="edit" で渡す) */
   baseUpdatedAt?: string;
+  inventory?:{deliveryRequired:boolean;pickupRequired:boolean;onBack:()=>void;onSubmit:(payload:Record<string,unknown>)=>Promise<void>};
 }) {
   const router = useRouter();
   const iv = initialValues ?? {};
@@ -264,19 +265,23 @@ export function ApplyForm({
     if (!hasProduct) errs.push("商品を1つ以上入力してください。");
 
     // 配送(必須)
+    if(inventory?.deliveryRequired!==false){
     if (!deliveryDate.trim()) errs.push("配送日付を入力してください。");
     if (!deliveryPostal.trim()) errs.push("配送郵便番号を入力してください。");
     if (!deliveryAddress.trim()) errs.push("配送住所を入力してください。");
     if (!deliveryReceiver.trim()) errs.push("当日受領者氏名を入力してください。");
     if (!deliveryContact.trim()) errs.push("配送連絡先を入力してください。");
 
+    }
     // 集荷(必須)
+    if(inventory?.pickupRequired!==false){
     if (!pickupDate.trim()) errs.push("集荷日付を入力してください。");
     if (!effPickupPostal.trim()) errs.push("集荷郵便番号を入力してください。");
     if (!effPickupAddress.trim()) errs.push("集荷住所を入力してください。");
     if (!effPickupHandover.trim()) errs.push("当日引渡者氏名を入力してください。");
     if (!effPickupContact.trim()) errs.push("集荷連絡先を入力してください。");
 
+    }
     // SNS宣伝(てずくーるのみ必須)
     if (isTezukuru && snsPromotion === "") {
       errs.push("SNSでの宣伝について、希望する/希望しないを選択してください。");
@@ -293,7 +298,7 @@ export function ApplyForm({
     const errs = validate();
     if (errs.length > 0) {
       setErrors(errs);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      if(inventory)requestAnimationFrame(()=>document.querySelector('[data-tezukuru-errors]')?.scrollIntoView({block:"nearest",behavior:"smooth"}));else window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
     setSubmitting(true);
@@ -345,6 +350,7 @@ export function ApplyForm({
     };
 
     try {
+      if(inventory){await inventory.onSubmit(payload);return;}
       // 編集モード: 管理者編集API(PATCH)。成功時は申請詳細へ戻る(メール再送なし)。
       if (mode === "edit" && requestId) {
         const res = await fetch(`/api/admin/requests/${requestId}/edit`, {
@@ -359,7 +365,7 @@ export function ApplyForm({
           return;
         }
         setErrors(body?.errors ?? ["保存に失敗しました。"]);
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        if(inventory)requestAnimationFrame(()=>document.querySelector('[data-tezukuru-errors]')?.scrollIntoView({block:"nearest",behavior:"smooth"}));else window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
 
@@ -375,9 +381,9 @@ export function ApplyForm({
         return;
       }
       setErrors(body?.errors ?? ["送信に失敗しました。時間をおいて再度お試しください。"]);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch {
-      setErrors(["通信エラーが発生しました。時間をおいて再度お試しください。"]);
+      if(inventory)requestAnimationFrame(()=>document.querySelector('[data-tezukuru-errors]')?.scrollIntoView({block:"nearest",behavior:"smooth"}));else window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch(e) {
+      if(inventory&&e instanceof Error){setErrors([e.message]);requestAnimationFrame(()=>document.querySelector('[data-tezukuru-errors]')?.scrollIntoView({block:"nearest",behavior:"smooth"}));}else setErrors(["通信エラーが発生しました。時間をおいて再度お試しください。"]);
     } finally {
       setSubmitting(false);
     }
@@ -422,10 +428,10 @@ export function ApplyForm({
     <form onSubmit={handleSubmit} className="mt-6 space-y-6">
       <button
         type="button"
-        onClick={handleBack}
+        onClick={inventory?inventory.onBack:handleBack}
         className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
       >
-        ← {mode === "edit" ? "申請詳細に戻る" : "事業選択に戻る"}
+        ← {inventory?"仮押さえの編集に戻る":mode === "edit" ? "申請詳細に戻る" : "事業選択に戻る"}
       </button>
       {mode === "edit" && (
         <p className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
@@ -434,7 +440,7 @@ export function ApplyForm({
       )}
 
       {errors.length > 0 && (
-        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+        <div data-tezukuru-errors role="alert" className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
           <ul className="list-disc pl-5">
             {errors.map((err, i) => (
               <li key={i}>{err}</li>
@@ -720,7 +726,7 @@ export function ApplyForm({
           </section>
 
           {/* 配送 */}
-          <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          {inventory?.deliveryRequired!==false&&<section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-gray-800">配送</h2>
             <div className="mt-3 space-y-3">
               <div>
@@ -744,10 +750,10 @@ export function ApplyForm({
                 <input type="tel" value={deliveryContact} onChange={(e) => setDeliveryContact(e.target.value)} maxLength={30} inputMode="tel" placeholder="090-1234-5678" className={inputClass} />
               </div>
             </div>
-          </section>
+          </section>}
 
           {/* 集荷 */}
-          <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          {inventory?.pickupRequired!==false&&<section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-gray-800">集荷</h2>
 
             <label className="mt-3 flex cursor-pointer items-center gap-2 rounded-md border border-blue-200 bg-blue-50 p-2.5 text-sm font-medium text-blue-800">
@@ -783,7 +789,7 @@ export function ApplyForm({
                 <input type="tel" value={effPickupContact} onChange={(e) => setPickupContact(e.target.value)} readOnly={sameAsDelivery} maxLength={30} inputMode="tel" placeholder="090-1234-5678" className={sameAsDelivery ? roInputClass : inputClass} />
               </div>
             </div>
-          </section>
+          </section>}
 
           {/* 伝票番号連絡先 */}
           <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
