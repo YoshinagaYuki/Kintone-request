@@ -2,7 +2,7 @@ import {validDate,addDays} from './gantt';
 import {initialInventoryDates,type InventoryDates} from './date-defaults';
 export type IntakeCatalog={items:{id:string;name:string;aliases?:unknown}[];staff:{id:string;name:string}[]};
 export type IntakeDraft={staff_id:string;store:string;dates:InventoryDates;lines:{item_id:string;quantity:number}[];warnings:string[];evidence:string[]};
-export function redactIntake(text:string){return text.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,'[メール省略]').replace(/(?:\+81[- ]?|0)\d{1,4}[-ー ]?\d{1,4}[-ー ]?\d{3,4}/g,'[電話省略]');}
+export function redactIntake(text:string){return text.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,'[メール省略]').replace(/(?<!\d)(?:0\d{1,4}[-ー ]\d{1,4}[-ー ]\d{3,4}|0\d{9,10}|\+81[- ]?\d{1,4}[-ー ]?\d{1,4}[-ー ]?\d{3,4})(?!\d)/g,'[電話省略]');}
 /** Provider output is untrusted: accept only current master IDs and literal source evidence. */
 export function validateIntake(raw:unknown,catalog:IntakeCatalog,text:string):IntakeDraft{
  if(!raw||typeof raw!=='object')throw Error('読み取り結果を確認できませんでした。もう一度お試しください');

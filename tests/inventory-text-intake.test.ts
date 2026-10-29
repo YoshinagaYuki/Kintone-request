@@ -7,3 +7,5 @@ test('forged IDs, invalid dates, and material quantities cannot silently become 
 test('empty or incomplete response requires master selections',()=>{assert.throws(()=>validateIntake(null,catalog,''));const d=validateIntake({},catalog,'');assert.equal(d.lines.length,0);assert.equal(d.staff_id,'');assert.ok(d.warnings.length>=4);});
 test('inconsistent periods and logistics are called out',()=>{const d=validateIntake({start:'2026-11-06',end:'2026-11-01',delivery:'2026-11-01',pickup:'2026-11-10'},catalog,'');assert.ok(d.warnings.some(w=>w.includes('前です')));assert.ok(d.warnings.some(w=>w.includes('納品日')));assert.ok(d.warnings.some(w=>w.includes('集荷日')));});
 test('contact information is removed without altering date and equipment text',()=>{const s=redactIntake('11/12〜11/15 スティックキャッチ大2台 a@example.jp 090-1234-5678');assert.ok(!s.includes('example'));assert.ok(!s.includes('1234'));assert.ok(s.includes('11/12〜11/15'));assert.ok(s.includes('大2台'));});
+
+test('compact dates are not mistaken for phone numbers',()=>{assert.equal(redactIntake('20261112〜20261115 2台'),'20261112〜20261115 2台');assert.ok(!redactIntake('09012345678').includes('090'));});
