@@ -41,9 +41,9 @@ export function AdminHeader() {
         <nav className="flex min-w-0 flex-1 flex-wrap items-center gap-0.5" aria-label="管理メニュー">
           <details className="group relative shrink-0" onMouseEnter={(e) => { e.currentTarget.open = true; }} onMouseLeave={(e) => { if (!e.currentTarget.contains(document.activeElement)) e.currentTarget.open = false; }} onKeyDown={(e) => { if (e.key === "Escape") { e.currentTarget.open = false; e.currentTarget.querySelector("summary")?.focus(); } }}>
             <summary className={`cursor-pointer list-none whitespace-nowrap rounded-lg p-2 text-sm font-medium ${pathname.startsWith("/admin/inventory/") ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}>在庫管理表 ▾</summary>
-            <div className="absolute left-0 top-full w-44 rounded border bg-white p-2 shadow-lg">
-              <Link className="block rounded p-2 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-900" href="/admin/inventory/allmight">オールマイト</Link>
-              <Link className="block rounded p-2 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-900" href="/admin/inventory/tezukuru">てずくーる!!</Link>
+            <div className="absolute left-0 top-[calc(100%+6px)] w-48 rounded-2xl border border-slate-200/80 bg-white p-2 shadow-xl shadow-slate-900/10">
+              <Link className="block rounded-xl px-3 py-3 text-sm text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-800" href="/admin/inventory/allmight">オールマイト</Link>
+              <Link className="block rounded-xl px-3 py-3 text-sm text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-800" href="/admin/inventory/tezukuru">てずくーる!!</Link>
             </div>
           </details>
           {NAV_ITEMS.map((item) => {

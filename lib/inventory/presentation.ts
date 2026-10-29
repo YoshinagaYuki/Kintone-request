@@ -9,3 +9,6 @@ export function boardSegments(lane:BoardLane,dates:string[],locked:(d:string)=>b
  return result;
 }
 export function bookingLabel(b:BoardBooking,date:string){const phase=bookingPhase(b,date);return phase==='delivery'?'配':phase==='return'?'返':b.status==='blocked'?b.store:`${b.managementNo?b.managementNo+'：':(b.kind!=='request'||b.status==='hold')?'(仮) ':'番号未発行：'}${b.store}${b.screenQuantity?' ［背景］':''}`;}
+
+/** Restrained outlines keep status readable without turning the entire grid into solid color. */
+export function boardStroke(b:BoardBooking,date:string){return bookingPhase(b,date)!=='usage'||b.status==='blocked'?'#cbd5e1':b.status==='registered'?b.extension?'#c4b5fd':'#86d9b7':b.status==='pending'?'#93b8ee':'#e9cc78';}
