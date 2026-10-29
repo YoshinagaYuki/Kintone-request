@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import {InventoryQuickHold} from "./inventory-quick-hold";
 import {adminSection} from "@/lib/admin-navigation";
 import { usePathname } from "next/navigation";
 
@@ -28,10 +29,10 @@ export function AdminHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur">
-      <div className="relative flex h-[60px] items-center justify-between gap-2 px-4 xl:hidden">
-        <Link href="/admin/inventory/allmight" className="text-sm font-bold text-slate-900">レンタル管理</Link>
-        <div className="flex items-center gap-2"><Link href="/apply" className="flex min-h-11 items-center rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white">＋ 新規申請</Link>
-        <details className="group"><summary className="flex min-h-11 cursor-pointer list-none items-center rounded-lg border bg-white px-3 text-sm font-medium">メニュー ▾</summary><nav aria-label="スマホ管理メニュー" className="absolute left-3 right-3 top-[56px] z-50 grid max-h-[75dvh] grid-cols-2 gap-1 overflow-y-auto rounded-xl border bg-white p-2 shadow-xl">
+      <div className="relative flex h-[60px] items-center justify-between gap-2 px-3 xl:hidden">
+        <Link href="/admin/inventory/allmight" className="shrink-0 text-xs font-bold text-slate-900"><span className="min-[380px]:hidden">管理</span><span className="hidden min-[380px]:inline">レンタル管理</span></Link>
+        <div className="flex items-center gap-2"><Link href="/apply" className="flex min-h-11 items-center rounded-lg bg-indigo-600 px-2 text-sm font-medium text-white">＋ 新規申請</Link><InventoryQuickHold header model={{staff:[],version:0,business:pathname.includes('/tezukuru')?'tezukuru':'allmight'}}/>
+        <details className="group"><summary className="flex min-h-11 cursor-pointer list-none items-center rounded-lg border bg-white px-2 text-sm font-medium">メニュー ▾</summary><nav aria-label="スマホ管理メニュー" className="absolute left-3 right-3 top-[56px] z-50 grid max-h-[75dvh] grid-cols-2 gap-1 overflow-y-auto rounded-xl border bg-white p-2 shadow-xl">
           {[{href:'/admin/inventory/allmight',label:'オールマイト在庫'},{href:'/admin/inventory/tezukuru',label:'てずくーる!!在庫'},...NAV_ITEMS].map(item=><Link key={item.href} href={item.href} onClick={e=>{const d=e.currentTarget.closest('details');if(d)d.open=false;}} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${activeNav(pathname,item.href)?'bg-indigo-50 font-semibold text-indigo-700':'text-slate-700 hover:bg-slate-50'}`}>{item.label}</Link>)}
         </nav></details></div>
       </div>
@@ -69,7 +70,8 @@ export function AdminHeader() {
           })}
         </nav>
 
-        {/* 右: 新規申請 */}
+        {/* 右: かんたん仮押さえ・新規申請 */}
+        <InventoryQuickHold header model={{staff:[],version:0,business:pathname.includes('/tezukuru')?'tezukuru':'allmight'}}/>
         <Link
           href="/apply"
           title="新規申請"
