@@ -14,7 +14,7 @@ export function applyInventoryCopies(records:InventoryRecord[],copies:InventoryC
  if(slot.continuity===false||child.itemId!==slot.item_id)continue;
  child.booking.group=slot.group_key;const a=assignments.find(a=>a.group_key===slot.group_key&&a.item_id===child.itemId);child.booking.unitNumber=a?a.unit_number:slot.unit_number;
  if(parent&&child.booking.deliveryRequired===false&&child.booking.start===addDays(parent.booking.end,1)){
- parent.booking.pickup='';parent.booking.pickupRequired=false;parent.booking.to=parent.booking.end;
+ parent.booking.pickup='';parent.booking.pickupRequired=false;parent.booking.to=parent.booking.end;if(parent.booking.shippingBase)parent.booking.shippingBase={from:parent.booking.shippingBase.from,to:parent.booking.end};
  }
  }}return result;
 }

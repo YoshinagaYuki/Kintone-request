@@ -1,0 +1,146 @@
+[
+  {
+    "destination_prefecture": "大阪府",
+    "destination_city": "大阪市北区",
+    "origin": "埼玉県朝霞市",
+    "dispatch_date": "2026-10-29",
+    "ordinary_corporate_lead_days": 1,
+    "scope": "市中心部の一般法人向け特急便。県全域の保証値ではない",
+    "source": "https://track.seino.co.jp/lts/leadTimeSearch.do"
+  },
+  {
+    "destination_prefecture": "北海道",
+    "destination_city": "札幌市中央区",
+    "origin": "埼玉県朝霞市",
+    "dispatch_date": "2026-10-29",
+    "ordinary_corporate_lead_days": 2,
+    "scope": "市中心部の一般法人向け特急便。県全域の保証値ではない",
+    "source": "https://track.seino.co.jp/lts/leadTimeSearch.do"
+  },
+  {
+    "destination_prefecture": "青森県",
+    "destination_city": "青森市新町",
+    "origin": "埼玉県朝霞市",
+    "dispatch_date": "2026-10-29",
+    "ordinary_corporate_lead_days": 1,
+    "scope": "市中心部の一般法人向け特急便。県全域の保証値ではない",
+    "source": "https://track.seino.co.jp/lts/leadTimeSearch.do"
+  },
+  {
+    "destination_prefecture": "宮城県",
+    "destination_city": "仙台市青葉区一番町",
+    "origin": "埼玉県朝霞市",
+    "dispatch_date": "2026-10-29",
+    "ordinary_corporate_lead_days": 1,
+    "scope": "市中心部の一般法人向け特急便。県全域の保証値ではない",
+    "source": "https://track.seino.co.jp/lts/leadTimeSearch.do"
+  },
+  {
+    "destination_prefecture": "広島県",
+    "destination_city": "広島市中区基町",
+    "origin": "埼玉県朝霞市",
+    "dispatch_date": "2026-10-29",
+    "ordinary_corporate_lead_days": 2,
+    "scope": "市中心部の一般法人向け特急便。県全域の保証値ではない",
+    "source": "https://track.seino.co.jp/lts/leadTimeSearch.do"
+  },
+  {
+    "destination_prefecture": "福岡県",
+    "destination_city": "福岡市博多区博多駅前",
+    "origin": "埼玉県朝霞市",
+    "dispatch_date": "2026-10-29",
+    "ordinary_corporate_lead_days": 2,
+    "scope": "市中心部の一般法人向け特急便。県全域の保証値ではない",
+    "source": "https://track.seino.co.jp/lts/leadTimeSearch.do"
+  },
+  {
+    "destination_prefecture": "沖縄県",
+    "destination_city": "那覇市久茂地",
+    "origin": "埼玉県朝霞市",
+    "dispatch_date": "2026-10-29",
+    "ordinary_corporate_lead_days": null,
+    "scope": "市中心部の一般法人向け特急便。県全域の保証値ではない",
+    "source": "https://track.seino.co.jp/lts/leadTimeSearch.do"
+  },
+  {
+    "destination_prefecture": "岩手県",
+    "destination_city": "盛岡市中央通",
+    "origin": "埼玉県朝霞市",
+    "dispatch_date": "2026-10-29",
+    "ordinary_corporate_lead_days": 1,
+    "scope": "市中心部の一般法人向け特急便。県全域の保証値ではない",
+    "source": "https://track.seino.co.jp/lts/leadTimeSearch.do"
+  },
+  {
+    "destination_prefecture": "秋田県",
+    "destination_city": "秋田市中通",
+    "origin": "埼玉県朝霞市",
+    "dispatch_date": "2026-10-29",
+    "ordinary_corporate_lead_days": 2,
+    "scope": "市中心部の一般法人向け特急便。県全域の保証値ではない",
+    "source": "https://track.seino.co.jp/lts/leadTimeSearch.do"
+  },
+  {
+    "destination_prefecture": "山形県",
+    "destination_city": "山形市本町",
+    "origin": "埼玉県朝霞市",
+    "dispatch_date": "2026-10-29",
+    "ordinary_corporate_lead_days": 1,
+    "scope": "市中心部の一般法人向け特急便。県全域の保証値ではない",
+    "source": "https://track.seino.co.jp/lts/leadTimeSearch.do"
+  },
+  {
+    "destination_prefecture": "兵庫県",
+    "destination_city": "神戸市中央区三宮町",
+    "origin": "埼玉県朝霞市",
+    "dispatch_date": "2026-10-29",
+    "ordinary_corporate_lead_days": 1,
+    "scope": "市中心部の一般法人向け特急便。県全域の保証値ではない",
+    "source": "https://track.seino.co.jp/lts/leadTimeSearch.do"
+  },
+  {
+    "destination_prefecture": "岡山県",
+    "destination_city": "岡山市北区本町",
+    "origin": "埼玉県朝霞市",
+    "dispatch_date": "2026-10-29",
+    "ordinary_corporate_lead_days": 1,
+    "scope": "市中心部の一般法人向け特急便。県全域の保証値ではない",
+    "source": "https://track.seino.co.jp/lts/leadTimeSearch.do"
+  },
+  {
+    "destination_prefecture": "香川県",
+    "destination_city": "高松市番町",
+    "origin": "埼玉県朝霞市",
+    "dispatch_date": "2026-10-29",
+    "ordinary_corporate_lead_days": 2,
+    "scope": "市中心部の一般法人向け特急便。県全域の保証値ではない",
+    "source": "https://track.seino.co.jp/lts/leadTimeSearch.do"
+  },
+  {
+    "destination_prefecture": "高知県",
+    "destination_city": "高知市本町",
+    "origin": "埼玉県朝霞市",
+    "dispatch_date": "2026-10-29",
+    "ordinary_corporate_lead_days": 2,
+    "scope": "市中心部の一般法人向け特急便。県全域の保証値ではない",
+    "source": "https://track.seino.co.jp/lts/leadTimeSearch.do"
+  },
+  {
+    "destination_prefecture": "鹿児島県",
+    "destination_city": "鹿児島市中央町",
+    "origin": "埼玉県朝霞市",
+    "dispatch_date": "2026-10-29",
+    "ordinary_corporate_lead_days": 2,
+    "scope": "市中心部の一般法人向け特急便。県全域の保証値ではない",
+    "source": "https://track.seino.co.jp/lts/leadTimeSearch.do"
+  },
+  {
+    "destination_prefecture": "宮崎県",
+    "destination_city": "宮崎市橘通東",
+    "origin": "埼玉県朝霞市",
+    "dispatch_date": "2026-10-29",
+    "ordinary_corporate_lead_days": 2,
+    "scope": "市中心部の一般法人向け特急便。県全域の保証値ではない",
+    "source": "https://track.seino.co.jp/lts/leadTimeSearch.do"
+  }
+]

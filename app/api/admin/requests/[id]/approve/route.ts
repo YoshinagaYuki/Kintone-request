@@ -1,3 +1,5 @@
+import{requestShipping}from'@/lib/inventory/request-shipping';
+import{parseTransport,assertTransportReady}from'@/lib/inventory/shipping-policy';
 import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
 import {tezukuruKitNames} from '@/lib/inventory/business';
 import {matchCapacityItem} from '@/lib/inventory/availability';
@@ -33,6 +35,7 @@ async function POSTHandler(
   }
 
   let body: {
+    transport?:unknown;
     rental_plan_id?: string | null;
     /** 承認画面で確定したコンテンツ正式名称 { "コンテンツ1": "..." } */
     contents?: Record<string, string> | null;
@@ -83,6 +86,15 @@ async function POSTHandler(
   // 事業判定は表示名ではなく kintone_app_id(49=てずくーる)で行う。
   // てずくーるのみ料金区分(有償/無償)を必須にする。オールマイトは対象外。
   const isTezukuru = formType?.kintone_app_id === 49;
+  let shippingData:Record<string,unknown>|undefined;
+  if([10,49].includes(formType?.kintone_app_id??0)){
+    try{
+      const transport=parseTransport(body.transport)??requestShipping({...request,management_no:null,approved_staff_name:null},formType!.kintone_app_id!)?.transport;
+      shippingData={...(request.parsed_data??{}),...(transport?{_inventory_transport:transport}:{})};
+      const plan=requestShipping({...request,management_no:null,parsed_data:shippingData??null,approved_staff_name:null,approved_contents:body.contents??undefined},formType!.kintone_app_id!);
+      if(plan)for(const name of plan.names)assertTransportReady({...plan.dates,transport:plan.transport},name);
+    }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'配送日数を確認してください'},{status:400});}
+  }
   if (isTezukuru) {
     const kits = await supabase.from('item_name_master').select('id,name,aliases,is_active').eq('category','tezukuru').eq('inventory_role','rental_kit');
     if (kits.error) return NextResponse.json({error:'レンタル品マスタを確認できません'},{status:503});
@@ -230,6 +242,7 @@ async function POSTHandler(
   const { data: approvedRow, error: updateError } = await supabase
     .from("requests")
     .update({
+      ...(shippingData?{parsed_data:shippingData}:{}),
       status: "approved",
       approved_by: user.id,
       approved_at: new Date().toISOString(),

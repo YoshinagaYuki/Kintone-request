@@ -1,3 +1,4 @@
+import{parseTransport,shippingPlan}from'./shipping-policy';
 import{unitSegments}from'./unit-switches';
 import{occupiedCycle}from'./occupied-cycle';
 import {addDays,validDate} from './gantt';
@@ -10,13 +11,13 @@ export function manualConfirmation(body:Record<string,unknown>){
  if(body.status==='registered'&&!/^\d{1,20}$/.test(managementNo))throw Error('本確定には管理番号を数字で入力してください');
  return{status:body.status as 'hold'|'registered',managementNo:body.status==='registered'?managementNo:''};
 }
-export type BookingPatch={deliveryRequired?:boolean;pickupRequired?:boolean;item_id:string;staff:string;store:string;start:string;end:string;from:string;to:string;delivery:string;pickup:string};
+export type BookingPatch={transport?:import('./shipping-policy').TransportInput;deliveryRequired?:boolean;pickupRequired?:boolean;item_id:string;staff:string;store:string;start:string;end:string;from:string;to:string;delivery:string;pickup:string};
 export function bookingPatch(body:Record<string,unknown>):BookingPatch{
  if(!uuid(body.item_id))throw Error('商品を選択してください');const patch:Record<string,string>={item_id:body.item_id};
  for(const k of ['staff','store'] as const){if(typeof body[k]!=='string'||!(body[k] as string).trim()||(body[k] as string).length>200)throw Error('担当者・店舗名を入力してください');patch[k]=(body[k] as string).trim();}
  for(const k of ['start','end','from','to'] as const){if(!validDate(body[k])||(body[k] as string)<'2000-01-01'||(body[k] as string)>'2100-12-31')throw Error('利用・確保期間を確認してください');patch[k]=body[k] as string;}
  for(const k of ['delivery','pickup'] as const){if(body[k]!==''&&!validDate(body[k]))throw Error('配送・集荷日を確認してください');patch[k]=body[k] as string;}
- if(patch.end<patch.start||patch.to<patch.from||[patch.start,patch.end,patch.delivery,patch.pickup].filter(Boolean).some(d=>d<patch.from||d>patch.to))throw Error('確保期間には利用・配送・集荷日をすべて含めてください');for(const k of ['deliveryRequired','pickupRequired'] as const){if(body[k]!==undefined){if(typeof body[k]!=='boolean')throw Error('配送・集荷の有無を選択してください');(patch as Record<string,unknown>)[k]=body[k];if(body[k]===false&&patch[k==='deliveryRequired'?'delivery':'pickup'])throw Error('不要な配送・集荷の日付を空欄にしてください');}}return patch as unknown as BookingPatch;
+ if(patch.end<patch.start||patch.to<patch.from||[patch.start,patch.end,patch.delivery,patch.pickup].filter(Boolean).some(d=>d<patch.from||d>patch.to))throw Error('確保期間には利用・配送・集荷日をすべて含めてください');for(const k of ['deliveryRequired','pickupRequired'] as const){if(body[k]!==undefined){if(typeof body[k]!=='boolean')throw Error('配送・集荷の有無を選択してください');(patch as Record<string,unknown>)[k]=body[k];if(body[k]===false&&patch[k==='deliveryRequired'?'delivery':'pickup'])throw Error('不要な配送・集荷の日付を空欄にしてください');}}if(body.transport!==undefined)(patch as Record<string,unknown>).transport=parseTransport(body.transport);return patch as unknown as BookingPatch;
 }
 export function unitNumber(value:unknown){if(value===null||value==='')return null;if(!Number.isInteger(value)||(value as number)<1||(value as number)>250)throw Error('番号は1〜250から選択してください');return value as number;}
 export function resolveUnitNumber(model:InventoryModel,r:InventoryRecord,value:unknown,existing=model.records){
@@ -29,14 +30,14 @@ export function validateNumber(model:InventoryModel,r:InventoryRecord,n:number|n
 export function slotSchedule(records:InventoryRecord[]){return records.filter(r=>!r.deleted).flatMap(r=>unitSegments(r.booking).filter(b=>b.unitNumber!=null).map(b=>({item_id:r.itemId,unit_number:b.unitNumber,group_key:b.group,occupied_from:occupiedCycle(b).from,occupied_to:occupiedCycle(b).to})));}
 export function holdBatchInput(body:Record<string,unknown>){
  if(!uuid(body.batch_id)||!uuid(body.staff_id))throw Error('担当者を選択してください');
- const patch=bookingPatch({item_id:(body.lines as any[])?.[0]?.item_id,staff:'担当者',store:body.store_name,start:body.start,end:body.end,from:body.from,to:body.to,delivery:body.delivery??'',pickup:body.pickup??''});
+ const patch=bookingPatch({item_id:(body.lines as any[])?.[0]?.item_id,staff:'担当者',store:body.store_name,start:body.start,end:body.end,from:body.from,to:body.to,delivery:body.delivery??'',pickup:body.pickup??'',transport:body.transport});
  if(!Array.isArray(body.lines)||body.lines.length<1||body.lines.length>20)throw Error('商品を1〜20行で指定してください');const lines=body.lines.map((line:any)=>{if(!uuid(line.item_id)||!Number.isInteger(line.quantity)||line.quantity<1||line.quantity>100)throw Error('商品・台数を確認してください');if(!Array.isArray(line.numbers)||line.numbers.length!==line.quantity)throw Error('台数分の番号を指定してください（未割当も選択できます）');if(!Number.isInteger(line.screen_quantity??0)||(line.screen_quantity??0)<0||(line.screen_quantity??0)>line.quantity)throw Error('背景スクリーンは貸出機器の台数以下で指定してください');return {item_id:line.item_id,quantity:line.quantity,screen_quantity:line.screen_quantity??0,numbers:line.numbers.map((n:unknown)=>n==='auto'?'auto' as const:unitNumber(n))};});if(lines.reduce((n,l)=>n+l.quantity,0)>100)throw Error('一度の仮押さえは100台までです');if(typeof body.note!=='string'||body.note.length>2000)throw Error('備考は2000文字までです');return {batch_id:body.batch_id,staff_id:body.staff_id,patch,lines,note:body.note,...manualConfirmation({status:body.status??'hold',managementNo:body.managementNo??''})};
 }
 
-/** Four calendar days between pickup and the next delivery (1st -> 5th).
- * Only automatic selection uses this buffer; explicit manual numbers keep normal overlap checks. */
+/** Collection day is day zero: three full days off; next dispatch is day four.
+ * Return transit is independently protected by occupiedCycle. */
 export function automaticSchedule(records:InventoryRecord[]){
- return slotSchedule(records).map(s=>({...s,occupied_from:addDays(s.occupied_from,-3),occupied_to:addDays(s.occupied_to,3)}));
+ return records.filter(r=>!r.deleted).flatMap(r=>unitSegments(r.booking).filter(b=>b.unitNumber!=null).map(b=>{const c=occupiedCycle(b),pickup=b.pickupRequired===false?b.end:b.pickup||b.to;return{item_id:r.itemId,unit_number:b.unitNumber,group_key:b.group,occupied_from:c.from,occupied_to:[c.to,validDate(pickup)?addDays(pickup,3):c.to].sort().at(-1)!};}));
 }
 export function automaticNumberAvailable(model:InventoryModel,record:InventoryRecord,number:number,existing=model.records){
  const related=model.records.filter(r=>r.itemId===record.itemId&&r.booking.group===record.booking.group);
@@ -48,5 +49,9 @@ export function automaticNumberAvailable(model:InventoryModel,record:InventoryRe
   if(checks.some(d=>number>(stockOn(item,d)?.usable??0)))return false;
   try{validateNumber(model,candidate,number);}catch{return false;}
  }
- return !automaticSchedule(existing).some(other=>slotSchedule(candidates).some(s=>s.item_id===other.item_id&&s.unit_number===other.unit_number&&s.group_key!==other.group_key&&s.occupied_from<=other.occupied_to&&s.occupied_to>=other.occupied_from));
+ return !automaticSchedule(existing).some(other=>automaticSchedule(candidates).some(s=>s.item_id===other.item_id&&s.unit_number===other.unit_number&&s.group_key!==other.group_key&&s.occupied_from<=other.occupied_to&&s.occupied_to>=other.occupied_from));
+}
+
+export function turnaroundWarnings(candidates:InventoryRecord[],existing:InventoryRecord[]){
+ const warnings:string[]=[];for(const r of candidates){if(r.booking.unitNumber==null)continue;for(const other of existing){if(other.deleted||other.itemId!==r.itemId||other.booking.group===r.booking.group)continue;for(const a of slotSchedule([r]))for(const b of slotSchedule([other])){if(a.unit_number!==b.unit_number)continue;const [early,late]=a.occupied_from<=b.occupied_from?[r,other]:[other,r];const pickup=early.booking.pickupRequired===false?early.booking.end:early.booking.pickup||early.booking.to;const dispatch=occupiedCycle(late.booking).from;if(validDate(pickup)&&dispatch>pickup&&dispatch<addDays(pickup,4))warnings.push(`${a.unit_number}号：集荷 ${pickup} → 次の発送 ${dispatch} は丸3日空いていません`);}}}return[...new Set(warnings)];
 }

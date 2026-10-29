@@ -1,3 +1,4 @@
+import{withShippingRecord,transportFromParsed}from'@/lib/inventory/shipping-record';
 import{rentalMetadata}from'@/lib/inventory/rental-items';
 import{tezukuruKitNames}from'@/lib/inventory/business';
 import{getMinimumOrderQuantity}from'@/lib/system-settings';
@@ -57,7 +58,8 @@ async function handler(req:NextRequest){const a=await inventoryAccess();if('erro
  // Preserve explicitly reserved transit/inspection padding if usage/shipping dates are unchanged.
  if(patch.start===b.start&&patch.end===b.end&&patch.delivery===b.delivery&&patch.pickup===b.pickup){patch.from=b.from;patch.to=b.to;}
  if(tezu){data._inventory_usage_start=patch.start;data._inventory_usage_end=patch.end;}const keys=p.records.map(r=>r.booking.key!);Object.assign(data,{[L.eventBoothName]:patch.store,'担当者':staff.name,_inventory_delivery_required:deliveryRequired,_inventory_pickup_required:pickupRequired,_inventory_confirmation_keys:keys});
- const candidates:InventoryRecord[]=p.records.map((r,i)=>({itemId:r.itemId,booking:{...r.booking,...patch,key:`request:${body.id}:${i}`,id:body.id,group:`${body.id}:${i}`,kind:'request',managementNo:'',status:'hold'}}));
+ const detected=transportFromParsed(data);if(detected)data._inventory_transport={...b.transport,...detected,confirmed:!!b.transport?.confirmed&&b.transport.address===detected.address&&(b.transport.returnAddress||b.transport.address)===(detected.returnAddress||detected.address)};
+ const candidates:InventoryRecord[]=p.records.map((r,i)=>({itemId:r.itemId,booking:{...r.booking,...patch,shippingBase:{from:patch.from,to:patch.to},key:`request:${body.id}:${i}`,id:body.id,group:`${body.id}:${i}`,kind:'request' as const,transport:transportFromParsed(data),managementNo:'',status:'hold'}})).map(r=>withShippingRecord(r,model.items.find(i=>i.id===r.itemId)!.name));
  const existing=model.records.filter(r=>!keys.includes(r.booking.key!));for(const r of candidates)validateNumber(model,r,r.booking.unitNumber??null);assertScreenCapacity(model,candidates,existing);
  const slots=candidates.map((r,i)=>({slot:i,source_key:keys[i],item_id:r.itemId,unit_number:r.booking.unitNumber??null,patch:{from:patch.from,to:patch.to,deliveryRequired,pickupRequired,screenQuantity:r.booking.screenQuantity??0}}));
  const saved=await db.rpc('create_inventory_confirmation',{p_actor:a.admin.auth_user_id,p_id:body.id,p_hash:hash,p_expected:model.version,p_form:f.id,p_version:f.version,p_parsed:data,p_raw:rawText,p_input:{...input,staff:staff.name},p_slots:slots,p_candidate:slotSchedule(candidates),p_existing:slotSchedule(existing)});

@@ -1,4 +1,6 @@
 "use client";
+import{InventoryShippingPlan}from'./inventory-shipping-plan';
+import type{requestShipping}from'@/lib/inventory/request-shipping';
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -20,6 +22,7 @@ export type ApproveContentSlot = {
 
 export function ApproveActions({
   requestId,
+  shipping,
   status,
   previewOk,
   confirmWarnings = [],
@@ -41,6 +44,7 @@ export function ApproveActions({
   billingTypeDefault = "",
   dspHandoverNoteDefault = "",
 }: {
+  shipping?:ReturnType<typeof requestShipping>;
   requestId: string;
   status: RequestStatus;
   previewOk: boolean;
@@ -80,6 +84,7 @@ export function ApproveActions({
   /** DSP様共有事項の初期値(保存済みがあれば再利用表示。通常は空) */
   dspHandoverNoteDefault?: string;
 }) {
+  const[transport,setTransport]=useState(shipping?.transport??{address:''});
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -122,7 +127,7 @@ export function ApproveActions({
       const res = await fetch(`/api/admin/requests/${requestId}/${action}`, {
         method: "POST",
         headers: payload ? { "Content-Type": "application/json" } : undefined,
-        body: payload ? JSON.stringify(payload) : undefined,
+        body: payload ? JSON.stringify({...payload,...(shipping?{transport}: {})}) : undefined,
       });
       const body = await res.json().catch(() => null);
       if (!res.ok) {
@@ -206,6 +211,7 @@ export function ApproveActions({
 
   return (
     <div className="mt-8">
+      {shipping&&status==='pending'&&<InventoryShippingPlan value={transport} onChange={setTransport} dates={shipping.dates} names={shipping.names} required/>}
       {error && (
         <div className="mb-3 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
           {error}

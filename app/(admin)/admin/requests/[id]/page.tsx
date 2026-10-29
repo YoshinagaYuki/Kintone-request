@@ -1,3 +1,4 @@
+import{requestShipping}from'@/lib/inventory/request-shipping';
 import{loadInventoryModel}from'@/lib/inventory/model';
 import{InventoryCopyPanel}from'@/components/admin/inventory-copy-panel';
 import{InventorySyncStatus}from'@/components/admin/inventory-sync-status';
@@ -837,6 +838,7 @@ export default async function RequestDetailPage({
         </div>
       ) : (
         <ApproveActions
+          shipping={requestShipping(request,request.form_types?.kintone_app_id??0)}
           requestId={request.id}
           status={request.status}
           previewOk={preview?.ok ?? false}

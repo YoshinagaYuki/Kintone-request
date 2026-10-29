@@ -1,3 +1,5 @@
+import{turnaroundWarnings}from'@/lib/inventory/operations';
+import{withShippingRecord}from'@/lib/inventory/shipping-record';
 import{assertCopySourceEditable}from'@/lib/inventory/copy-guard';
 import{assertScreenCapacity,screenQuantity}from'@/lib/inventory/shared-screen';
 import {revalidatePath} from 'next/cache';
@@ -12,6 +14,7 @@ async function handler(req:NextRequest){const access=await inventoryAccess();if(
  const patch=body.action==='edit'?{...bookingPatch(body.patch??{}),screenQuantity:screenQuantity(body.patch?.screenQuantity),...(record.booking.kind!=='request'&&body.patch?.status?manualConfirmation(body.patch):{})}:{};const itemId=(patch as any).item_id??record.itemId;if(!model.items.some(i=>i.id===itemId))throw Error('有効な商品を選択してください');const n=body.action==='edit'||body.action==='assign'?resolveUnitNumber(model,{itemId,booking:{...record.booking,...patch}},body.unit_number):record.booking.unitNumber??null;
  const candidate:InventoryRecord={itemId,booking:{...record.booking,...patch,unitNumber:n},deleted:false};const affected=[candidate,...model.records.filter(r=>r.booking.key!==body.key&&r.booking.group===record.booking.group&&r.itemId===itemId).map(r=>({...r,booking:{...r.booking,unitNumber:n}}))];if(body.action!=='delete')affected.forEach(r=>validateNumber(model,r,n));
  if(body.action!=='delete')assertScreenCapacity(model,affected,model.records.filter(r=>r.booking.key!==body.key));
+ if(body.action==='edit'){for(const r of affected)Object.assign(r,withShippingRecord(r,model.items.find(i=>i.id===r.itemId)?.name??''));const warnings=turnaroundWarnings(affected,model.records.filter(r=>r.booking.key!==body.key));if(warnings.length&&body.shipping_ack!==JSON.stringify(warnings))return NextResponse.json({code:'shipping_warning',warningKey:JSON.stringify(warnings),error:warnings.join('\n')+'\n手動指定で保存しますか？'},{status:409});}
  const saved=await createAdminClient().rpc('save_inventory_operation',{p_actor:access.admin.auth_user_id,p_expected:body.version,p_action:body.action,p_key:body.key,p_group:record.booking.group,p_item_id:itemId,p_unit_number:n,p_patch:patch,p_candidate:body.action==='delete'?[]:slotSchedule(affected),p_existing:slotSchedule(model.records.filter(r=>r.booking.key!==body.key))});if(saved.error)return NextResponse.json({error:saved.error.message.includes('inventory_conflict')?'配送・返却・点検を含む確保期間が、この番号の別の予定と重なっています':saved.error.message.includes('inventory_stale')?'別の変更が保存されています。画面を更新してください':'保存できませんでした。再読み込みして確認してください'},{status:409});revalidatePath('/admin/inventory/allmight');revalidatePath('/admin/inventory/tezukuru');return NextResponse.json({ok:true});
  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'入力内容を確認してください'},{status:400});}}
 export const POST=withInventorySheetPush(handler);

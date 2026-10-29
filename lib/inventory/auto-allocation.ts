@@ -1,3 +1,4 @@
+import{shippingPlan}from'./shipping-policy';
 import type {InventoryModel,InventoryRecord} from './model';
 import {automaticNumberAvailable} from './operations';
 /** Preserve confirmed/manual numbers; allocate missing slots together, preferring a consecutive run. */
@@ -6,6 +7,7 @@ export function planRequestAllocation(model:InventoryModel,requestId:string){
  const assigned:InventoryRecord[]=[];const unavailable:InventoryRecord[]=[];
  for(const itemId of [...new Set(missing.map(r=>r.itemId))]){
   const slots=missing.filter(r=>r.itemId===itemId).sort((a,b)=>a.booking.key!.localeCompare(b.booking.key!));
+  if(slots.some(r=>r.booking.transport&&shippingPlan(r.booking,model.items.find(i=>i.id===itemId)?.name??'').unresolved)){unavailable.push(...slots);continue;}
   let chosen:InventoryRecord[]|null=null;
   const fixed=model.records.filter(r=>r.itemId===itemId&&r.booking.id===requestId&&r.booking.unitNumber!=null).map(r=>r.booking.unitNumber!);
   const span=(first:number)=>{const all=[...fixed,first,first+slots.length-1];return Math.max(...all)-Math.min(...all);};
