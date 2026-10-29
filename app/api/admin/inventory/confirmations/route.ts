@@ -1,3 +1,4 @@
+import{assertTransportReady,shippingPlan}from'@/lib/inventory/shipping-policy';
 import{withShippingRecord,transportFromParsed}from'@/lib/inventory/shipping-record';
 import{rentalMetadata}from'@/lib/inventory/rental-items';
 import{tezukuruKitNames}from'@/lib/inventory/business';
@@ -33,7 +34,7 @@ export async function GET(req:NextRequest){const a=await inventoryAccess();if('e
 async function handler(req:NextRequest){const a=await inventoryAccess();if('error'in a)return NextResponse.json({error:a.error},{status:a.status});try{
  const text=await req.text();if(text.length>50000)throw Error('入力内容が長すぎます');const body=JSON.parse(text);
  if(!/^[0-9a-f-]{36}$/i.test(body.id??'')||typeof body.key!=='string'||typeof body.baseline!=='string'||typeof body.payload!=='object'||!body.payload)throw Error('入力情報を確認してください');
- const db=createAdminClient(),hash=createHash('sha256').update(JSON.stringify(body)).digest('hex');
+ const db=createAdminClient(),hash=createHash('sha256').update(JSON.stringify({...body,shipping_ack:undefined})).digest('hex');
  const prior=await db.from('inventory_confirmation_sources').select('request_id,input_hash,created_by').eq('request_id',body.id).limit(1).maybeSingle();if(prior.error)throw Error('本登録の設定を確認してください');
  if(prior.data){if(prior.data.input_hash!==hash||prior.data.created_by!==a.admin.auth_user_id)throw Error('保存済みの申請を確認してください');const r=await db.from('requests').select('status,deleted_at').eq('id',body.id).single();if(r.error||r.data.deleted_at)throw Error('保存済み申請を申請一覧から確認してください');return NextResponse.json({ok:true,requestId:body.id,status:r.data.status});}
  const model=await loadInventoryModel(a.db,'','all'),p=confirmationSource(model,body.key),b=p.source.booking,tezu=model.items.find(i=>i.id===p.source.itemId)?.inventory_role==='rental_kit',f=await formConfig(db,a.admin.id,tezu);
@@ -60,6 +61,10 @@ async function handler(req:NextRequest){const a=await inventoryAccess();if('erro
  if(tezu){data._inventory_usage_start=patch.start;data._inventory_usage_end=patch.end;}const keys=p.records.map(r=>r.booking.key!);Object.assign(data,{[L.eventBoothName]:patch.store,'担当者':staff.name,_inventory_delivery_required:deliveryRequired,_inventory_pickup_required:pickupRequired,_inventory_confirmation_keys:keys});
  const detected=transportFromParsed(data);if(detected)data._inventory_transport={...b.transport,...detected,confirmed:!!b.transport?.confirmed&&b.transport.address===detected.address&&(b.transport.returnAddress||b.transport.address)===(detected.returnAddress||detected.address)};
  const candidates:InventoryRecord[]=p.records.map((r,i)=>({itemId:r.itemId,booking:{...r.booking,...patch,shippingBase:{from:patch.from,to:patch.to},key:`request:${body.id}:${i}`,id:body.id,group:`${body.id}:${i}`,kind:'request' as const,transport:transportFromParsed(data),managementNo:'',status:'hold'}})).map(r=>withShippingRecord(r,model.items.find(i=>i.id===r.itemId)!.name));
+ const plans=candidates.map(r=>({record:r,name:model.items.find(i=>i.id===r.itemId)!.name,plan:shippingPlan(r.booking,model.items.find(i=>i.id===r.itemId)!.name)}));
+ for(const entry of plans)if(entry.plan.unresolved)assertTransportReady(entry.record.booking,entry.name);
+ const warnings=[...new Set(plans.flatMap(entry=>entry.plan.warnings))];if(warnings.length&&body.shipping_ack!==JSON.stringify(warnings))return NextResponse.json({code:'shipping_warning',warningKey:JSON.stringify(warnings),error:warnings.join('\n')+'\n配送の注意事項を確認して本登録に進みますか？'},{status:409});
+ if(data._inventory_transport)(data._inventory_transport as any).confirmed=true;
  const existing=model.records.filter(r=>!keys.includes(r.booking.key!));for(const r of candidates)validateNumber(model,r,r.booking.unitNumber??null);assertScreenCapacity(model,candidates,existing);
  const slots=candidates.map((r,i)=>({slot:i,source_key:keys[i],item_id:r.itemId,unit_number:r.booking.unitNumber??null,patch:{from:patch.from,to:patch.to,deliveryRequired,pickupRequired,screenQuantity:r.booking.screenQuantity??0}}));
  const saved=await db.rpc('create_inventory_confirmation',{p_actor:a.admin.auth_user_id,p_id:body.id,p_hash:hash,p_expected:model.version,p_form:f.id,p_version:f.version,p_parsed:data,p_raw:rawText,p_input:{...input,staff:staff.name},p_slots:slots,p_candidate:slotSchedule(candidates),p_existing:slotSchedule(existing)});

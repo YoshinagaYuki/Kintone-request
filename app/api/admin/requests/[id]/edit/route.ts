@@ -1,3 +1,4 @@
+import{refreshTransportAddresses}from'@/lib/inventory/shipping-record';
 import{validateRentalItems,rentalMetadata}from'@/lib/inventory/rental-items';
 import{rewriteInventoryFmt}from'@/lib/inventory/request-change';
 import{addDays,validDate}from'@/lib/inventory/gantt';
@@ -239,8 +240,9 @@ async function PATCHHandler(
     return NextResponse.json({ errors: slotErrors }, { status: 400 });
   }
 
-  if(isTezukuru){const before=request.parsed_data??{};const internal=Object.fromEntries(Object.entries(before).filter(([key])=>key.startsWith('_inventory_')));Object.assign(result.data,internal);if(body.rental_items!==undefined){const kits=await admin.from('item_name_master').select('id,name,is_active').eq('category','tezukuru').eq('inventory_role','rental_kit').eq('is_active',true);if(kits.error)return NextResponse.json({errors:['レンタル品マスタを確認できません']},{status:503});try{const meta=rentalMetadata(validateRentalItems(body.rental_items,kits.data??[],rental_status==='already_renting'));Object.assign(result.data,meta);effectiveRawText=rewriteInventoryFmt(effectiveRawText,{'レンタル品一覧':meta['レンタル品一覧']});}catch(e){return NextResponse.json({errors:[e instanceof Error?e.message:'レンタル品を確認してください']},{status:400});}}for(const [date,key,offset]of[['配送日付','_inventory_usage_start',1],['集荷日付','_inventory_usage_end',-1]]as const)if((result.data[date]!==before[date]||!validDate((result.data as any)[key]))&&validDate(result.data[date]))Object.assign(result.data,{[key]:addDays(result.data[date],offset)});}
+  const before=request.parsed_data??{};const internal=Object.fromEntries(Object.entries(before).filter(([key])=>key.startsWith('_inventory_')));Object.assign(result.data,internal);if(isTezukuru){if(body.rental_items!==undefined){const kits=await admin.from('item_name_master').select('id,name,is_active').eq('category','tezukuru').eq('inventory_role','rental_kit').eq('is_active',true);if(kits.error)return NextResponse.json({errors:['レンタル品マスタを確認できません']},{status:503});try{const meta=rentalMetadata(validateRentalItems(body.rental_items,kits.data??[],rental_status==='already_renting'));Object.assign(result.data,meta);effectiveRawText=rewriteInventoryFmt(effectiveRawText,{'レンタル品一覧':meta['レンタル品一覧']});}catch(e){return NextResponse.json({errors:[e instanceof Error?e.message:'レンタル品を確認してください']},{status:400});}}for(const [date,key,offset]of[['配送日付','_inventory_usage_start',1],['集荷日付','_inventory_usage_end',-1]]as const)if((result.data[date]!==before[date]||!validDate((result.data as any)[key]))&&validDate(result.data[date]))Object.assign(result.data,{[key]:addDays(result.data[date],offset)});}
 
+  const transport=refreshTransportAddresses(before,result.data);if(transport)Object.assign(result.data,{_inventory_transport:transport});
   const newParsed = result.data;
 
   // ---- 保存(原子的: 申請更新 + 編集履歴を RPC で1トランザクション実行) ----

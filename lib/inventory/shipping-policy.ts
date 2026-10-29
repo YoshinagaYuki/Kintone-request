@@ -69,4 +69,11 @@ export function shippingPlan(b:ShippingBooking,itemName:string):ShippingPlan{
  const base=validDate(pickup)?addDays(pickup,4):to;
  return{carrier,outboundDays:od,returnDays:rd,dispatch,returned,from,to,warnings:[...new Set(warnings)],unresolved,nextDispatch:[base,validDate(to)?addDays(to,1):to].sort().at(-1)!};
 }
-export function assertTransportReady(b:ShippingBooking,item:string){const plan=shippingPlan(b,item);if(plan.unresolved)throw Error('配送日数を確定してください。北海道の遠隔地・沖縄・離島・住所未設定は個別確認が必要です');if(plan.warnings.length&&!b.transport?.confirmed)throw Error('配送の注意事項を確認し、確認済みにチェックしてください');return plan;}
+export function assertTransportReady(b:ShippingBooking,item:string){const plan=shippingPlan(b,item);if(plan.unresolved){const issues=shippingAddressIssues(b);throw Error(issues.length?issues.join('。'):'この地域は輸送日数の個別確認が必要です。配送設定で、運送会社に確認した往路・復路の日数を入力してください');}if(plan.warnings.length&&!b.transport?.confirmed)throw Error('配送の注意事項を確認し、確認済みにチェックしてください');return plan;}
+
+/** Report the actual field needing correction instead of an unrelated remote-area error. */
+export function shippingAddressIssues(b:ShippingBooking){
+ const t=b.transport;const issues:string[]=[];
+ for(const [required,label,address]of [[b.deliveryRequired!==false,'配送先',t?.address??''],[b.pickupRequired!==false,'集荷先',t?.returnAddress||t?.address||'']]as const){if(!required)continue;if(!address.trim())issues.push(`${label}住所を入力してください`);else if(!destinationPrefecture(address))issues.push(`${label}住所「${address.slice(0,70)}」から都道府県を判別できません。東京都・京都府など、都道府県名から正しく入力してください`);}
+ return issues;
+}

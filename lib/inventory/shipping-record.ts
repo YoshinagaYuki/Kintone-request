@@ -6,3 +6,12 @@ export function transportFromParsed(data:Record<string,unknown>):TransportInput|
  const address=typeof data['配送住所']==='string'?data['配送住所']:'';const returnAddress=typeof data['集荷住所']==='string'?data['集荷住所']:'';
  return address||returnAddress?{address,returnAddress}:undefined;
 }
+
+/** Editing a real address invalidates old route-specific days and acknowledgements. */
+export function refreshTransportAddresses(before:Record<string,unknown>,after:Record<string,unknown>){
+ const saved=transportFromParsed(before);if(!saved)return undefined;
+ const address=typeof after['配送住所']==='string'?after['配送住所']:'',returnAddress=typeof after['集荷住所']==='string'?after['集荷住所']:'';
+ const outboundChanged=before['配送住所']!==after['配送住所'],inboundChanged=before['集荷住所']!==after['集荷住所'];
+ if(!outboundChanged&&!inboundChanged)return saved;
+ return{...saved,address,returnAddress,outboundDays:outboundChanged?undefined:saved.outboundDays,returnDays:inboundChanged?undefined:saved.returnDays,confirmed:false};
+}
