@@ -1,5 +1,5 @@
 import{test}from'node:test';import assert from'node:assert/strict';
-import{tezukuruKitNames}from'../lib/inventory/business';import{ganttEntry}from'../lib/inventory/gantt';import{linkedKitTracks}from'../lib/inventory/tezukuru-source';import{updateRequestEquipment}from'../lib/inventory/request-change';import{applyConfirmationShipping}from'../lib/inventory/confirmation-shipping';
+import{tezukuruKitNames}from'../lib/inventory/business';import{ganttEntry}from'../lib/inventory/gantt';import{linkedKitTracks,normalizeKitSourceEntries}from'../lib/inventory/tezukuru-source';import{updateRequestEquipment}from'../lib/inventory/request-change';import{applyConfirmationShipping}from'../lib/inventory/confirmation-shipping';
 test('consumable quantities do not create hundreds of rental kits; generic plans share one kit',()=>{
  assert.deepEqual(tezukuruKitNames({'レンタルプラン':'わくわく実験LAB_週末','コンテンツ1':'スクイーズ','数量1':'500','コンテンツ2':'スクイーズ','数量2':'300'}),['スクイーズLAB']);
  assert.deepEqual(tezukuruKitNames({'レンタルプラン':'てずくーる！！_週末','コンテンツ1':'シール','コンテンツ2':'スクイーズ'}),['てずくーる']);
@@ -38,4 +38,10 @@ test('a copied continuation can use the terminal source number without rewriting
  const child:any={itemId:'kit',booking:{id:'child',key:'request:child:0',group:'child:0',kind:'request',unitNumber:14,start:'2026-11-04',end:'2026-11-30',from:'2026-11-04',to:'2026-11-30',deliveryRequired:false}};
  const result=applyInventoryCopies([parent,child],[{id:'child',child_request_id:'child',parent_key:'parent',state:'draft',slots:[{preserveSourceGroup:true,source_key:parent.booking.key,item_id:'kit',group_key:'child:0',unit_number:14,screen_quantity:0}]}],[]);
  assert.equal(result[0].booking.unitNumber,4);assert.equal(result[0].booking.group,'parent:0');assert.equal(result[0].booking.to,'2026-11-03');assert.deepEqual(unitSegments(result[0].booking).map(b=>b.unitNumber),[4,14]);assert.equal(result[1].booking.unitNumber,14);
+});
+
+test('source delivery/pickup wishes join the adjacent rental and maintenance stays blocked',()=>{
+ const row=(key:string,store:string,from:string,to=from)=>({source_key:key,source_tab:'スクイーズLAB',source_cell:key,source_raw:JSON.stringify({usageStart:from,usageEnd:to}),source_lane:'8',item_id:'kit',staff_name:'担当',store_name:store,management_no:'',start_date:from,end_date:to,request_id:null,state:'hold'});
+ const normalized=normalizeKitSourceEntries([row('d','納品希望','2026-11-20'),row('e','店舗','2026-11-21','2026-11-23'),row('p','集荷希望','2026-11-24'),row('b','貸出不可','2026-12-01'),row('m','むさし村山 中3日','2026-12-02')]);
+ assert.equal(normalized.length,3);const event=normalized.find(e=>e.source_key==='e')!;assert.equal(event.start_date,'2026-11-20');assert.equal(event.end_date,'2026-11-24');const raw=JSON.parse(event.source_raw!);assert.equal(raw.usageStart,'2026-11-21');assert.equal(raw.delivery,'2026-11-20');assert.equal(raw.pickup,'2026-11-24');assert.equal(raw.transportNotes.length,2);assert.equal(normalized.find(e=>e.source_key==='b')?.state,'blocked');assert.equal(normalized.find(e=>e.source_key==='m')?.state,'blocked');
 });

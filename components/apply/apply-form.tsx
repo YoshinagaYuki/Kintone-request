@@ -554,7 +554,7 @@ export function ApplyForm({
                 てずくーるのレンタル状況を選択してください {req}
               </legend>
               <div className="mt-2 flex flex-wrap gap-2">
-                {RENTAL_STATUSES.map((s) => (
+                {RENTAL_STATUSES.filter(s=>!inventory||s==="new_rental").map((s) => (
                   <label
                     key={s}
                     className={`flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
