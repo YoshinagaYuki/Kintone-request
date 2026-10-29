@@ -20,7 +20,7 @@ const remote=/(離島|小笠原|大島町|利島村|新島村|神津島|三宅�
 /** Conservative internal planning defaults, NOT a prefecture-wide carrier promise.
  * Major-city Seino queries (Asaka, 2026-10-29) and JIT published city tables underpin these bands.
  * Okinawa/islands/unknown destinations never receive a guessed lead time. */
-function days(address:string,carrier:ShippingPlan['carrier'],special=false){
+export function standardShippingDays(address:string,carrier:ShippingPlan['carrier'],special=false){
  const pref=destinationPrefecture(address);if(!pref||pref==='沖縄県'||special||remote.test(address))return null;
  if(pref==='北海道')return /札幌市|小樽市|千歳市|恵庭市|苫小牧市/.test(address)?2:null;
  const west=PREFECTURES.indexOf(pref)>=30;
@@ -43,7 +43,7 @@ function seasonal(date:string,address:string){const md=date.slice(5),month=Numbe
 }
 export function shippingPlan(b:ShippingBooking,itemName:string):ShippingPlan{
  const t=b.transport,carrier=shippingCarrier(itemName,t?.carrier),out=!!t&&b.deliveryRequired!==false,back=!!t&&b.pickupRequired!==false;
- const od=out?(t?.outboundDays??days(t!.address,carrier,t?.specialArea)):0,rd=back?(t?.returnDays??days(t!.returnAddress||t!.address,carrier,t?.specialArea)):0;
+ const od=out?(t?.outboundDays??standardShippingDays(t!.address,carrier,t?.specialArea)):0,rd=back?(t?.returnDays??standardShippingDays(t!.returnAddress||t!.address,carrier,t?.specialArea)):0;
  const warnings:string[]=[],delivery=validDate(b.delivery)?b.delivery:b.start,pickup=validDate(b.pickup)?b.pickup:b.end;
  let dispatch=out&&od!=null&&validDate(delivery)?backwards(delivery,od,carrier):b.from,returned=back&&rd!=null&&validDate(pickup)?move(pickup,rd,carrier):b.to;
  const allDates=[dispatch,delivery,pickup,returned].filter(validDate);const address=[t?.address,t?.returnAddress].filter(Boolean).join(' ');

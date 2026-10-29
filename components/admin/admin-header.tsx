@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { href: "/admin/plans", label: "マスタ", shortLabel: "マスタ" },
   { href: "/admin/staff", label: "担当者", shortLabel: "担当者" },
   { href: "/admin/settings", label: "設定", shortLabel: "設定" },
+  { href: "/admin/shipping-days", label: "配送日数", shortLabel: "配送日数" },
 ] as const;
 function activeNav(path:string,href:string){return href==='/admin/plans'?adminSection(path)==='master':href==='/admin/settings'?adminSection(path)==='settings':path===href||path.startsWith(href+'/');}
 
