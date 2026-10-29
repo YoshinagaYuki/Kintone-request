@@ -2,7 +2,7 @@
 import {useLayoutEffect,useMemo,useRef,type RefObject} from 'react';
 import type {CapacityItem} from '@/lib/inventory/availability';
 import {bookingPhase,bookingOn,type BoardBooking,type BoardLane} from '@/lib/inventory/board';
-import {boardColor,boardStroke,boardSegments,bookingLabel,laneLocked} from '@/lib/inventory/presentation';
+import {boardColor,boardStroke,boardSegments,bookingLabel,laneLocked,isTransportDay} from '@/lib/inventory/presentation';
 import type {ScreenDay} from '@/lib/inventory/shared-screen';
 import {pinchViewport} from '@/lib/inventory/pinch';
 import {mobileWindow,mobileHit,MOBILE_DAY as DAY,MOBILE_LABEL as LABEL,MOBILE_LANE as ROW} from '@/lib/inventory/mobile-viewport';
@@ -54,12 +54,12 @@ export function InventoryMobileBoard(props:Props){
       ctx.fill();ctx.strokeStyle=overflow?'#fda4af':seg.inactive?'#cbd5e1':boardStroke(b,staff?b.start:seg.date);ctx.lineWidth=.7;ctx.stroke();
       if(staff){ctx.save();ctx.clip();fill(x+1,yy+3,3,24,boardStroke(b,b.start));ctx.restore();}ctx.restore();
       const tx=Math.max(LABEL,x);
-      if(!staff&&bookingPhase(b,seg.date)!=='usage'){
+      if(!staff&&isTransportDay(b,seg.date)){
        const cx=x+span/2,cy=yy+15;ctx.save();ctx.translate(cx-8,cy-8);ctx.scale(2/3,2/3);ctx.strokeStyle='#64748b';ctx.lineWidth=1.7;ctx.lineJoin='round';ctx.lineCap='round';ctx.beginPath();
        if(bookingPhase(b,seg.date)==='delivery'){ctx.rect(2,6,12,11);ctx.moveTo(14,10);ctx.lineTo(18,10);ctx.lineTo(22,14);ctx.lineTo(22,17);ctx.lineTo(14,17);ctx.moveTo(5,10);ctx.lineTo(10,10);ctx.stroke();ctx.beginPath();ctx.arc(6,18,2,0,Math.PI*2);ctx.moveTo(20,18);ctx.arc(18,18,2,0,Math.PI*2);}
        else{ctx.moveTo(4,9);ctx.lineTo(12,5);ctx.lineTo(20,9);ctx.lineTo(20,19);ctx.lineTo(12,23);ctx.lineTo(4,19);ctx.closePath();ctx.moveTo(4,9);ctx.lineTo(12,13);ctx.lineTo(20,9);ctx.moveTo(12,13);ctx.lineTo(12,23);ctx.moveTo(12,2);ctx.lineTo(12,8);ctx.moveTo(9,5);ctx.lineTo(12,8);ctx.lineTo(15,5);}ctx.stroke();ctx.restore();
       }else{
-      text(staff?(b.staff==='担当者未設定'?'要確認':b.staff):bookingLabel(b,seg.date),tx+2,yy+15,Math.min(span+spill,x+span+spill-tx)-4,11,b.staff==='担当者未設定'&&staff?'#dc2626':'#1e293b');
+      text(staff?(b.staff==='担当者未設定'?'要確認':b.staff):bookingLabel(b,seg.date),tx+2,yy+15,Math.min(span+spill,x+span+spill-tx)-4,11,b.staff==='担当者未設定'&&staff?'#dc2626':!staff&&bookingPhase(b,seg.date)!=='usage'?'#94a3b8':'#1e293b');
       }
      }
     }

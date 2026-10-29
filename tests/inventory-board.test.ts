@@ -16,3 +16,5 @@ test("excessive configured row counts stop instead of rendering an unbounded gri
 
 test("unassigned bookings never consume numbered equipment",()=>{const b={...booking("a",dates[0],dates[2]),unitNumber:null};const rows=layoutBoard(item,dates,[b]);assert.equal(rows[0].bookings.length,0);assert.equal(rows.find(r=>r.kind==="unassigned")?.bookings[0].id,"a");});
 test("overlap on the selected number is exposed rather than silently moved",()=>{const rows=layoutBoard(item,dates,[booking("a",dates[0],dates[2]),booking("b",dates[2],dates[3])]);assert.equal(rows[1].bookings.length,0);assert.equal(rows.find(r=>r.kind==="overflow")?.number,1);});
+
+test('shipping padding is not mistaken for the actual delivery or pickup day',()=>{const b={...booking('padding','2026-11-11','2026-11-18'),start:'2026-11-14',end:'2026-11-15',delivery:'2026-11-13',pickup:'2026-11-16'};assert.deepEqual(Array.from({length:8},(_,i)=>bookingPhase(b,addDays('2026-11-11',i))),['outbound','outbound','delivery','usage','usage','return','inbound','inbound']);assert.equal(b.from,'2026-11-11');assert.equal(b.to,'2026-11-18');});

@@ -28,4 +28,8 @@ export function layoutBoard(item:CapacityItem,dates:string[],bookings:BoardBooki
  return [...normal,...reserve,...overflow];
 }
 export function bookingOn(lane:BoardLane,date:string){return lane.bookings.filter(b=>b.from<=date&&b.to>=date).sort((a,b)=>b.start.localeCompare(a.start)||a.id.localeCompare(b.id))[0];}
-export function bookingPhase(b:BoardBooking,date:string){return date<b.start?"delivery":date>b.end?"return":"usage";}
+export function bookingPhase(b:BoardBooking,date:string){
+ if(date<b.start){if(b.deliveryRequired===false)return 'buffer';if(b.delivery)return date<b.delivery?'outbound':date===b.delivery?'delivery':'buffer';return 'delivery';}
+ if(date>b.end){if(b.pickupRequired===false)return 'buffer';if(b.pickup)return date>b.pickup?'inbound':date===b.pickup?'return':'buffer';return 'return';}
+ return 'usage';
+}
