@@ -116,3 +116,25 @@ body:has(.inventory-editor), body:has(.inventory-workspace dialog[open]) { overf
 }
 
 @media(max-width:639px){.inventory-action-intake{grid-column:1 / -1;justify-content:center;min-height:44px}}
+
+@media(min-width:640px) and (pointer:fine){
+ .inventory-page-heading{margin-bottom:8px;padding-block:0}
+ .inventory-product-tabs{margin-bottom:8px}
+ .inventory-product-heading{margin-bottom:6px}
+ .inventory-stock-summary{margin-bottom:6px}
+ .inventory-screen-summary{padding-top:4px;padding-bottom:4px;margin-bottom:8px}
+}
+
+@media(min-width:1024px) and (pointer:fine){
+ .inventory-summary-layout{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+ .inventory-summary-layout .inventory-product-heading{flex:1;min-width:0;margin-bottom:0}
+ .inventory-product-heading>div:first-child{display:flex;align-items:baseline;flex-wrap:wrap;gap:8px}
+ .inventory-product-heading>div:first-child p{margin-top:0}
+ .inventory-product-heading>div:last-child{font-size:10px;gap:10px;margin-top:3px}
+ .inventory-summary-layout .inventory-stock-summary{margin-bottom:0;gap:6px;font-size:11px}
+ .inventory-screen-chip{display:inline-flex}
+ .inventory-screen-summary{display:none}
+ .inventory-toolbar{padding:6px;gap:8px}
+ .inventory-action{min-height:34px;padding:6px 9px}
+ .inventory-period-controls input,.inventory-period-controls select{height:34px}
+}
