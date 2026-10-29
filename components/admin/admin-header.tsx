@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import {adminSection} from "@/lib/admin-navigation";
 import { usePathname } from "next/navigation";
 
 /**
@@ -14,16 +15,12 @@ import { usePathname } from "next/navigation";
 // ナビから非表示にしている。ルート・API・DB・データは当面残置(URL直開きは可能)。
 // 【削除候補】旧FMT申請との互換が不要になった段階で /admin/form-settings 一式を完全撤去する。
 const NAV_ITEMS = [
-  { href: "/admin/requests", icon: "📋", label: "申請一覧", shortLabel: "申請" },
-  { href: "/admin/plans", icon: "🏷️", label: "レンタルプラン", shortLabel: "プラン" },
-  { href: "/admin/rental-items", icon: "🧰", label: "レンタル品", shortLabel: "レンタル品" },
-  { href: "/admin/items", icon: "📦", label: "商品マスタ", shortLabel: "商品" },
-  { href: "/admin/staff", icon: "👥", label: "担当者", shortLabel: "担当者" },
-  { href: "/admin/admin-users", icon: "🛡️", label: "管理者", shortLabel: "権限" },
-  { href: "/admin/email-templates", icon: "✉️", label: "メールテンプレート", shortLabel: "メール" },
-  { href: "/admin/settings", icon: "⚙️", label: "システム設定", shortLabel: "システム" },
-  { href: "/admin/home-screen", icon: "⌂", label: "ホーム画面の設定", shortLabel: "起動先" },
+  { href: "/admin/requests", label: "申請一覧", shortLabel: "申請" },
+  { href: "/admin/plans", label: "マスタ", shortLabel: "マスタ" },
+  { href: "/admin/staff", label: "担当者", shortLabel: "担当者" },
+  { href: "/admin/settings", label: "設定", shortLabel: "設定" },
 ] as const;
+function activeNav(path:string,href:string){return href==='/admin/plans'?adminSection(path)==='master':href==='/admin/settings'?adminSection(path)==='settings':path===href||path.startsWith(href+'/');}
 
 export function AdminHeader() {
   const pathname = usePathname();
@@ -35,7 +32,7 @@ export function AdminHeader() {
         <Link href="/admin/inventory/allmight" className="text-sm font-bold text-slate-900">レンタル管理</Link>
         <div className="flex items-center gap-2"><Link href="/apply" className="flex min-h-11 items-center rounded-lg bg-indigo-600 px-3 text-sm font-medium text-white">＋ 新規申請</Link>
         <details className="group"><summary className="flex min-h-11 cursor-pointer list-none items-center rounded-lg border bg-white px-3 text-sm font-medium">メニュー ▾</summary><nav aria-label="スマホ管理メニュー" className="absolute left-3 right-3 top-[56px] z-50 grid max-h-[75dvh] grid-cols-2 gap-1 overflow-y-auto rounded-xl border bg-white p-2 shadow-xl">
-          {[{href:'/admin/inventory/allmight',label:'オールマイト在庫'},{href:'/admin/inventory/tezukuru',label:'てずくーる!!在庫'},...NAV_ITEMS].map(item=><Link key={item.href} href={item.href} onClick={e=>{const d=e.currentTarget.closest('details');if(d)d.open=false;}} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${pathname===item.href?'bg-indigo-50 font-semibold text-indigo-700':'text-slate-700 hover:bg-slate-50'}`}>{item.label}</Link>)}
+          {[{href:'/admin/inventory/allmight',label:'オールマイト在庫'},{href:'/admin/inventory/tezukuru',label:'てずくーる!!在庫'},...NAV_ITEMS].map(item=><Link key={item.href} href={item.href} onClick={e=>{const d=e.currentTarget.closest('details');if(d)d.open=false;}} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${activeNav(pathname,item.href)?'bg-indigo-50 font-semibold text-indigo-700':'text-slate-700 hover:bg-slate-50'}`}>{item.label}</Link>)}
         </nav></details></div>
       </div>
       <div className="mx-auto hidden xl:flex min-h-[60px] max-w-[1900px] flex-wrap items-center justify-between gap-1.5 px-3 sm:gap-3 sm:px-6">
@@ -50,7 +47,7 @@ export function AdminHeader() {
           </details>
           {NAV_ITEMS.map((item) => {
             const active =
-              pathname === item.href || pathname.startsWith(`${item.href}/`);
+              activeNav(pathname,item.href);
             return (
               <Link
                 key={item.href}

@@ -1,5 +1,6 @@
 import { HomeScreenStart } from "@/components/admin/home-screen-start";
 import {homePage} from "@/lib/home-screen";
+import {AdminSectionNav} from "@/components/admin/admin-section-nav";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -25,6 +26,7 @@ export default async function AdminLayout({
     <div className="admin-shell min-h-screen">
       <HomeScreenStart preferred={preferred}/>
       <AdminHeader />
+      <AdminSectionNav/>
       {children}
     </div>
   );

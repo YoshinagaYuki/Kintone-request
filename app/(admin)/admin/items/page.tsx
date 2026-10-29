@@ -33,7 +33,7 @@ export default async function ItemsPage() {
       <Link href="/admin/requests" className="text-sm text-blue-600 hover:underline">
         ← 申請一覧へ戻る
       </Link>
-      <div className="mt-5 flex gap-2 text-sm"><span className="rounded-xl bg-slate-900 px-4 py-2 text-white">商品・教材マスタ</span><Link className="rounded-xl border bg-white px-4 py-2 text-slate-500" href="/admin/rental-items">レンタル品マスタ</Link></div><h1 className="mt-5 text-xl font-bold sm:text-2xl">商品・教材マスタ</h1><p className="mt-2 text-sm text-slate-500">てずくーるの教材の商品名を管理します。貸出キットは「レンタル品マスタ」で別に管理します。</p>
+      <h1 className="mt-5 text-xl font-bold sm:text-2xl">商品・教材マスタ</h1><p className="mt-2 text-sm text-slate-500">てずくーるの教材の商品名を管理します。貸出キットは「レンタル品マスタ」で別に管理します。</p>
       <p className="mt-3 text-sm text-gray-600">在庫数・内予備数は<Link className="text-blue-600 underline" href="/admin/inventory/allmight">在庫管理表</Link>で商品ごとに設定できます。背景スクリーンは大小共通の備品です。下の在庫設定で保有数を入力してください。</p>
       <ItemMasterManager items={items} />
       {stockResult && (stockResult.error || plans?.error || (plans?.data?.length??0)>=1000 || (stockResult.data?.length ?? 0) >= 1000
