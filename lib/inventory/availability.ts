@@ -1,7 +1,7 @@
 import { normalizeForCompare } from "@/lib/item-normalizer";
 import { validDate } from "./gantt";
 export type StockSchedule = {item_id:string;effective_date:string;total_count:number;reserve_count:number};
-export type CapacityItem = { inventory_role?:string|null; schedule?:StockSchedule[]; id: string; name: string; aliases?: unknown; total_count?: number; reserve_count?: number };
+export type CapacityItem = { is_active?:boolean; inventory_role?:string|null; schedule?:StockSchedule[]; id: string; name: string; aliases?: unknown; total_count?: number; reserve_count?: number };
 export type Occupancy = { group?: string; item_id: string; from: string; to: string; quantity: number };
 export function matchCapacityItem(name: string, items: CapacityItem[]): CapacityItem | null {
   const exact = items.filter(i => i.name === name);

@@ -8,6 +8,7 @@ export function confirmationSource(model:InventoryModel,key:string){
  if(records.length<1||records.length>5)throw Error('本登録できる機器は1申請につき5台までです。案件を分けてください');
  if(records.some(r=>r.booking.kind==='request'||r.booking.status!=='hold'||r.booking.managementNo))throw Error('同じ案件に本登録済みの商品があります。申請との紐付けを確認してください');
  if(records.some(r=>r.booking.unitSwitches?.length))throw Error('機器切り替え設定がある予定は、切り替えを解除してから本登録してください');
+ if(records.some(r=>model.items.find(i=>i.id===r.itemId)?.is_active===false))throw Error('削除済みのレンタル品が含まれています。レンタル品マスタから復元してください');
  const b=source.booking;
  if(records.some(r=>['start','end','staff','store','delivery','pickup','from','to','deliveryRequired','pickupRequired'].some(k=>r.booking[k as keyof typeof b]!==b[k as keyof typeof b])))throw Error('同じ案件の商品で日程・担当者・店舗・配送条件を揃えてください');
  return{source,records,baseline:bookingEditBaseline(records)};

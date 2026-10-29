@@ -1,3 +1,6 @@
+import{validateRentalItems,rentalMetadata}from'@/lib/inventory/rental-items';
+import{rewriteInventoryFmt}from'@/lib/inventory/request-change';
+import{addDays,validDate}from'@/lib/inventory/gantt';
 import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -42,6 +45,7 @@ async function PATCHHandler(
 
   let body: {
     raw_text?: string;
+    rental_items?:unknown;
     structured?: boolean;
     applicant_name?: string;
     applicant_phone?: string;
@@ -234,6 +238,8 @@ async function PATCHHandler(
   if (slotErrors.length > 0) {
     return NextResponse.json({ errors: slotErrors }, { status: 400 });
   }
+
+  if(isTezukuru){const before=request.parsed_data??{};const internal=Object.fromEntries(Object.entries(before).filter(([key])=>key.startsWith('_inventory_')));Object.assign(result.data,internal);if(body.rental_items!==undefined){const kits=await admin.from('item_name_master').select('id,name,is_active').eq('category','tezukuru').eq('inventory_role','rental_kit').eq('is_active',true);if(kits.error)return NextResponse.json({errors:['レンタル品マスタを確認できません']},{status:503});try{const meta=rentalMetadata(validateRentalItems(body.rental_items,kits.data??[],rental_status==='already_renting'));Object.assign(result.data,meta);effectiveRawText=rewriteInventoryFmt(effectiveRawText,{'レンタル品一覧':meta['レンタル品一覧']});}catch(e){return NextResponse.json({errors:[e instanceof Error?e.message:'レンタル品を確認してください']},{status:400});}}for(const [date,key,offset]of[['配送日付','_inventory_usage_start',1],['集荷日付','_inventory_usage_end',-1]]as const)if((result.data[date]!==before[date]||!validDate((result.data as any)[key]))&&validDate(result.data[date]))Object.assign(result.data,{[key]:addDays(result.data[date],offset)});}
 
   const newParsed = result.data;
 

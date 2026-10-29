@@ -1,4 +1,7 @@
 import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
+import {tezukuruKitNames} from '@/lib/inventory/business';
+import {matchCapacityItem} from '@/lib/inventory/availability';
+import {savedRentalItems} from '@/lib/inventory/rental-items';
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { registerRequestToKintone } from "@/lib/kintone/register-request";
@@ -80,6 +83,15 @@ async function POSTHandler(
   // 事業判定は表示名ではなく kintone_app_id(49=てずくーる)で行う。
   // てずくーるのみ料金区分(有償/無償)を必須にする。オールマイトは対象外。
   const isTezukuru = formType?.kintone_app_id === 49;
+  if (isTezukuru) {
+    const kits = await supabase.from('item_name_master').select('id,name,aliases,is_active').eq('category','tezukuru').eq('inventory_role','rental_kit');
+    if (kits.error) return NextResponse.json({error:'レンタル品マスタを確認できません'},{status:503});
+    const data = request.parsed_data ?? {};
+    const choices = Array.isArray(data._inventory_rental_items)
+      ? savedRentalItems(data,kits.data??[]).map(l=>kits.data?.find(i=>i.id===l.item_id))
+      : tezukuruKitNames(data).map(n=>matchCapacityItem(n,kits.data??[]));
+    if (choices.some(i=>!i||i.is_active===false)) return NextResponse.json({error:'削除済みのレンタル品が含まれています。申請のレンタル品を選び直すか、レンタル品マスタから復元してください'},{status:409});
+  }
   if (isTezukuru) {
     const billingType = typeof body.billing_type === "string" ? body.billing_type : "";
     if (billingType !== "paid" && billingType !== "free") {

@@ -1,3 +1,4 @@
+import{loadInventoryModel}from'@/lib/inventory/model';
 import{InventoryCopyPanel}from'@/components/admin/inventory-copy-panel';
 import{InventorySyncStatus}from'@/components/admin/inventory-sync-status';
 import Link from "next/link";
@@ -192,7 +193,8 @@ export default async function RequestDetailPage({
     .order("created_at", { ascending: true });
 
   const histories = (historiesData ?? []) as History[];
-  const parsedEntries = Object.entries(request.parsed_data ?? {});
+  let rentalRows:{item_id:string;name:string;quantity:number;inactive?:boolean}[]=[];let rentalReadError=false;if(request.form_types?.kintone_app_id===49){try{const inventory=await loadInventoryModel(supabase,'','tezukuru');for(const r of inventory.allRecords.filter(r=>r.booking.kind==='request'&&r.booking.id===id)){const item=inventory.items.find(i=>i.id===r.itemId),line=rentalRows.find(l=>l.item_id===r.itemId);if(line)line.quantity++;else rentalRows.push({item_id:r.itemId,name:item?.name??'レンタル品',quantity:1,inactive:item?.is_active===false});}}catch{rentalReadError=true;}}
+  const parsedEntries = Object.entries(request.parsed_data ?? {}).filter(([key])=>!key.startsWith('_inventory_'));
   const shippingSynced = histories.some((h) => h.action === "shipping_synced");
 
   // 通知結果(共通通知サービスの結果。最新の notified/notify_failed 履歴から取得)
@@ -742,6 +744,8 @@ export default async function RequestDetailPage({
           )}
         </div>
       )}
+
+      {request.form_types?.kintone_app_id===49&&<><SectionCard title="レンタル品・台数"><div className="p-4">{rentalReadError?<p className="text-sm text-amber-800">レンタル品の現在の情報を取得できませんでした。在庫表から確認してください。</p>:rentalRows.length?<ul className="space-y-2">{rentalRows.map(l=><li key={l.item_id} className="flex items-center justify-between gap-3 rounded-xl bg-indigo-50 px-3 py-3 text-sm"><span>{l.name}{l.inactive&&<span className="ml-2 text-xs text-slate-500">削除済み・履歴保持</span>}</span><strong className="shrink-0 text-indigo-700">{l.quantity}台</strong></li>)}</ul>:<p className="text-sm text-slate-500">今回の追加貸出はありません。</p>}<p className="mt-3 text-xs text-slate-500">ガントチャートで管理する貸出キットです。下の教材の商品数量とは別に管理します。</p></div></SectionCard><SectionCard title="商品・教材の数量"><ul className="divide-y p-4">{Array.from({length:10},(_,i)=>i+1).filter(i=>parsed[`コンテンツ${i}`]).map(i=><li key={i} className="flex justify-between gap-3 py-2 text-sm"><span>{request.approved_contents?.[`コンテンツ${i}`]??parsed[`コンテンツ${i}`]}</span><span className="shrink-0 font-semibold">{parsed[`数量${i}`]??'未記載'}</span></li>)}</ul></SectionCard></>}
 
       {/* パース結果 */}
       <SectionCard title="パース結果">

@@ -72,6 +72,7 @@ export default async function TezukuruApplyPage() {
       : [],
   }));
 
+  const kits=await supabase.from('item_name_master').select('id,name').eq('category','tezukuru').eq('inventory_role','rental_kit').eq('is_active',true).order('sort_order');
   const minimumOrderQuantity = await getMinimumOrderQuantity(supabase);
 
   return (
@@ -95,6 +96,7 @@ export default async function TezukuruApplyPage() {
         formTypes={formTypes}
         rentalPlans={rentalPlans}
         productItems={productItems}
+        rentalItemsOptions={kits.data??[]}
         minimumOrderQuantity={minimumOrderQuantity}
       />
     </main>

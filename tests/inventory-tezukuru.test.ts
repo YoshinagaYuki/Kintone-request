@@ -5,7 +5,7 @@ test('consumable quantities do not create hundreds of rental kits; generic plans
  assert.deepEqual(tezukuruKitNames({'レンタルプラン':'わくわく実験LAB_週末','コンテンツ1':'スクイーズ','数量1':'500','コンテンツ2':'スクイーズ','数量2':'300'}),['スクイーズLAB']);
  assert.deepEqual(tezukuruKitNames({'レンタルプラン':'てずくーる！！_週末','コンテンツ1':'シール','コンテンツ2':'スクイーズ'}),['てずくーる']);
  assert.deepEqual(tezukuruKitNames({'レンタルプラン':'わくわく実験LAB_長期','コンテンツ1':'HWスクイーズ','数量1':'400','コンテンツ2':'スクイーズ','数量2':'500'}),['実験ラボシーズン','スクイーズLAB']);
- assert.deepEqual(tezukuruKitNames({_inventory_kit_names:['スクイーズLAB(ベルパーク様)','bad']}),['スクイーズLAB(ベルパーク様)']);
+ assert.deepEqual(tezukuruKitNames({_inventory_kit_names:['スクイーズLAB(ベルパーク様)',null]}),['スクイーズLAB(ベルパーク様)']);
 });
 test('Tezukuru uses shipping +/-1day while confirmed internal usage dates and slots win',()=>{
  const request:any={id:'r',status:'registered',parsed_data:{'配送日付':'2026-10-30','集荷日付':'2026-11-04','イベントブース名':'store','レンタルプラン':'わくわく実験LAB_週末','コンテンツ1':'スクイーズ','数量1':'300'}};

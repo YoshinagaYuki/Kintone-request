@@ -1,7 +1,7 @@
 export type InventoryBusiness='allmight'|'tezukuru';
 export const TEZUKURU_KITS=['シールLAB','バウンドボールLAB','スクイーズLAB','実験ラボシーズン','てずくーる','スクイーズLAB(ベルパーク様)','てずくーる！！フェス'] as const;
 export function tezukuruKitNames(data:Record<string,unknown>):string[]{
- if(Array.isArray(data._inventory_kit_names))return data._inventory_kit_names.filter((s):s is string=>typeof s==='string'&&TEZUKURU_KITS.includes(s as any));
+ if(Array.isArray(data._inventory_kit_names))return data._inventory_kit_names.filter((s):s is string=>typeof s==='string'&&s.trim().length>0&&s.length<=100);
  const plan=String(data['レンタルプラン']??'');if(/フェス/.test(plan))return['てずくーる！！フェス'];
  if(!/LAB|ラボ|実験/i.test(plan))return['てずくーる'];
  const names:string[]=[];for(let i=1;i<=10;i++){

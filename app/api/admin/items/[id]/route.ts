@@ -18,6 +18,8 @@ export async function PATCH(
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
   }
 
+  const kit=await supabase.from('item_name_master').select('inventory_role').eq('id',id).maybeSingle();if(kit.data?.inventory_role==='rental_kit')return NextResponse.json({error:'レンタル品マスタから編集してください'},{status:400});
+
   let body: {
     category?: string;
     name?: string;
@@ -75,6 +77,7 @@ export async function DELETE(
     return NextResponse.json({ error: "認証が必要です" }, { status: 401 });
   }
 
+  const kit=await supabase.from('item_name_master').select('inventory_role').eq('id',id).maybeSingle();if(kit.data?.inventory_role==='rental_kit')return NextResponse.json({error:'レンタル品マスタから削除してください'},{status:400});
   const { error } = await supabase.from("item_name_master").delete().eq("id", id);
   if (error) {
     return NextResponse.json({ error: `削除に失敗しました: ${error.message}` }, { status: 500 });

@@ -16,6 +16,7 @@ import { usePathname } from "next/navigation";
 const NAV_ITEMS = [
   { href: "/admin/requests", icon: "📋", label: "申請一覧", shortLabel: "申請" },
   { href: "/admin/plans", icon: "🏷️", label: "レンタルプラン", shortLabel: "プラン" },
+  { href: "/admin/rental-items", icon: "🧰", label: "レンタル品", shortLabel: "レンタル品" },
   { href: "/admin/items", icon: "📦", label: "商品マスタ", shortLabel: "商品" },
   { href: "/admin/staff", icon: "👥", label: "担当者", shortLabel: "担当者" },
   { href: "/admin/admin-users", icon: "🛡️", label: "管理者", shortLabel: "権限" },

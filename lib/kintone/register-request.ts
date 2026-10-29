@@ -1,3 +1,4 @@
+import{rentalNote}from'../inventory/rental-items';
 import{confirmationMapping,applyConfirmationShipping}from'../inventory/confirmation-shipping';
 /**
  * 申請の kintone 連携パイプライン(approve / retry 共通)。
@@ -255,6 +256,7 @@ async function registerRequestInternal(
       };
     }
 
+    if(appId===49&&typeof parsedData['レンタル品一覧']==='string')mapped.record['文字列__複数行_']={value:rentalNote(String(mapped.record['文字列__複数行_']?.value??''),parsedData['レンタル品一覧'])};
     if([10,49].includes(appId))applyConfirmationShipping(mapped.record,parsedData,fieldMapping);
 
     // オールマイトのみ: API登録ではkintone JSが発火しないため、

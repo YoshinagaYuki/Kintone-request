@@ -1,5 +1,7 @@
 "use client";
 
+import{RentalItemFields,type RentalDraft}from'./rental-item-fields';
+import{validateRentalItems}from'@/lib/inventory/rental-items';
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -72,6 +74,7 @@ export type TezukuruInitialValues = {
   applicantPhone?: string;
   applicantEmail?: string;
   companyStaffName?: string;
+  rentalItems?: RentalDraft[];
   rentalStatus?: RentalStatus | "";
   rentalPlanId?: string;
   agencyName?: string;
@@ -106,7 +109,7 @@ export function ApplyForm({
   mode = "create",
   requestId,
   initialValues,
-  baseUpdatedAt,inventory,
+  baseUpdatedAt,inventory,rentalItemsOptions,
 }: {
   formTypes: ApplyFormType[];
   rentalPlans: RentalPlan[];
@@ -124,10 +127,12 @@ export function ApplyForm({
   initialValues?: TezukuruInitialValues;
   /** 編集開始時の updated_at(楽観ロック用。mode="edit" で渡す) */
   baseUpdatedAt?: string;
+  rentalItemsOptions?:{id:string;name:string}[];
   inventory?:{deliveryRequired:boolean;pickupRequired:boolean;onBack:()=>void;onSubmit:(payload:Record<string,unknown>)=>Promise<void>};
 }) {
   const router = useRouter();
   const iv = initialValues ?? {};
+  const[rentalItems,setRentalItems]=useState<RentalDraft[]>(iv.rentalItems??[]);
   const [selectedId, setSelectedId] = useState(
     formTypes.length === 1 ? formTypes[0].id : ""
   );
@@ -347,9 +352,11 @@ export function ApplyForm({
       customer_requests: customerRequests.trim() || null,
       sns_promotion_requested: snsPromotion === "" ? null : snsPromotion === "yes",
       expected_updated_at: baseUpdatedAt ?? null,
+      ...(rentalItemsOptions?{rental_items:rentalItems}:{}),
     };
 
     try {
+      if(rentalItemsOptions)validateRentalItems(rentalItems,rentalItemsOptions,rentalStatus==='already_renting');
       if(inventory){await inventory.onSubmit(payload);return;}
       // 編集モード: 管理者編集API(PATCH)。成功時は申請詳細へ戻る(メール再送なし)。
       if (mode === "edit" && requestId) {
@@ -605,6 +612,7 @@ export function ApplyForm({
             </fieldset>
           )}
 
+          {rentalItemsOptions&&<RentalItemFields options={rentalItemsOptions} value={rentalItems} onChange={setRentalItems}/>}
           {/* 基本情報 */}
           <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-gray-800">基本情報</h2>

@@ -1,3 +1,6 @@
+import{savedRentalItems}from'@/lib/inventory/rental-items';
+import{tezukuruKitNames}from'@/lib/inventory/business';
+import{matchCapacityItem}from'@/lib/inventory/availability';
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -218,8 +221,11 @@ export default async function RequestEditPage({
   }
   const trimmedProducts = products.slice(0, Math.max(lastFilled, 1));
 
+  const kits=await admin.from('item_name_master').select('id,name,aliases,is_active').eq('category','tezukuru').eq('inventory_role','rental_kit').order('sort_order');
+  const existingKits=savedRentalItems(pd,kits.data??[]);const legacyKits=tezukuruKitNames(pd).map(name=>matchCapacityItem(name,kits.data??[])).filter(Boolean).map(i=>({item_id:i!.id,quantity:1}));
   const snsBool = data.sns_promotion_requested;
   const initialValues: TezukuruInitialValues = {
+    rentalItems:Array.isArray(pd._inventory_rental_items)?existingKits:legacyKits,
     applicantName: data.applicant_name ?? "",
     applicantPhone: data.applicant_phone ?? "",
     applicantEmail: data.applicant_email ?? "",
@@ -256,6 +262,7 @@ export default async function RequestEditPage({
         formTypes={formTypes}
         rentalPlans={rentalPlans}
         productItems={productItems}
+        rentalItemsOptions={(kits.data??[]).filter(i=>i.is_active)}
         minimumOrderQuantity={minimumOrderQuantity}
         mode="edit"
         requestId={id}

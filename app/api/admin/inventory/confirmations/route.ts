@@ -1,3 +1,4 @@
+import{rentalMetadata}from'@/lib/inventory/rental-items';
 import{tezukuruKitNames}from'@/lib/inventory/business';
 import{getMinimumOrderQuantity}from'@/lib/system-settings';
 import{NextRequest,NextResponse}from'next/server';
@@ -49,7 +50,7 @@ async function handler(req:NextRequest){const a=await inventoryAccess();if('erro
 
  for(const key of[L.agencyName,tezu?L.eventBoothName:L.eventBooth,L.billingMonth,...(deliveryRequired?[L.deliveryDate,L.deliveryPostal,L.deliveryAddress,L.deliveryReceiver,L.deliveryContact]:[]),...(pickupRequired?[L.pickupDate,L.pickupPostal,L.pickupAddress,L.pickupHandover,L.pickupContact]:[])])if(typeof data[key]!=='string'||!String(data[key]).trim())throw Error(`${key}を入力してください`);
  if(!/^(?:[1-9]|1[0-2])月分$/.test(String(data[L.billingMonth])))throw Error('請求対象月を選択してください');
- const names=p.records.map(r=>model.items.find(i=>i.id===r.itemId)!.name);if(tezu){const expected=tezukuruKitNames(data);if(expected.some(n=>!names.includes(n)&&!(n==='スクイーズLAB'&&names.includes('スクイーズLAB(ベルパーク様)')))||names.some(n=>!expected.includes(n)&&!(n==='スクイーズLAB(ベルパーク様)'&&expected.includes('スクイーズLAB'))))throw Error('選択した教材・プランと確保した貸出セットが異なります');data._inventory_kit_names=names;}else for(let i=1;i<=5;i++)if(String(data[equipmentLabel(i)]??'')!==(names[i-1]??''))throw Error('商品は仮押さえの編集画面で変更してから本登録してください');
+ const names=p.records.map(r=>model.items.find(i=>i.id===r.itemId)!.name);if(tezu){const kitLines:any[]=[];for(const r of p.records){const line=kitLines.find(l=>l.item_id===r.itemId);if(line)line.quantity++;else kitLines.push({item_id:r.itemId,name:model.items.find(i=>i.id===r.itemId)!.name,quantity:1});}Object.assign(data,rentalMetadata(kitLines));}else for(let i=1;i<=5;i++)if(String(data[equipmentLabel(i)]??'')!==(names[i-1]??''))throw Error('商品は仮押さえの編集画面で変更してから本登録してください');
  for(const key of shipping)delete data[key];
  const patch=bookingPatch({item_id:p.source.itemId,staff:staff.name,store:data[tezu?L.eventBoothName:L.eventBooth],start:tezu?b.start:data[L.usageStart],end:tezu?b.end:data[L.usageEnd],delivery:data[L.deliveryDate]??'',pickup:data[L.pickupDate]??'',deliveryRequired,pickupRequired,from:[String(tezu?b.start:data[L.usageStart]),String(data[L.deliveryDate]??'')].filter(Boolean).sort()[0],to:[String(tezu?b.end:data[L.usageEnd]),String(data[L.pickupDate]??'')].filter(Boolean).sort().at(-1)});
  if(tezu&&((patch.delivery&&patch.delivery>patch.start)||(patch.pickup&&patch.pickup<patch.end)))throw Error('納品日は利用開始日以前、集荷日は利用終了日以降にしてください');
