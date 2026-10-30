@@ -13,3 +13,7 @@ test('explicit equipment switches on joined booking survive while old monthly ro
 
 test('a deleted joined booking does not revive its later monthly pieces',()=>{const raw=[oct('a','1',1),nov('b','1',2)];const out=joinMonthlyImports(raw,[],[],[{...raw[0],deleted:true},raw[1]]);assert.equal(out.length,1);assert.equal(out[0].deleted,true);});
 test('old per-month date edits are included in the initial union',()=>{const raw=[oct('a','1',1),nov('b','1',2)];const effective=[raw[0],{...raw[1],booking:{...raw[1].booking,to:'2026-11-10',end:'2026-11-09',pickup:'2026-11-10'}}];const out=joinMonthlyImports(raw,[],[],effective);assert.equal(out[0].booking.end,'2026-11-09');assert.equal(out[0].booking.pickup,'2026-11-10');});
+
+test('monthly consolidation chooses a source lane that does not push out another long booking',()=>{const raw=[oct('a','1',5),nov('b','1',4),row('c','2',5,'2026-11-03','2026-11-20')];const out=joinMonthlyImports(raw);assert.equal(out.find(r=>r.booking.managementNo==='1')?.booking.unitNumber,5);assert.equal(out.find(r=>r.booking.managementNo==='2')?.booking.unitNumber,4);});
+
+test('joining old sheet rows never moves a system request to resolve a collision',()=>{const raw=[oct('a','1',5),nov('b','1',4),row('c','2',5,'2026-11-03','2026-11-20')];raw[2].booking.kind='request';const out=joinMonthlyImports(raw);assert.equal(out.find(r=>r.booking.id==='c')?.booking.unitNumber,5);});
