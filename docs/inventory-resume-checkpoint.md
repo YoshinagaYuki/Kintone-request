@@ -242,3 +242,9 @@
 - da39128: joinMonthlyImports runs before persisted edits. Adjacent month-boundary imported segments with the same product, issued management number and store retain earliest source key/equipment lane and extend their date range. Multiple simultaneous units remain separate. Independently edited/assigned secondary sources and explicit switches remain protected. No DB/source-sheet writes.
 - Read-only model verified 930: unit1 10/09–11/08, 913: unit2 10/01–11/07; previously swapped lanes at11/01. 183 inventory tests, typecheck and build passed.
 - b3ab0b4 also fixes confirmation shipping preflight and saved-request address recovery. Pending request9d4ce829-b475-4b84-a001-5c4139d74eb3 has literal 京都東村山市… address, requires user correction to 東京都…; not modified or approved by agent.
+
+### 2026-10-29 月跨ぎ全商品・仮押さえへの拡張
+- monthly-continuity now pairs raw usage dates across months, then unions effective legacy edits. Numbered cases match issued number; unnumbered holds require same non-placeholder store and staff. One-to-one matching preserves simultaneous quantities. Monthly transport overlaps do not create a duplicate delivery marker. Earliest lane retained, original DB/source rows untouched.
+- All-business read-only audit found18 joined tracks, zero remaining same-case adjacent month pairs. Includes ニチコム11/21–12/21, クレーンゲーム961, ATDv2 1045 andてずくーる kit tracks.
+- Joined edit snapshots carry monthlySourceKeys; later date/store edits, switches, deletion do not revive absorbed pieces. Legacy per-piece edits applied before normalization. 189tests/build passed.
+- dfcca34 (already live verified): hide outbound/inbound transit padding in shared desktop/mobile boardSegments, leave occupancy model and actual-day icons intact. Production DOM transport labels0, icons14.
