@@ -249,3 +249,8 @@
 - Joined edit snapshots carry monthlySourceKeys; later date/store edits, switches, deletion do not revive absorbed pieces. Legacy per-piece edits applied before normalization. 189tests/build passed.
 - dfcca34 (already live verified): hide outbound/inbound transit padding in shared desktop/mobile boardSegments, leave occupancy model and actual-day icons intact. Production DOM transport labels0, icons14.
 - Final row-swap follow-up: joining998 on its earliest source row initially displaced1039. Reconcile only displaced source-only bookings onto the monthly row released by the joined track, when free for their entire period. System requests/holds and post-normalization explicit equipment choices never moved. あひるサンダー90-day audit now0 overflow lanes; ニチコム remainsunit1 through12/21. 191tests and build passed. This correction is computed in the model, no source/DB writes.
+
+### 2026-10-30 お客様フォームの「通信エラー」調査
+- Public tezukuru apply form ran validateRentalItems inside network try/catch. Empty new-rental kit lines / invalid quantities / catalog mismatch throw locally, but non-inventory catch replaced every such error with generic「通信エラー」. Moved known rental validation into normal validate() before submitting, preserving concrete error and inputs. Real fetch failures remain network errors.
+- Incident-specific cause is not proven without affected time/store; asked user. Latest tezukuru request at2026-10-30 14:10 JST is saved and applicant mail recorded14:10:59, but do not assume that is the reported customer. No customer data modified or messages sent during QA.
+-191inventory tests and build passed. Browser QA uses blank public form; no real submission.

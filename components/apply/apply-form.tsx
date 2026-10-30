@@ -237,6 +237,10 @@ export function ApplyForm({
         errs.push("レンタルプランを選択してください。");
     }
 
+    // Rental validation belongs with field validation, before the network step.
+    // Otherwise missing kits are caught as a misleading communication failure.
+    if(rentalItemsOptions){try{validateRentalItems(rentalItems,rentalItemsOptions,rentalStatus==='already_renting');}catch(error){errs.push(error instanceof Error?error.message:'レンタル品と台数を確認してください');}}
+
     // 基本情報
     if (!agencyName.trim()) errs.push("取次店名を入力してください。");
     if (!boothName.trim()) errs.push("イベントブース名を入力してください。");
@@ -356,7 +360,6 @@ export function ApplyForm({
     };
 
     try {
-      if(rentalItemsOptions)validateRentalItems(rentalItems,rentalItemsOptions,rentalStatus==='already_renting');
       if(inventory){await inventory.onSubmit(payload);return;}
       // 編集モード: 管理者編集API(PATCH)。成功時は申請詳細へ戻る(メール再送なし)。
       if (mode === "edit" && requestId) {
