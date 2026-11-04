@@ -1,8 +1,10 @@
 "use client";
 
+import { FormErrorSummary } from "./form-error-summary";
+
 import{parseEmailRecipients,MAX_RECIPIENT_INPUT}from'@/lib/email-recipients';
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useId } from "react";
 import { useRouter } from "next/navigation";
 import {
   buildAllmightFmt,
@@ -83,6 +85,8 @@ export function AllmightApplyForm({
   const iv = initialValues ?? {};
 
   // 入力者情報
+  const fieldPrefix = useId();
+  const fieldId = (name: string) => `${fieldPrefix}-${name}`;
   const [applicantName, setApplicantName] = useState(iv.applicantName ?? "");
   const [applicantPhone, setApplicantPhone] = useState(iv.applicantPhone ?? "");
   const [applicantEmail, setApplicantEmail] = useState(iv.applicantEmail ?? "");
@@ -350,37 +354,51 @@ export function AllmightApplyForm({
         </p>
       )}
 
-      {errors.length > 0 && (
-        <div role="alert" className="application-error-summary rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
-          <p className="mb-2 font-semibold">確認が必要な内容があります</p>
-          <ul className="list-disc pl-5">
-            {errors.map((e, i) => (
-              <li key={i}>{e}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {errors.length > 0 && <FormErrorSummary errors={errors} targets={{
+        "入力者氏名": fieldId("applicantName"),
+        "入力者電話番号": fieldId("applicantPhone"),
+        "入力者メールアドレス": fieldId("applicantEmail"),
+        "メールアドレス": fieldId("applicantEmail"),
+        "弊社担当者氏名": fieldId("companyStaffName"),
+        "取次店名": fieldId("agencyName"),
+        "「◯月分": fieldId("billingMonth"),
+        "配送料": fieldId("shippingFee"),
+        "配送日付": fieldId("deliveryDate"),
+        "配送の郵便番号": fieldId("deliveryPostal"),
+        "配送先住所": fieldId("deliveryAddress"),
+        "配送の受領者氏名": fieldId("deliveryReceiver"),
+        "配送の連絡先": fieldId("deliveryContact"),
+        "集荷日付": fieldId("pickupDate"),
+        "集荷の郵便番号": fieldId(sameAsDelivery ? "deliveryPostal" : "effPickupPostal"),
+        "集荷先住所": fieldId(sameAsDelivery ? "deliveryAddress" : "effPickupAddress"),
+        "集荷の受領者氏名": fieldId(sameAsDelivery ? "deliveryReceiver" : "effPickupReceiver"),
+        "集荷の連絡先": fieldId(sameAsDelivery ? "deliveryContact" : "effPickupContact"),
+        "要望・連絡事項": fieldId("customerRequests"),
+        "イベントブース": fieldId("eventBooth"),
+        "利用開始日": fieldId("usageStart"),
+        "利用最終日": fieldId("usageEnd"),
+      }} />}
 
       {/* 入力者情報 */}
       <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-gray-800">入力者情報</h2>
         <div className="mt-3 space-y-3">
           <div>
-            <label className={labelClass}>氏名 {req}</label>
-            <input type="text" value={applicantName} onChange={(e) => setApplicantName(e.target.value)} maxLength={100} autoComplete="name" placeholder="山田 太郎" className={inputClass} />
+            <label htmlFor={fieldId("applicantName")} className={labelClass}>氏名 {req}</label>
+            <input type="text" id={fieldId("applicantName")} value={applicantName} onChange={(e) => setApplicantName(e.target.value)} maxLength={100} autoComplete="name" placeholder="山田 太郎" className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>電話番号 {req}</label>
-            <input type="tel" value={applicantPhone} onChange={(e) => setApplicantPhone(e.target.value)} maxLength={30} inputMode="tel" placeholder="090-1234-5678" className={inputClass} />
+            <label htmlFor={fieldId("applicantPhone")} className={labelClass}>電話番号 {req}</label>
+            <input type="tel" id={fieldId("applicantPhone")} value={applicantPhone} onChange={(e) => setApplicantPhone(e.target.value)} maxLength={30} inputMode="tel" placeholder="090-1234-5678" className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>メールアドレス {req}</label>
-            <textarea rows={2} aria-label="メールアドレス" value={applicantEmail} onChange={(e) => setApplicantEmail(e.target.value)} maxLength={MAX_RECIPIENT_INPUT} inputMode="email" placeholder="example@example.com, another@example.com" className={inputClass} />
+            <label htmlFor={fieldId("applicantEmail")} className={labelClass}>メールアドレス {req}</label>
+            <textarea rows={2} aria-label="メールアドレス" id={fieldId("applicantEmail")} value={applicantEmail} onChange={(e) => setApplicantEmail(e.target.value)} maxLength={MAX_RECIPIENT_INPUT} inputMode="email" placeholder="example@example.com, another@example.com" className={inputClass} />
             <p className="mt-1 text-xs text-gray-500">カンマまたは改行で複数入力できます（20件まで）。申請完了・承認完了メールを入力した全員へお送りします。<br/>配送伝票（伝票番号）に関するメールの送付先は、下の「伝票番号連絡先」に入力してください。</p>
           </div>
           <div>
-            <label className={labelClass}>弊社担当者氏名 {req}</label>
-            {inventory?<select aria-label="弊社担当者氏名" value={companyStaffName} onChange={e=>setCompanyStaffName(e.target.value)} className={inputClass}><option value="">正式名称を選択</option>{inventory.staff.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</select>:<input type="text" value={companyStaffName} onChange={(e) => setCompanyStaffName(e.target.value)} maxLength={100} placeholder="例：吉永、田中、山田太郎" className={inputClass} />}
+            <label htmlFor={fieldId("companyStaffName")} className={labelClass}>弊社担当者氏名 {req}</label>
+            {inventory?<select aria-label="弊社担当者氏名" id={fieldId("companyStaffName")} value={companyStaffName} onChange={e=>setCompanyStaffName(e.target.value)} className={inputClass}><option value="">正式名称を選択</option>{inventory.staff.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</select>:<input type="text" id={fieldId("companyStaffName")} value={companyStaffName} onChange={(e) => setCompanyStaffName(e.target.value)} maxLength={100} placeholder="例：吉永、田中、山田太郎" className={inputClass} />}
             <p className="mt-1 text-xs text-gray-500">弊社の担当者名をご入力ください(社内で正式名称に確認・修正します)。</p>
           </div>
         </div>
@@ -391,16 +409,16 @@ export function AllmightApplyForm({
         <h2 className="text-sm font-semibold text-gray-800">基本情報</h2>
         <div className="mt-3 space-y-3">
           <div>
-            <label className={labelClass}>取次店名 {req}</label>
-            <input type="text" value={agencyName} onChange={(e) => setAgencyName(e.target.value)} maxLength={200} placeholder="株式会社〇〇" className={inputClass} />
+            <label htmlFor={fieldId("agencyName")} className={labelClass}>取次店名 {req}</label>
+            <input type="text" id={fieldId("agencyName")} value={agencyName} onChange={(e) => setAgencyName(e.target.value)} maxLength={200} placeholder="株式会社〇〇" className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>イベントブース {req}</label>
-            <input type="text" value={eventBooth} onChange={(e) => setEventBooth(e.target.value)} maxLength={200} placeholder="〇〇フェス 特設ブース" className={inputClass} />
+            <label htmlFor={fieldId("eventBooth")} className={labelClass}>イベントブース {req}</label>
+            <input type="text" id={fieldId("eventBooth")} value={eventBooth} onChange={(e) => setEventBooth(e.target.value)} maxLength={200} placeholder="〇〇フェス 特設ブース" className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>◯月分として請求 {req}</label>
-            <select value={billingMonth} onChange={(e) => setBillingMonth(e.target.value)} className={inputClass}>
+            <label htmlFor={fieldId("billingMonth")} className={labelClass}>◯月分として請求 {req}</label>
+            <select id={fieldId("billingMonth")} value={billingMonth} onChange={(e) => setBillingMonth(e.target.value)} className={inputClass}>
               <option value="">選択してください</option>
               {BILLING_MONTHS.map((m) => (
                 <option key={m} value={m}>{m}</option>
@@ -409,12 +427,12 @@ export function AllmightApplyForm({
             <p className="mt-1 text-xs text-gray-500">選択した月の翌月に請求します(例: 7月分 → 8月請求)。</p>
           </div>
           <div>
-            <label className={labelClass}>
+            <label htmlFor={fieldId("shippingFee")} className={labelClass}>
               配送料 <span className="text-xs font-normal text-gray-500">(任意)</span>
             </label>
             <input
               type="text"
-              value={shippingFee}
+              id={fieldId("shippingFee")} value={shippingFee}
               onChange={(e) => setShippingFee(e.target.value)}
               maxLength={50}
               inputMode="numeric"
@@ -431,12 +449,12 @@ export function AllmightApplyForm({
         <h2 className="text-sm font-semibold text-gray-800">利用期間</h2>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <label className={labelClass}>利用開始日 {req}</label>
-            <input type="date" value={usageStart} onChange={(e) => setUsageStart(e.target.value)} className={inputClass} />
+            <label htmlFor={fieldId("usageStart")} className={labelClass}>利用開始日 {req}</label>
+            <input type="date" id={fieldId("usageStart")} value={usageStart} onChange={(e) => setUsageStart(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>利用最終日 {req}</label>
-            <input type="date" value={usageEnd} onChange={(e) => setUsageEnd(e.target.value)} className={inputClass} />
+            <label htmlFor={fieldId("usageEnd")} className={labelClass}>利用最終日 {req}</label>
+            <input type="date" id={fieldId("usageEnd")} value={usageEnd} onChange={(e) => setUsageEnd(e.target.value)} className={inputClass} />
           </div>
         </div>
       </section>
@@ -491,24 +509,24 @@ export function AllmightApplyForm({
         <h2 className="text-sm font-semibold text-gray-800">配送{!deliveryRequired?"（不要）":""}</h2>
         <div className="mt-3 space-y-3">
           <div>
-            <label className={labelClass}>配送日付 {req}</label>
-            <input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} className={inputClass} />
+            <label htmlFor={fieldId("deliveryDate")} className={labelClass}>配送日付 {req}</label>
+            <input type="date" id={fieldId("deliveryDate")} value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>郵便番号 {req}</label>
-            <input type="text" value={deliveryPostal} onChange={(e) => setDeliveryPostal(e.target.value)} maxLength={10} inputMode="numeric" placeholder="123-4567" className={inputClass} />
+            <label htmlFor={fieldId("deliveryPostal")} className={labelClass}>郵便番号 {req}</label>
+            <input type="text" id={fieldId("deliveryPostal")} value={deliveryPostal} onChange={(e) => setDeliveryPostal(e.target.value)} maxLength={10} inputMode="numeric" placeholder="123-4567" className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>配送先住所 {req}</label>
-            <input type="text" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} maxLength={300} placeholder="東京都〇〇区〇〇 1-2-3" className={inputClass} />
+            <label htmlFor={fieldId("deliveryAddress")} className={labelClass}>配送先住所 {req}</label>
+            <input type="text" id={fieldId("deliveryAddress")} value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} maxLength={300} placeholder="東京都〇〇区〇〇 1-2-3" className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>受領者氏名 {req}</label>
-            <input type="text" value={deliveryReceiver} onChange={(e) => setDeliveryReceiver(e.target.value)} maxLength={100} placeholder="当日の受け取り担当者" className={inputClass} />
+            <label htmlFor={fieldId("deliveryReceiver")} className={labelClass}>受領者氏名 {req}</label>
+            <input type="text" id={fieldId("deliveryReceiver")} value={deliveryReceiver} onChange={(e) => setDeliveryReceiver(e.target.value)} maxLength={100} placeholder="当日の受け取り担当者" className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>連絡先 {req}</label>
-            <input type="tel" value={deliveryContact} onChange={(e) => setDeliveryContact(e.target.value)} maxLength={30} inputMode="tel" placeholder="090-1234-5678" className={inputClass} />
+            <label htmlFor={fieldId("deliveryContact")} className={labelClass}>連絡先 {req}</label>
+            <input type="tel" id={fieldId("deliveryContact")} value={deliveryContact} onChange={(e) => setDeliveryContact(e.target.value)} maxLength={30} inputMode="tel" placeholder="090-1234-5678" className={inputClass} />
           </div>
         </div>
       </section>
@@ -530,25 +548,25 @@ export function AllmightApplyForm({
 
         <div className="mt-3 space-y-3">
           <div>
-            <label className={labelClass}>集荷日付 {req}</label>
+            <label htmlFor={fieldId("pickupDate")} className={labelClass}>集荷日付 {req}</label>
             {/* 集荷日付は「配送情報と同じ」の対象外(独立入力) */}
-            <input type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} className={inputClass} />
+            <input type="date" id={fieldId("pickupDate")} value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>郵便番号 {req}</label>
-            <input type="text" value={effPickupPostal} onChange={(e) => setPickupPostal(e.target.value)} readOnly={sameAsDelivery} maxLength={10} inputMode="numeric" placeholder="123-4567" className={sameAsDelivery ? roInputClass : inputClass} />
+            <label htmlFor={fieldId("effPickupPostal")} className={labelClass}>郵便番号 {req}</label>
+            <input type="text" id={fieldId("effPickupPostal")} value={effPickupPostal} onChange={(e) => setPickupPostal(e.target.value)} readOnly={sameAsDelivery} maxLength={10} inputMode="numeric" placeholder="123-4567" className={sameAsDelivery ? roInputClass : inputClass} />
           </div>
           <div>
-            <label className={labelClass}>集荷先住所 {req}</label>
-            <input type="text" value={effPickupAddress} onChange={(e) => setPickupAddress(e.target.value)} readOnly={sameAsDelivery} maxLength={300} placeholder="東京都〇〇区〇〇 1-2-3" className={sameAsDelivery ? roInputClass : inputClass} />
+            <label htmlFor={fieldId("effPickupAddress")} className={labelClass}>集荷先住所 {req}</label>
+            <input type="text" id={fieldId("effPickupAddress")} value={effPickupAddress} onChange={(e) => setPickupAddress(e.target.value)} readOnly={sameAsDelivery} maxLength={300} placeholder="東京都〇〇区〇〇 1-2-3" className={sameAsDelivery ? roInputClass : inputClass} />
           </div>
           <div>
-            <label className={labelClass}>受領者氏名 {req}</label>
-            <input type="text" value={effPickupReceiver} onChange={(e) => setPickupReceiver(e.target.value)} readOnly={sameAsDelivery} maxLength={100} placeholder="当日の受け取り担当者" className={sameAsDelivery ? roInputClass : inputClass} />
+            <label htmlFor={fieldId("effPickupReceiver")} className={labelClass}>受領者氏名 {req}</label>
+            <input type="text" id={fieldId("effPickupReceiver")} value={effPickupReceiver} onChange={(e) => setPickupReceiver(e.target.value)} readOnly={sameAsDelivery} maxLength={100} placeholder="当日の受け取り担当者" className={sameAsDelivery ? roInputClass : inputClass} />
           </div>
           <div>
-            <label className={labelClass}>連絡先 {req}</label>
-            <input type="tel" value={effPickupContact} onChange={(e) => setPickupContact(e.target.value)} readOnly={sameAsDelivery} maxLength={30} inputMode="tel" placeholder="090-1234-5678" className={sameAsDelivery ? roInputClass : inputClass} />
+            <label htmlFor={fieldId("effPickupContact")} className={labelClass}>連絡先 {req}</label>
+            <input type="tel" id={fieldId("effPickupContact")} value={effPickupContact} onChange={(e) => setPickupContact(e.target.value)} readOnly={sameAsDelivery} maxLength={30} inputMode="tel" placeholder="090-1234-5678" className={sameAsDelivery ? roInputClass : inputClass} />
           </div>
         </div>
       </section>
@@ -562,12 +580,12 @@ export function AllmightApplyForm({
             <p className="mt-2 rounded-lg bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-900">配送伝票（伝票番号）の通知先をご入力ください。to・ccは、それぞれメールアドレス1件のみ登録できます。複数のメールアドレスは入力できません。</p>
         <div className="mt-3 space-y-3">
           <div>
-            <label className={labelClass}>to</label>
-            <input type="text" value={slipTo} onChange={(e) => setSlipTo(e.target.value)} maxLength={254} placeholder="伝票番号の通知先(to)" className={inputClass} />
+            <label htmlFor={fieldId("slipTo")} className={labelClass}>to</label>
+            <input type="text" id={fieldId("slipTo")} value={slipTo} onChange={(e) => setSlipTo(e.target.value)} maxLength={254} placeholder="伝票番号の通知先(to)" className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>cc</label>
-            <input type="text" value={slipCc} onChange={(e) => setSlipCc(e.target.value)} maxLength={254} placeholder="伝票番号の通知先(cc)" className={inputClass} />
+            <label htmlFor={fieldId("slipCc")} className={labelClass}>cc</label>
+            <input type="text" id={fieldId("slipCc")} value={slipCc} onChange={(e) => setSlipCc(e.target.value)} maxLength={254} placeholder="伝票番号の通知先(cc)" className={inputClass} />
           </div>
         </div>
       </section>
@@ -579,23 +597,23 @@ export function AllmightApplyForm({
         </h2>
         <div className="mt-3 space-y-3">
           <div>
-            <label className={labelClass}>氏名</label>
-            <input type="text" value={emergencyName} onChange={(e) => setEmergencyName(e.target.value)} maxLength={100} className={inputClass} />
+            <label htmlFor={fieldId("emergencyName")} className={labelClass}>氏名</label>
+            <input type="text" id={fieldId("emergencyName")} value={emergencyName} onChange={(e) => setEmergencyName(e.target.value)} maxLength={100} className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>電話番号</label>
-            <input type="tel" value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} maxLength={30} inputMode="tel" className={inputClass} />
+            <label htmlFor={fieldId("emergencyPhone")} className={labelClass}>電話番号</label>
+            <input type="tel" id={fieldId("emergencyPhone")} value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} maxLength={30} inputMode="tel" className={inputClass} />
           </div>
         </div>
       </section>
 
       {/* お客様からの要望(任意) */}
       <div>
-        <label className={labelClass}>
+        <label htmlFor={fieldId("customerRequests")} className={labelClass}>
           お客様からの要望 <span className="text-xs font-normal text-gray-500">(任意)</span>
         </label>
         <textarea
-          value={customerRequests}
+          id={fieldId("customerRequests")} value={customerRequests}
           onChange={(e) => setCustomerRequests(e.target.value)}
           rows={4}
           maxLength={MAX_CUSTOMER_REQUESTS}

@@ -158,7 +158,6 @@
 .application-complete>div:last-child>a { min-height:44px; display:flex; align-items:center; justify-content:center; border-radius:12px; }
 .application-error-summary { border-radius:12px; border-color:#f1c6c8; background:#fff5f5; padding:16px; line-height:1.7; }
 .application-error-summary ul { display:grid; gap:4px; }
-.application-error-summary>p { color:#a8333d; }
 @media(max-width:639px) { .application-complete { padding-top:40px; padding-bottom:40px; } }
 
 /* Detail pages share information surfaces without changing operational actions. */
@@ -205,3 +204,9 @@
  .management-user-filters input,.management-user-filters select { min-height:44px; font-size:16px; border-radius:10px; }
  .management-user-filters button { min-height:44px; border-radius:10px; }
 }
+
+.application-error-summary>h2 { color:#a8333d; font-size:14px; }
+.application-error-summary:focus { outline:2px solid #b64f5b; outline-offset:3px; }
+
+.application-error-summary a { color:inherit; text-decoration:underline; text-underline-offset:3px; text-decoration-color:#cc8b92; }
+.application-error-summary a:hover { text-decoration-color:currentColor; }
