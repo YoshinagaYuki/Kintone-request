@@ -227,3 +227,11 @@
 .management-loading>div { border-radius:12px; }
 .management-loading>p { color:#65738b; }
 @media(prefers-reduced-motion:reduce) { .management-loading .animate-pulse { animation:none; } }
+
+.inventory-case-card dt { color:#65738b; }
+.inventory-case-card p.text-slate-400 { color:#68768c; }
+
+.inventory-list-body p.text-slate-400 { color:#68768c; }
+/* Keep search and week controls anchored when a result list becomes short. */
+.inventory-stable-list { margin-block-start:max(12px,7dvh); margin-block-end:auto; }
+@media(max-width:639px) { .inventory-stable-list { margin-block-start:calc(12px + env(safe-area-inset-top)); } }
