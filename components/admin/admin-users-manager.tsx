@@ -160,7 +160,7 @@ export function AdminUsersManager({
       )}
 
       {/* ツールバー: 招待ボタン + 検索 + フィルター */}
-      <div className="flex flex-wrap items-end gap-2">
+      <div className="management-user-filters flex flex-wrap items-end gap-2">
         <button
           onClick={() => setInviteOpen(true)}
           className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
@@ -216,9 +216,9 @@ export function AdminUsersManager({
       </div>
 
       {/* 一覧 */}
-      <div className="mt-4 overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-        <table className="w-full text-sm">
-          <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs text-gray-500">
+      <div className="management-table mt-4 overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+        <table role="table" className="w-full text-sm">
+          <thead role="rowgroup" className="border-b border-gray-200 bg-gray-50 text-left text-xs text-gray-500">
             <tr>
               <th className="px-4 py-2">氏名 / メール</th>
               <th className="px-4 py-2">権限</th>
@@ -230,7 +230,7 @@ export function AdminUsersManager({
               <th className="px-4 py-2"><span className="sr-only">操作</span></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody role="rowgroup" className="divide-y divide-gray-100">
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
@@ -242,12 +242,12 @@ export function AdminUsersManager({
               const isSelf = u.auth_user_id === currentAuthUserId;
               const protectMaster = isLastActiveMaster(u);
               return (
-                <tr key={u.id} className={u.status === "disabled" ? "bg-gray-50 text-gray-400" : ""}>
+                <tr role="row" key={u.id} className={u.status === "disabled" ? "bg-gray-50 text-gray-400" : ""}>
                   {/* 氏名 / メール */}
-                  <td className="px-4 py-2">
+                  <td role="cell" data-label="氏名・メール" className="px-4 py-2"><div className="management-cell-content">
                     {editingId === u.id ? (
                       <div className="flex items-center gap-1">
-                        <input
+                        <input aria-label="表示名"
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
                           className="w-40 rounded-md border border-gray-300 p-1.5 text-sm"
@@ -273,13 +273,13 @@ export function AdminUsersManager({
                         <div className="break-all text-xs text-gray-500">{u.email}</div>
                       </>
                     )}
-                  </td>
+                  </div></td>
 
                   {/* 権限(表示のみ。マスターは指定2名で固定・変更不可) */}
-                  <td className="px-4 py-2">{ROLE_LABEL[u.role]}</td>
+                  <td role="cell" data-label="権限" className="px-4 py-2"><div className="management-cell-content">{ROLE_LABEL[u.role]}</div></td>
 
                   {/* 担当事業 */}
-                  <td className="px-4 py-2 text-xs">
+                  <td role="cell" data-label="担当事業" className="px-4 py-2 text-xs"><div className="management-cell-content">
                     {businessLabels(u.form_type_ids)}
                     {currentRole === "master" && (
                       <button
@@ -289,26 +289,26 @@ export function AdminUsersManager({
                         編集
                       </button>
                     )}
-                  </td>
+                  </div></td>
 
                   {/* 通知 */}
-                  <td className="px-4 py-2 text-xs">
+                  <td role="cell" data-label="通知" className="px-4 py-2 text-xs"><div className="management-cell-content">
                     <div>Push: {u.push_notify_enabled ? "ON" : "OFF"}</div>
                     <div>メール: {u.email_notify_enabled ? "ON" : "OFF"}</div>
-                  </td>
+                  </div></td>
 
                   {/* 状態 */}
-                  <td className="px-4 py-2">
+                  <td role="cell" data-label="状態" className="px-4 py-2"><div className="management-cell-content">
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_CLASS[u.status]}`}>
                       {STATUS_LABEL[u.status]}
                     </span>
-                  </td>
+                  </div></td>
 
                   {/* 招待日時 */}
-                  <td className="px-4 py-2 text-xs">{u.invited_at ? formatJstDateTime(u.invited_at) : "-"}</td>
+                  <td role="cell" data-label="招待日時" className="px-4 py-2 text-xs"><div className="management-cell-content">{u.invited_at ? formatJstDateTime(u.invited_at) : "-"}</div></td>
 
                   {/* 最終ログイン(日時+相対) */}
-                  <td className="px-4 py-2 text-xs">
+                  <td role="cell" data-label="最終ログイン" className="px-4 py-2 text-xs"><div className="management-cell-content">
                     {u.last_login_at ? (
                       <>
                         <div>{formatJstDateTime(u.last_login_at)}</div>
@@ -319,10 +319,10 @@ export function AdminUsersManager({
                     ) : (
                       <span className="text-gray-400">ログインなし</span>
                     )}
-                  </td>
+                  </div></td>
 
                   {/* 操作 */}
-                  <td className="whitespace-nowrap px-4 py-2 text-right text-xs">
+                  <td role="cell" data-label="操作" className="whitespace-nowrap px-4 py-2 text-right text-xs"><div className="management-cell-content">
                     {u.status === "invited" && (
                       <button
                         onClick={() => call(`/api/admin/admin-users/${u.id}/resend`, "POST", undefined, "招待を再送しました。")}
@@ -369,7 +369,7 @@ export function AdminUsersManager({
                         削除
                       </button>
                     )}
-                  </td>
+                  </div></td>
                 </tr>
               );
             })}

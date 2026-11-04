@@ -195,21 +195,21 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
               editingId === row.id ? (
                 <tr role="row" key={row.id} className="bg-blue-50/40">
                   <td role="cell" data-label="氏名" className="px-4 py-2">
-                    <input
+                    <input aria-label="氏名"
                       value={edit.name}
                       onChange={(e) => setEdit({ ...edit, name: e.target.value })}
                       className="w-full rounded-md border border-gray-300 p-1.5 text-sm"
                     />
                   </td>
                   <td role="cell" data-label="所属会社" className="px-4 py-2">
-                    <input
+                    <input aria-label="所属会社"
                       value={edit.company}
                       onChange={(e) => setEdit({ ...edit, company: e.target.value })}
                       className="w-full rounded-md border border-gray-300 p-1.5 text-sm"
                     />
                   </td>
                   <td role="cell" data-label="メール" className="px-4 py-2">
-                    <input
+                    <input aria-label="メール"
                       type="email"
                       value={edit.email}
                       onChange={(e) => setEdit({ ...edit, email: e.target.value })}
@@ -218,7 +218,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
                     />
                   </td>
                   <td role="cell" data-label="メール通知" className="px-4 py-2 text-center">
-                    <input
+                    <input aria-label="メール通知"
                       type="checkbox"
                       checked={edit.email_notify_enabled}
                       onChange={(e) =>
@@ -228,7 +228,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
                     />
                   </td>
                   <td role="cell" data-label="表示順" className="px-4 py-2">
-                    <input
+                    <input aria-label="表示順"
                       type="number"
                       value={edit.sort_order}
                       onChange={(e) =>

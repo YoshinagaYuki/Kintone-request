@@ -145,21 +145,21 @@ export function RentalPlanManager({ plans }: { plans: RentalPlanRow[] }) {
               editingId === row.id ? (
                 <tr role="row" key={row.id} className="bg-blue-50/40">
                   <td role="cell" data-label="プラン名" className="px-4 py-2">
-                    <input
+                    <input aria-label="プラン名"
                       value={edit.name}
                       onChange={(e) => setEdit({ ...edit, name: e.target.value })}
                       className="w-full rounded-md border border-gray-300 p-1.5 text-sm"
                     />
                   </td>
                   <td role="cell" data-label="説明" className="px-4 py-2">
-                    <input
+                    <input aria-label="説明"
                       value={edit.description}
                       onChange={(e) => setEdit({ ...edit, description: e.target.value })}
                       className="w-full rounded-md border border-gray-300 p-1.5 text-sm"
                     />
                   </td>
                   <td role="cell" data-label="表示順" className="px-4 py-2">
-                    <input
+                    <input aria-label="表示順"
                       type="number"
                       value={edit.sort_order}
                       onChange={(e) => setEdit({ ...edit, sort_order: Number(e.target.value) })}

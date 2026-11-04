@@ -196,3 +196,12 @@
  .management-table td[data-label] input:not([type="checkbox"]),.management-table td[data-label] select { min-width:0; max-width:100%; min-height:44px; font-size:16px; border-radius:9px; }
  .management-table td[data-label][colspan] { display:block; }
 }
+
+.management-cell-content { min-width:0; }
+@media(max-width:639px) {
+ .management-table td[data-label="操作"]>.management-cell-content { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; }
+ .management-table .management-cell-content>.flex { flex-wrap:wrap; }
+ .management-table .management-cell-content input { max-width:100%; }
+ .management-user-filters input,.management-user-filters select { min-height:44px; font-size:16px; border-radius:10px; }
+ .management-user-filters button { min-height:44px; border-radius:10px; }
+}

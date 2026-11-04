@@ -203,7 +203,7 @@ export function ItemMasterManager({ items }: { items: ItemRow[] }) {
               editingId === row.id ? (
                 <tr role="row" key={row.id} className="bg-blue-50/40">
                   <td role="cell" data-label="種別" className="px-4 py-2">
-                    <select
+                    <select aria-label="種別"
                       value={edit.category}
                       onChange={(e) =>
                         setEdit({ ...edit, category: e.target.value as ItemRow["category"] })
@@ -215,14 +215,14 @@ export function ItemMasterManager({ items }: { items: ItemRow[] }) {
                     </select>
                   </td>
                   <td role="cell" data-label="正式名称" className="px-4 py-2">
-                    <input
+                    <input aria-label="正式名称"
                       value={edit.name}
                       onChange={(e) => setEdit({ ...edit, name: e.target.value })}
                       className="w-full rounded-md border border-gray-300 p-1.5 text-sm"
                     />
                   </td>
                   <td role="cell" data-label="別名" className="px-4 py-2">
-                    <input
+                    <input aria-label="別名"
                       value={edit.aliases}
                       onChange={(e) => setEdit({ ...edit, aliases: e.target.value })}
                       className="w-full rounded-md border border-gray-300 p-1.5 text-sm"
@@ -230,7 +230,7 @@ export function ItemMasterManager({ items }: { items: ItemRow[] }) {
                     />
                   </td>
                   <td role="cell" data-label="表示順" className="px-4 py-2">
-                    <input
+                    <input aria-label="表示順"
                       type="number"
                       value={edit.sort_order}
                       onChange={(e) => setEdit({ ...edit, sort_order: Number(e.target.value) })}
