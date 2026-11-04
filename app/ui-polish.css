@@ -82,7 +82,7 @@
 .management-form button,.management-settings button { border-radius:9px; }
 .management-form button[type="submit"],.management-settings button[type="submit"] { background:#465bd1; box-shadow:0 3px 8px #465bd120; }
 .management-form button[type="submit"]:disabled,.management-settings button[type="submit"]:disabled { opacity:.5; box-shadow:none; }
-.management-table { max-width:100%; border-color:#dfe5ef; border-radius:15px; box-shadow:var(--ui-card-shadow); scrollbar-width:thin; scrollbar-color:#c8d2e4 #f6f8fc; }
+.management-table { position:relative; max-width:100%; border-color:#dfe5ef; border-radius:15px; box-shadow:var(--ui-card-shadow); scrollbar-width:thin; scrollbar-color:#c8d2e4 #f6f8fc; }
 .management-table thead { background:#f3f6fc; color:#65758f; }
 .management-table th { font-size:11px; font-weight:600; }
 .management-table tbody tr:nth-child(even) { background:#fcfdff; }
@@ -120,7 +120,7 @@
 }
 @media(max-width:639px) {
  .rental-header>div:first-child>a { display:flex; align-items:center; min-height:44px; }
- .management-table button,.management-table a { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding-inline:8px; }
+ .management-table button,.management-table a { display:inline-flex; align-items:center; justify-content:center; min-height:44px; min-width:44px; padding-inline:8px; }
 }
 
 /* Round 3: overlays and the single-calendar range picker. */
