@@ -59,6 +59,7 @@ export function AllmightApplyForm({
   requestId,
   initialValues,
   baseUpdatedAt,
+  shippingRequirements,
   inventory,
 }: {
   formTypeId: string;
@@ -72,8 +73,11 @@ export function AllmightApplyForm({
   initialValues?: AllmightInitialValues;
   /** 編集開始時の updated_at(楽観ロック用。mode="edit" で渡す) */
   baseUpdatedAt?: string;
+  shippingRequirements?:{deliveryRequired:boolean;pickupRequired:boolean};
   inventory?: {equipments:string[];deliveryRequired:boolean;pickupRequired:boolean;staff:{id:string;name:string}[];onBack:()=>void;onSubmit:(payload:Record<string,unknown>)=>Promise<void>};
 }) {
+  const deliveryRequired=inventory?.deliveryRequired??shippingRequirements?.deliveryRequired??true;
+  const pickupRequired=inventory?.pickupRequired??shippingRequirements?.pickupRequired??true;
   const router = useRouter();
   const iv = initialValues ?? {};
 
@@ -208,7 +212,7 @@ export function AllmightApplyForm({
 
 
     // 配送(必須)
-    if(!inventory||inventory.deliveryRequired){
+    if(deliveryRequired){
     if (!deliveryDate.trim()) errs.push("配送日付を入力してください。");
     if (!deliveryPostal.trim()) errs.push("配送の郵便番号を入力してください。");
     if (!deliveryAddress.trim()) errs.push("配送先住所を入力してください。");
@@ -216,7 +220,7 @@ export function AllmightApplyForm({
     if (!deliveryContact.trim()) errs.push("配送の連絡先を入力してください。");
 
     }
-    if(!inventory||inventory.pickupRequired){
+    if(pickupRequired){
     // 集荷(必須。実効値で判定=「配送情報と同じ」時は配送の値)
     if (!pickupDate.trim()) errs.push("集荷日付を入力してください。");
     if (!effPickupPostal.trim()) errs.push("集荷の郵便番号を入力してください。");
@@ -481,8 +485,8 @@ export function AllmightApplyForm({
       </section>
 
       {/* 配送 */}
-      <fieldset disabled={inventory?.deliveryRequired===false}><section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-semibold text-gray-800">配送{inventory?.deliveryRequired===false?"（不要）":""}</h2>
+      <fieldset disabled={!deliveryRequired}><section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-gray-800">配送{!deliveryRequired?"（不要）":""}</h2>
         <div className="mt-3 space-y-3">
           <div>
             <label className={labelClass}>配送日付 {req}</label>
@@ -509,10 +513,10 @@ export function AllmightApplyForm({
 
       </fieldset>
       {/* 集荷 */}
-      <fieldset disabled={inventory?.pickupRequired===false}><section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <h2 className="text-sm font-semibold text-gray-800">集荷{inventory?.pickupRequired===false?"（不要）":""}</h2>
+      <fieldset disabled={!pickupRequired}><section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <h2 className="text-sm font-semibold text-gray-800">集荷{!pickupRequired?"（不要）":""}</h2>
 
-        <label className="mt-3 flex cursor-pointer items-center gap-2 rounded-md border border-blue-200 bg-blue-50 p-2.5 text-sm font-medium text-blue-800">
+        {deliveryRequired&&<label className="mt-3 flex cursor-pointer items-center gap-2 rounded-md border border-blue-200 bg-blue-50 p-2.5 text-sm font-medium text-blue-800">
           <input
             type="checkbox"
             checked={sameAsDelivery}
@@ -520,7 +524,7 @@ export function AllmightApplyForm({
             className="h-4 w-4 accent-blue-600"
           />
           配送情報と同じ(郵便番号・住所・受領者氏名・連絡先を配送からコピー)
-        </label>
+        </label>}
 
         <div className="mt-3 space-y-3">
           <div>

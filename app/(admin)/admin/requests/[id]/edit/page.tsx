@@ -167,6 +167,7 @@ export default async function RequestEditPage({
           mode="edit"
           requestId={id}
           initialValues={initialValues}
+          shippingRequirements={{deliveryRequired:(pd as Record<string,unknown>)._inventory_delivery_required!==false,pickupRequired:(pd as Record<string,unknown>)._inventory_pickup_required!==false}}
           baseUpdatedAt={(data.updated_at as string | null) ?? undefined}
         />
       </main>

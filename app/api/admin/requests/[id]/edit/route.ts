@@ -1,3 +1,4 @@
+import{confirmationShippingLabels}from'@/lib/inventory/confirmation-shipping';
 import{refreshTransportAddresses}from'@/lib/inventory/shipping-record';
 import{validateRentalItems,rentalMetadata}from'@/lib/inventory/rental-items';
 import{rewriteInventoryFmt}from'@/lib/inventory/request-change';
@@ -194,6 +195,10 @@ async function PATCHHandler(
     }
   }
 
+  const copy=await admin.from('inventory_copy_requests').select('id').eq('id',id).maybeSingle();
+  if(copy.error)return NextResponse.json({errors:['コピー申請の状態を確認できません']},{status:503});
+  const omittedShipping=confirmationShippingLabels({...request.parsed_data,...(copy.data?{_inventory_copy:true}:{})});
+  effectiveConfig.required_labels=(effectiveConfig.required_labels??[]).filter(label=>!omittedShipping.includes(label as any));
   const result = parseFmt(effectiveRawText, effectiveConfig);
   if (!result.ok) {
     return NextResponse.json({ errors: result.errors }, { status: 400 });

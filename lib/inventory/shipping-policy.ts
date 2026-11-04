@@ -47,7 +47,7 @@ export function shippingPlan(b:ShippingBooking,itemName:string):ShippingPlan{
  const warnings:string[]=[],delivery=validDate(b.delivery)?b.delivery:b.start,pickup=validDate(b.pickup)?b.pickup:b.end;
  let dispatch=out&&od!=null&&validDate(delivery)?backwards(delivery,od,carrier):b.from,returned=back&&rd!=null&&validDate(pickup)?move(pickup,rd,carrier):b.to;
  const allDates=[dispatch,delivery,pickup,returned].filter(validDate);const address=[t?.address,t?.returnAddress].filter(Boolean).join(' ');
- if(t){if(carrier==='sagawa'&&(out||back))warnings.push('佐川急便：表示日数は社内計画目安です。郵便番号・荷姿別の公式日数を確認してください');
+ if(t&&(out||back)){if(carrier==='sagawa'&&(out||back))warnings.push('佐川急便：表示日数は社内計画目安です。郵便番号・荷姿別の公式日数を確認してください');
   if(out&&od==null||back&&rd==null)warnings.push('この地域の輸送日数は個別確認が必要です。運送会社で確認した往路・復路の日数を入力してください');
   if(out&&carrierClosed(delivery,carrier))warnings.push('指定の納品日は運休・配達定休日です。営業所への確認が必要です');
   if(back&&carrierClosed(pickup,carrier))warnings.push('指定の集荷日は運休・配達定休日です。営業所への確認が必要です');
@@ -61,7 +61,7 @@ export function shippingPlan(b:ShippingBooking,itemName:string):ShippingPlan{
   if(carrier==='seino'&&allDates.some(d=>dow(d)===6||['2026-04-30','2026-05-01','2026-05-02','2026-08-10','2026-11-03','2027-01-04'].includes(d)))warnings.push('西濃運輸：土曜日・特定日の縮小運行に該当します。締切・集配条件を確認してください');
  }
  // Busy/snow periods get one extra operating day per leg as an internal safety margin.
- const safety=!!t&&allDates.some(d=>seasonal(d,address).length>0);
+ const safety=!!t&&(out||back)&&allDates.some(d=>seasonal(d,address).length>0);
  if(safety){if(out&&od!=null)dispatch=backwards(dispatch,1,carrier);if(back&&rd!=null)returned=move(returned,1,carrier);warnings.push('繁忙期・積雪期の社内余裕を往復それぞれ1運行日加算しています（遅延保証ではありません）');}
  const from=[b.from,dispatch].filter(validDate).sort()[0]||b.from,to=[b.to,returned].filter(validDate).sort().at(-1)||b.to;
  const unresolved=!!t&&((out&&od==null)||(back&&rd==null));

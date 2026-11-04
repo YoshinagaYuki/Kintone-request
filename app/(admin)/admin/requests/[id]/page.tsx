@@ -1,3 +1,4 @@
+import{confirmationMapping,applyConfirmationShipping}from'@/lib/inventory/confirmation-shipping';
 import{requestShipping}from'@/lib/inventory/request-shipping';
 import{loadInventoryModel}from'@/lib/inventory/model';
 import{InventoryCopyPanel}from'@/components/admin/inventory-copy-panel';
@@ -318,6 +319,8 @@ export default async function RequestDetailPage({
   // プレビュー用 parsed_data: レンタルプランは承認/申請プラン名で補完
   // (already_renting で未確定でも他項目の検証ができるよう、承認時に選択する旨のプレースホルダを入れる)
   const previewParsed: Record<string, string> = { ...(request.parsed_data ?? {}) };
+  const copyPreview=await supabase.from('inventory_copy_requests').select('id').eq('id',id).maybeSingle();
+  if(copyPreview.data)(previewParsed as Record<string,unknown>)._inventory_copy=true;
   // 承認画面で選択済みのコンテンツ正式名称をプレビューへ反映
   for (const [label, name] of Object.entries(approvedContents)) {
     if (name) previewParsed[label] = name;
@@ -343,8 +346,9 @@ export default async function RequestDetailPage({
   }
   const preview =
     showPreview && fieldMapping
-      ? buildKintoneRecord(previewParsed, fieldMapping)
+      ? buildKintoneRecord(previewParsed, confirmationMapping(fieldMapping,previewParsed))
       : null;
+  if(preview?.ok&&fieldMapping)applyConfirmationShipping(preview.record,previewParsed,fieldMapping);
 
   // 「確認が必要な項目」= 未入力の confirm_labels + 変換できず送信を見送った項目(請求月など)
   const confirmWarnings = [
@@ -789,6 +793,7 @@ export default async function RequestDetailPage({
         <SectionCard
           title={`kintone登録予定データ(AppID: ${request.form_types?.kintone_app_id})`}
         >
+          {request.status==='pending'&&!request.kintone_record_id&&!isDeleted&&!hasExtension&&<div className="flex items-center justify-between gap-3 border-b bg-slate-50 px-4 py-3"><p className="text-xs text-slate-600">修正内容は保存後、この登録予定データに反映されます。</p><Link href={`/admin/requests/${request.id}/edit`} className="shrink-0 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">入力内容を編集</Link></div>}
           {preview.ok ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
