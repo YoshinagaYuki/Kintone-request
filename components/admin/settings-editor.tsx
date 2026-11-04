@@ -77,7 +77,7 @@ export function SettingsEditor({
     "mt-1 w-full max-w-md rounded-md border border-gray-300 bg-white p-2.5 text-sm focus:border-blue-500 focus:outline-none";
 
   return (
-    <form onSubmit={save} className="mt-6 space-y-6">
+    <form onSubmit={save} className="management-settings mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
       {error && (
         <p className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">{error}</p>
       )}

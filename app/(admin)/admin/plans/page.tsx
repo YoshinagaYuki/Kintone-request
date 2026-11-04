@@ -18,7 +18,7 @@ export default async function PlansPage() {
   const plans = (data ?? []) as RentalPlanRow[];
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:py-10">
+    <main className="management-workspace mx-auto w-full max-w-5xl px-4 py-8 sm:py-10">
       <h1 className="text-xl font-bold sm:text-2xl">レンタルプランマスター</h1>
       <RentalPlanManager plans={plans} />
     </main>

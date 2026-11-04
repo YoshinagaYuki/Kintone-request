@@ -85,7 +85,7 @@ export function EmailTemplateEditor({ templates }: { templates: EmailTemplatesBy
   }
 
   return (
-    <div className="mt-6">
+    <div className="management-editor mt-6">
       {/* 事業切替 */}
       <div className="flex flex-wrap gap-2">
         {BUSINESS_TABS.map((b) => (

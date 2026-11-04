@@ -111,7 +111,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
       {/* 新規追加 */}
       <form
         onSubmit={create}
-        className="flex flex-wrap items-end gap-2 rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
+        className="management-form flex flex-wrap items-end gap-2 rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
       >
         <div>
           <label className="block text-xs font-medium text-gray-600">氏名 *</label>
@@ -170,7 +170,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
       </form>
 
       {/* 一覧 */}
-      <div className="mt-4 overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="management-table mt-4 overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs text-gray-500">
             <tr>

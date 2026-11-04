@@ -109,7 +109,7 @@ export function ItemMasterManager({ items }: { items: ItemRow[] }) {
       {/* 新規追加 */}
       <form
         onSubmit={create}
-        className="grid grid-cols-1 gap-2 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-[auto_1fr_1fr_auto_auto] sm:items-end"
+        className="management-form grid grid-cols-1 gap-2 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-[auto_1fr_1fr_auto_auto] sm:items-end"
       >
         <div>
           <label className="block text-xs font-medium text-gray-600">種別 *</label>
@@ -179,7 +179,7 @@ export function ItemMasterManager({ items }: { items: ItemRow[] }) {
       </div>
 
       {/* 一覧 */}
-      <div className="mt-4 overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="management-table mt-4 overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs text-gray-500">
             <tr>

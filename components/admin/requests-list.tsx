@@ -109,6 +109,7 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
     <>
       {/* 削除操作バー */}
       <div className="requests-bulk-bar mt-4 flex flex-wrap items-center gap-3">
+        {selected.size===0&&!message&&!error?<p className="text-xs text-slate-500">チェックボックスで申請を選択すると、一括操作できます。</p>:<>
         <button
           onClick={deleteSelected}
           disabled={selected.size === 0 || busy}
@@ -118,6 +119,7 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
         </button>
         {message && <span className="text-sm text-green-700">{message}</span>}
         {error && <span className="text-sm text-red-600">{error}</span>}
+        </>}
       </div>
 
       {/* PC: テーブル表示 */}
@@ -216,6 +218,7 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
             aria-label={`${row.form_type_name} の申請詳細を開く`}
             className={`request-card flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:bg-gray-50 ${selected.has(row.id) ? "border-red-300 bg-red-50/50" : ""}`}
           >
+            <label className="grid h-11 w-11 shrink-0 place-items-center rounded-lg hover:bg-slate-50">
             <input
               type="checkbox"
               checked={selected.has(row.id)}
@@ -223,6 +226,7 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
               aria-label="この申請を選択"
               className="h-5 w-5 shrink-0 accent-blue-600"
             />
+            </label>
             <Link href={`/admin/requests/${row.id}`} className="min-w-0 flex-1 active:opacity-70">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-semibold">{row.form_type_name}</span>

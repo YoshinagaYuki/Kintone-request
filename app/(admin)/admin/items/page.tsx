@@ -29,7 +29,7 @@ export default async function ItemsPage() {
     : null;
   const plans=inventoryEnabled()?await supabase.from("inventory_stock_schedule").select("item_id,effective_date,total_count,reserve_count").order("effective_date").limit(1000):null;
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:py-10">
+    <main className="management-workspace mx-auto w-full max-w-5xl px-4 py-8 sm:py-10">
       <Link href="/admin/requests" className="text-sm text-blue-600 hover:underline">
         ← 申請一覧へ戻る
       </Link>

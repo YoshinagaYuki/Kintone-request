@@ -67,3 +67,84 @@
  .rental-header [aria-label="スマホ管理メニュー"] { border-radius:16px; box-shadow:0 12px 36px #22345a20; }
 }
 @media(prefers-reduced-motion:reduce) { .application-form * { transition:none!important; } }
+
+/* Round 2: administrative workspaces share the same visual grammar. */
+.admin-section-nav { border-color:#dfe5ef; box-shadow:0 2px 8px #24365a04; }
+.admin-section-nav [aria-current="page"] { background:#465bd1; color:#fff; box-shadow:0 3px 8px #465bd122; }
+.management-workspace { padding-top:24px; }
+.management-workspace>h1 { color:#283e60; letter-spacing:.01em; }
+.management-workspace>p { max-width:76ch; line-height:1.8; }
+.management-form,.management-settings>div { border-color:#dfe5ef; border-radius:15px; background:linear-gradient(115deg,#fff,#fcfdff); box-shadow:var(--ui-card-shadow); }
+.management-form { padding:20px; gap:12px; }
+.management-form>div { min-width:0; }
+.management-form label,.management-settings label { color:#5d6e88; font-size:12px; font-weight:600; }
+.management-form input:not([type="checkbox"]),.management-form select,.management-settings input:not([type="checkbox"]),.management-settings textarea { min-height:40px; border-radius:10px; background:#fbfcff; border-color:#d9e1ee; }
+.management-form button,.management-settings button { border-radius:9px; }
+.management-form button[type="submit"],.management-settings button[type="submit"] { background:#465bd1; box-shadow:0 3px 8px #465bd120; }
+.management-form button[type="submit"]:disabled,.management-settings button[type="submit"]:disabled { opacity:.5; box-shadow:none; }
+.management-table { max-width:100%; border-color:#dfe5ef; border-radius:15px; box-shadow:var(--ui-card-shadow); scrollbar-width:thin; scrollbar-color:#c8d2e4 #f6f8fc; }
+.management-table thead { background:#f3f6fc; color:#65758f; }
+.management-table th { font-size:11px; font-weight:600; }
+.management-table tbody tr:nth-child(even) { background:#fcfdff; }
+.management-table tbody tr:hover { background:#f5f7ff; }
+.management-table td { border-color:#edf0f6; }
+.management-settings>div { padding:20px; }
+.requests-page-header { padding:18px 20px; }
+.requests-page-header .ui-eyebrow { display:none; }
+.requests-workspace { padding-top:24px; }
+.requests-bulk-bar:has(>p:only-child) { min-height:20px; margin-top:12px; }
+@media(max-width:639px) {
+ .management-workspace { padding-top:20px; }
+ .management-form,.management-settings>div { padding:16px; }
+ .management-form input:not([type="checkbox"]),.management-form select,.management-settings input:not([type="checkbox"]),.management-settings textarea { min-height:44px; font-size:16px; max-width:100%; }
+ .management-form button,.management-settings button { min-height:44px; }
+ .requests-workspace { padding-top:20px; }
+ .requests-page-header { margin-top:0; padding:16px; gap:12px; }
+ .requests-page-header>div:first-child>p:last-child { font-size:12px; line-height:1.65; }
+}
+.management-settings>p,.management-settings>button[type="submit"] { grid-column:1/-1; }
+.management-settings>button[type="submit"] { justify-self:start; min-height:42px; padding-inline:24px; }
+.management-editor { border:1px solid #dfe5ef; border-radius:16px; background:#fff; padding:20px; box-shadow:var(--ui-card-shadow); }
+.management-editor input,.management-editor textarea { border-radius:10px; border-color:#d9e1ee; background:#fbfcff; }
+.management-editor textarea { font-size:14px; line-height:1.75; }
+.management-editor button { border-radius:9px; }
+.settings-choice-panel { border-color:#dfe5ef; box-shadow:var(--ui-card-shadow); }
+.settings-choice-panel input[type="radio"] { accent-color:#465bd1; }
+.rental-master-cards article { border-color:#dfe5ef; box-shadow:var(--ui-card-shadow); }
+.rental-master-cards article dl { border-radius:11px; background:#f6f8fc; padding:12px; }
+.rental-master-cards article[data-active="true"]>div:first-child>span { background:#edf8f3; color:#37735f; }
+@media(max-width:639px) {
+ .management-editor { padding:16px; border-radius:14px; }
+ .management-editor input,.management-editor textarea { font-size:16px; min-height:44px; }
+ .management-editor button { min-height:44px; }
+}
+@media(max-width:639px) {
+ .rental-header>div:first-child>a { display:flex; align-items:center; min-height:44px; }
+ .management-table button,.management-table a { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding-inline:8px; }
+}
+
+/* Round 3: overlays and the single-calendar range picker. */
+.inventory-list-dialog { border-color:#dce3f0; }
+.inventory-list-header,.inventory-editor-header { border-bottom-color:#e3e9f2; background:linear-gradient(115deg,#f8faff,#fff); }
+.inventory-list-header h2,.inventory-editor-header h2 { color:#263c61; letter-spacing:.01em; }
+.inventory-close { min-height:40px; border-radius:10px; border-color:#dfe5ef; padding:8px 12px; color:#53647f; background:#fff; }
+.inventory-quick-dialog .inventory-list-body { background:#f7f9fc; }
+.inventory-quick-dialog input:not([type="checkbox"]),.inventory-quick-dialog select,.inventory-quick-dialog textarea { border-color:#dce3ef; border-radius:11px; }
+.inventory-range-calendar { border-color:#dfe5ef; box-shadow:0 2px 8px #24365a03; }
+.inventory-calendar-month { border-radius:12px; background:#f6f8ff; padding:3px; }
+.inventory-calendar-month select { background:transparent; border-color:transparent; color:#344d79; }
+.inventory-range-calendar button:focus-visible { outline:2px solid #7181d5; outline-offset:-2px; border-radius:10px; }
+.inventory-calendar-selection>div { display:flex; flex-direction:column; gap:4px; border:1px solid #e4e9f5; border-radius:10px; background:#f6f8ff; padding:9px 10px; }
+.inventory-calendar-selection span { color:#6c7b97; font-size:10px; }
+.inventory-calendar-selection strong { color:#3d5792; font-size:11px; font-weight:600; line-height:1.5; }
+.inventory-editor-header>button { min-height:40px; border-radius:10px; border-color:#dfe5ef; color:#53647f; }
+.inventory-editor-body { background:#fbfcfe; }
+@media(max-width:639px) {
+ .inventory-close,.inventory-editor-header>button { min-height:44px; }
+ .inventory-list-header h2,.inventory-editor-header h2 { font-size:17px; }
+}
+@media(max-width:374px) {
+ .inventory-range-calendar button>span:last-child { max-width:100%; width:36px; height:36px; }
+ .inventory-calendar-selection>div { padding:8px; }
+ .inventory-calendar-selection strong { font-size:10px; }
+}
