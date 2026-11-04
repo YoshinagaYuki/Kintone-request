@@ -435,7 +435,7 @@ export function ApplyForm({
   const filledProductCount = validProducts(products).length;
 
   return (
-    <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+    <form onSubmit={handleSubmit} className="application-form mt-6 space-y-6">
       <button
         type="button"
         onClick={inventory?inventory.onBack:handleBack}

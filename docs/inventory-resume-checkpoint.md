@@ -265,3 +265,6 @@
 - Shared plain-address recipient parser accepts comma/newline/Japanese comma/semicolon separators, dedupes case-insensitively, rejects malformed entries/header injection, supports20unique recipients (each<=254chars). Stored as normalized comma-separated text, no schema migration.
 - Both Allmight/Tezukuru applicant forms and pending-request edit accept lists with a two-line textarea. Public submission/edit APIs use the same validation. sendMail passes explicit recipient arrays to SMTP; application and approval mails reach every listed address; CC dedupe excludes all To recipients.
 - Four recipient regression tests plus194inventory tests, typecheck/build passed. No actual emails/customer submissions sent for QA.
+
+### 2026-11-04 22:00まで全体UI改善を継続中
+- User explicitly requested iterative other-company research/comparison/polish until22:00 JST, no premature stop. Active goal created, heartbeat22-ui every15min created. Full work state and next tasks: docs/ui-polish-2026-11-04.md. Goal not complete before deadline. No actual business-data writes during visual QA.

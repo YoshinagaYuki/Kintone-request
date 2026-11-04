@@ -336,7 +336,7 @@ export function AllmightApplyForm({
   const filledCount = validEquipments(effectiveEquipments).length;
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="mt-6 space-y-6"><fieldset disabled={submitting} className="space-y-6">
+    <form ref={formRef} onSubmit={handleSubmit} className="application-form mt-6 space-y-6"><fieldset disabled={submitting} className="space-y-6">
       <button
         type="button"
         onClick={handleBack}

@@ -12,7 +12,7 @@ export function StatusBadge({ status }: { status: RequestStatus }) {
   const style = STYLES[status];
   return (
     <span
-      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${style.badge}`}
+      className={`status-badge inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${style.badge}`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} aria-hidden="true" />
       {STATUS_LABELS[status]}

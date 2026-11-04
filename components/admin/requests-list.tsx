@@ -108,7 +108,7 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
   return (
     <>
       {/* 削除操作バー */}
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      <div className="requests-bulk-bar mt-4 flex flex-wrap items-center gap-3">
         <button
           onClick={deleteSelected}
           disabled={selected.size === 0 || busy}
@@ -121,7 +121,7 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
       </div>
 
       {/* PC: テーブル表示 */}
-      <div className="mt-3 hidden overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm sm:block">
+      <div className="requests-table mt-3 hidden overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm sm:block">
         <table className="w-full text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
             <tr>
@@ -172,7 +172,7 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
                 <td className="whitespace-nowrap px-4 py-3 text-gray-700">
                   {formatDateTime(row.created_at)}
                 </td>
-                <td className="px-4 py-3">{row.form_type_name}</td>
+                <td className="px-4 py-3"><span className={`request-business-label ${row.form_type_name.includes("てず")?"is-tezukuru":"is-allmight"}`}>{row.form_type_name}</span></td>
                 <td className="px-4 py-3">
                   <div className="text-gray-800">{row.applicant_name ?? "-"}</div>
                   {row.applicant_email && (
@@ -214,7 +214,7 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
             tabIndex={0}
             role="link"
             aria-label={`${row.form_type_name} の申請詳細を開く`}
-            className={`flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:bg-gray-50 ${selected.has(row.id) ? "border-red-300 bg-red-50/50" : ""}`}
+            className={`request-card flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:bg-gray-50 ${selected.has(row.id) ? "border-red-300 bg-red-50/50" : ""}`}
           >
             <input
               type="checkbox"

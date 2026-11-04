@@ -29,7 +29,7 @@ export function AdminHeader() {
   if (pathname === "/admin/login") return null;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur">
+    <header className="rental-header sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur">
       <div className="relative flex h-[60px] items-center justify-between gap-2 px-3 xl:hidden">
         <Link href="/admin/inventory/allmight" className="shrink-0 text-xs font-bold text-slate-900"><span className="min-[380px]:hidden">管理</span><span className="hidden min-[380px]:inline">レンタル管理</span></Link>
         <div className="flex items-center gap-2"><Link href="/apply" className="flex min-h-11 items-center rounded-lg bg-indigo-600 px-2 text-sm font-medium text-white">＋ 新規申請</Link><InventoryQuickHold header model={{staff:[],version:0,business:pathname.includes('/tezukuru')?'tezukuru':'allmight'}}/>
@@ -38,10 +38,10 @@ export function AdminHeader() {
         </nav></details></div>
       </div>
       <div className="mx-auto hidden xl:flex min-h-[60px] max-w-[1900px] flex-wrap items-center justify-between gap-1.5 px-3 sm:gap-3 sm:px-6">
-        <Link href="/admin/requests" className="mr-2 flex items-center gap-2 text-sm font-bold tracking-tight text-slate-900"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-white"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span><span className="hidden xl:inline">レンタル管理</span></Link>
+        <Link href="/admin/requests" className="mr-2 flex items-center gap-2 text-sm font-bold tracking-tight text-slate-900"><span className="rental-brandmark flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-white"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span><span className="hidden xl:inline">レンタル管理</span></Link>
         <nav className="flex min-w-0 flex-1 flex-wrap items-center gap-0.5" aria-label="管理メニュー">
           <details className="group relative shrink-0" onMouseEnter={(e) => { e.currentTarget.open = true; }} onMouseLeave={(e) => { if (!e.currentTarget.contains(document.activeElement)) e.currentTarget.open = false; }} onKeyDown={(e) => { if (e.key === "Escape") { e.currentTarget.open = false; e.currentTarget.querySelector("summary")?.focus(); } }}>
-            <summary className={`cursor-pointer list-none whitespace-nowrap rounded-lg p-2 text-sm font-medium ${pathname.startsWith("/admin/inventory/") ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}>在庫管理表 ▾</summary>
+            <summary aria-current={pathname.startsWith("/admin/inventory/")?"page":undefined} className={`cursor-pointer list-none whitespace-nowrap rounded-lg p-2 text-sm font-medium ${pathname.startsWith("/admin/inventory/") ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}>在庫管理表 ▾</summary>
             <div className="absolute left-0 top-[calc(100%+6px)] w-48 rounded-2xl border border-slate-200/80 bg-white p-2 shadow-xl shadow-slate-900/10 before:absolute before:inset-x-0 before:-top-2 before:h-2 before:content-['']">
               <Link className="block rounded-xl px-3 py-3 text-sm text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-800" href="/admin/inventory/allmight">オールマイト</Link>
               <Link className="block rounded-xl px-3 py-3 text-sm text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-800" href="/admin/inventory/tezukuru">てずくーる!!</Link>

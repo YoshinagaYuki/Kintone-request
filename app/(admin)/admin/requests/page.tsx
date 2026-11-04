@@ -60,13 +60,13 @@ export default async function RequestsPage({
   }));
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:py-10">
+    <main className="requests-workspace mx-auto w-full max-w-5xl px-4 py-8 sm:py-10">
       {/* 初回のみ通知許可バナー(許可済みなら購読を自動メンテナンス) */}
       <PushPermission />
       {inventory==="unassigned"&&<p role="alert" className="mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">承認・kintone登録は完了しましたが、4日間の間隔を満たす空き機器がないか、自動割当に失敗したため未割当があります。在庫管理表で機器番号を確認してください。</p>}
 
-      <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-xl font-bold sm:text-2xl">申請一覧</h1>
+      <div className="requests-page-header mt-4 flex flex-wrap items-baseline justify-between gap-2">
+        <div><p className="ui-eyebrow">申請管理</p><h1 className="text-xl font-bold sm:text-2xl">申請一覧</h1><p className="mt-2 text-sm text-slate-500">届いた申請を確認し、承認・登録状況を管理します。</p></div>
         <div className="flex flex-wrap items-baseline gap-3">
           <Link href="/admin/requests/trash" className="text-sm font-medium text-gray-600 hover:underline">
             🗑 ゴミ箱
@@ -79,7 +79,7 @@ export default async function RequestsPage({
         </div>
       </div>
 
-      <nav className="mt-4 flex flex-wrap gap-2 text-sm" aria-label="ステータスで絞り込み">
+      <nav className="request-status-filter mt-4 flex flex-wrap gap-2 text-sm" aria-label="ステータスで絞り込み">
         <Link
           href="/admin/requests"
           className={`rounded-full border px-3 py-1 transition-colors ${!statusFilter ? "border-blue-600 bg-blue-600 text-white" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-100"}`}
