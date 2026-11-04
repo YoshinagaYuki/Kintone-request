@@ -351,7 +351,8 @@ export function AllmightApplyForm({
       )}
 
       {errors.length > 0 && (
-        <div role="alert" className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+        <div role="alert" className="application-error-summary rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+          <p className="mb-2 font-semibold">確認が必要な内容があります</p>
           <ul className="list-disc pl-5">
             {errors.map((e, i) => (
               <li key={i}>{e}</li>

@@ -77,7 +77,7 @@ export default async function TezukuruApplyPage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:py-10">
-      <div className="flex items-start justify-between gap-4">
+      <div className="application-page-heading flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold sm:text-2xl">てずくーる 案件申請</h1>
           <p className="mt-2 text-sm leading-relaxed text-gray-600">

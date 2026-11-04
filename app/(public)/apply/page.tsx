@@ -30,7 +30,7 @@ export default async function ApplyTopPage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-10 sm:py-14">
-      <div className="flex items-start justify-between gap-4">
+      <div className="application-page-heading flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">案件申請受付</h1>
           <p className="mt-2 text-sm leading-relaxed text-gray-600">
@@ -121,7 +121,7 @@ function BusinessCard({
   return (
     <Link
       href={href}
-      className="flex min-h-[13rem] flex-col items-center justify-center rounded-2xl border-2 border-blue-200 bg-white p-6 text-center shadow-sm transition-colors hover:border-blue-500 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:bg-blue-100"
+      className="application-business-card flex min-h-[13rem] flex-col items-center justify-center rounded-2xl border-2 border-blue-200 bg-white p-6 text-center shadow-sm transition-colors hover:border-blue-500 hover:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:bg-blue-100"
     >
       {inner}
     </Link>

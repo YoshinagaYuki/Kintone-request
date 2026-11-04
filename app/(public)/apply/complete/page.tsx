@@ -36,7 +36,7 @@ export default async function CompletePage({
     : null;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-4 py-16 text-center">
+    <main className="application-complete mx-auto flex min-h-screen w-full max-w-md flex-col items-center justify-center px-4 py-16 text-center">
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
         <svg
           className="h-8 w-8 text-green-600"
