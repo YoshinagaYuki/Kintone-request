@@ -219,14 +219,14 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
                     />
                   </td>
                   <td role="cell" data-label="メール通知" className="px-4 py-2 text-center">
-                    <input aria-label="メール通知"
+                    <label className="management-checkbox-target"><input aria-label="メール通知"
                       type="checkbox"
                       checked={edit.email_notify_enabled}
                       onChange={(e) =>
                         setEdit({ ...edit, email_notify_enabled: e.target.checked })
                       }
                       className="h-4 w-4 accent-blue-600"
-                    />
+                    /></label>
                   </td>
                   <td role="cell" data-label="表示順" className="px-4 py-2">
                     <input aria-label="表示順"

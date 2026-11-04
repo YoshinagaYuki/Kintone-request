@@ -29,12 +29,16 @@ export function AdminHeader() {
   const pathname = usePathname();
   const mobileMenu = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
-    function closeOutside(event: PointerEvent) {
+    function closeOutside(event: Event) {
       const menu = mobileMenu.current;
       if (menu?.open && event.target instanceof Node && !menu.contains(event.target)) menu.open = false;
     }
     document.addEventListener("pointerdown", closeOutside);
-    return () => document.removeEventListener("pointerdown", closeOutside);
+    document.addEventListener("click", closeOutside);
+    return () => {
+      document.removeEventListener("pointerdown", closeOutside);
+      document.removeEventListener("click", closeOutside);
+    };
   }, []);
   if (pathname === "/admin/login") return null;
 
