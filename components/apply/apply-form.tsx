@@ -1,5 +1,7 @@
 "use client";
 
+import{parseEmailRecipients,MAX_RECIPIENT_INPUT}from'@/lib/email-recipients';
+
 import{RentalItemFields,type RentalDraft}from'./rental-item-fields';
 import{validateRentalItems}from'@/lib/inventory/rental-items';
 import { useState } from "react";
@@ -56,7 +58,6 @@ export type StaffOption = {
 };
 
 const MAX_CUSTOMER_REQUESTS = 2000;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BILLING_MONTHS = Array.from({ length: 12 }, (_, i) => `${i + 1}月分`);
 
 const emptyProduct = (): ProductRow => ({ name: "", quantity: "" });
@@ -225,9 +226,8 @@ export function ApplyForm({
     // 入力者情報
     if (!applicantName.trim()) errs.push("入力者氏名を入力してください。");
     if (!applicantPhone.trim()) errs.push("入力者電話番号を入力してください。");
-    if (!applicantEmail.trim()) errs.push("入力者メールアドレスを入力してください。");
-    else if (!EMAIL_RE.test(applicantEmail.trim()))
-      errs.push("メールアドレスの形式が正しくありません。");
+    const emailRecipients=parseEmailRecipients(applicantEmail);
+    if(!emailRecipients.ok)errs.push(emailRecipients.error);
     if (!companyStaffName.trim()) errs.push("弊社担当者氏名を入力してください。");
 
     // レンタル
@@ -526,18 +526,19 @@ export function ApplyForm({
               </div>
               <div>
                 <label className={labelClass}>メールアドレス {req}</label>
-                <input
-                  type="email"
+                <textarea
+                  rows={2}
+                  aria-label="メールアドレス"
                   value={applicantEmail}
                   onChange={(e) => setApplicantEmail(e.target.value)}
-                  maxLength={254}
+                  maxLength={MAX_RECIPIENT_INPUT}
                   autoComplete="email"
                   inputMode="email"
-                  placeholder="example@example.com"
+                  placeholder="example@example.com, another@example.com"
                   className={inputClass}
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  申請完了メール・承認完了メールをこのアドレスへお送りします。
+                  カンマまたは改行で複数入力できます（20件まで）。申請完了・承認完了メールを入力した全員へお送りします。
                 </p>
               </div>
               <div>

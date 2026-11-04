@@ -260,3 +260,8 @@
 - Added 入力内容を編集 link immediately inside preview card. Existing full edit form accepts server-provided delivery/pickup requirements and disables omitted direction. Edit API removes only those parser required shipping labels for stored inventory confirmation/copy flags; internal metadata remains preserved. Public ordinary applications retain required shipping validation.
 - Return-only shipping UI shows collection address directly and its warning acknowledgement. Both directions omitted require no irrelevant seasonal/remote shipping acknowledgement. No actual approval, customer edits, emails, or kintone writes during tests.
 - Read-only real-record mapper verified previewReady=true, delivery empty, 手配不要. Focused regression tests cover copies without confirmation keys and preserve ordinary shipping requirements.
+
+### 2026-11-04 入力者メールアドレス複数対応
+- Shared plain-address recipient parser accepts comma/newline/Japanese comma/semicolon separators, dedupes case-insensitively, rejects malformed entries/header injection, supports20unique recipients (each<=254chars). Stored as normalized comma-separated text, no schema migration.
+- Both Allmight/Tezukuru applicant forms and pending-request edit accept lists with a two-line textarea. Public submission/edit APIs use the same validation. sendMail passes explicit recipient arrays to SMTP; application and approval mails reach every listed address; CC dedupe excludes all To recipients.
+- Four recipient regression tests plus194inventory tests, typecheck/build passed. No actual emails/customer submissions sent for QA.

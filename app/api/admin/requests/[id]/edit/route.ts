@@ -1,3 +1,4 @@
+import{parseEmailRecipients}from'@/lib/email-recipients';
 import{confirmationShippingLabels}from'@/lib/inventory/confirmation-shipping';
 import{refreshTransportAddresses}from'@/lib/inventory/shipping-record';
 import{validateRentalItems,rentalMetadata}from'@/lib/inventory/rental-items';
@@ -30,9 +31,7 @@ import type { ParserConfig } from "@/types/request";
 const MAX_BODY_LENGTH = 40000;
 const MAX_NAME = 100;
 const MAX_PHONE = 30;
-const MAX_EMAIL = 254;
 const MAX_CUSTOMER_REQUESTS = 2000;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function PATCHHandler(
   req: NextRequest,
@@ -133,7 +132,8 @@ async function PATCHHandler(
   const raw_text = typeof body.raw_text === "string" ? body.raw_text : "";
   const applicant_name = (body.applicant_name ?? "").toString().trim();
   const applicant_phone = (body.applicant_phone ?? "").toString().trim();
-  const applicant_email = (body.applicant_email ?? "").toString().trim();
+  const emailRecipients=parseEmailRecipients((body.applicant_email??" ").toString());
+  const applicant_email=emailRecipients.ok?emailRecipients.value:(body.applicant_email??"").toString().trim();
   const company_staff_name = (body.company_staff_name ?? "").toString().trim();
   const rental_status = body.rental_status ?? null;
   const rental_plan_id = body.rental_plan_id ?? null;
@@ -144,10 +144,7 @@ async function PATCHHandler(
   else if (applicant_name.length > MAX_NAME) errors.push("氏名が長すぎます。");
   if (!applicant_phone) errors.push("入力者電話番号を入力してください。");
   else if (applicant_phone.length > MAX_PHONE) errors.push("電話番号が長すぎます。");
-  if (!applicant_email) errors.push("入力者メールアドレスを入力してください。");
-  else if (!EMAIL_RE.test(applicant_email) || applicant_email.length > MAX_EMAIL) {
-    errors.push("メールアドレスの形式が正しくありません。");
-  }
+  if(!emailRecipients.ok)errors.push(emailRecipients.error);
   if (!company_staff_name) errors.push("弊社担当者氏名を入力してください。");
   else if (company_staff_name.length > MAX_NAME) errors.push("弊社担当者氏名が長すぎます。");
   if (customer_requests.length > MAX_CUSTOMER_REQUESTS) errors.push("要望・連絡事項が長すぎます。");

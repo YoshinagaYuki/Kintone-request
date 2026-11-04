@@ -1,5 +1,7 @@
 "use client";
 
+import{parseEmailRecipients,MAX_RECIPIENT_INPUT}from'@/lib/email-recipients';
+
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -19,7 +21,6 @@ import {
  * ・てずくーるのフォーム・処理には影響しない(別コンポーネント・別ルート)。
  */
 const MAX_CUSTOMER_REQUESTS = 2000;
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BILLING_MONTHS = Array.from({ length: 12 }, (_, i) => `${i + 1}月分`);
 
 /** 編集モードの初期値(申請詳細から parsed_data + 申請者情報を詰めて渡す) */
@@ -180,8 +181,8 @@ export function AllmightApplyForm({
     const errs: string[] = [];
     if (!applicantName.trim()) errs.push("入力者氏名を入力してください。");
     if (!applicantPhone.trim()) errs.push("入力者電話番号を入力してください。");
-    if (!applicantEmail.trim()) errs.push("入力者メールアドレスを入力してください。");
-    else if (!EMAIL_RE.test(applicantEmail.trim())) errs.push("メールアドレスの形式が正しくありません。");
+    const emailRecipients=parseEmailRecipients(applicantEmail);
+    if(!emailRecipients.ok)errs.push(emailRecipients.error);
     if (!companyStaffName.trim()) errs.push("弊社担当者氏名を入力してください。");
 
     if (!agencyName.trim()) errs.push("取次店名を入力してください。");
@@ -373,8 +374,8 @@ export function AllmightApplyForm({
           </div>
           <div>
             <label className={labelClass}>メールアドレス {req}</label>
-            <input type="email" value={applicantEmail} onChange={(e) => setApplicantEmail(e.target.value)} maxLength={254} inputMode="email" placeholder="example@example.com" className={inputClass} />
-            <p className="mt-1 text-xs text-gray-500">申請完了メール・承認完了メールをこのアドレスへお送りします。</p>
+            <textarea rows={2} aria-label="メールアドレス" value={applicantEmail} onChange={(e) => setApplicantEmail(e.target.value)} maxLength={MAX_RECIPIENT_INPUT} inputMode="email" placeholder="example@example.com, another@example.com" className={inputClass} />
+            <p className="mt-1 text-xs text-gray-500">カンマまたは改行で複数入力できます（20件まで）。申請完了・承認完了メールを入力した全員へお送りします。</p>
           </div>
           <div>
             <label className={labelClass}>弊社担当者氏名 {req}</label>

@@ -1,3 +1,4 @@
+import{parseEmailRecipients}from'../email-recipients';
 import "server-only";
 
 import nodemailer, { type Transporter } from "nodemailer";
@@ -57,7 +58,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  */
 async function buildCcList(
   existingCc: string | string[] | undefined,
-  to: string,
+  to: string[],
   skipAlwaysCc: boolean
 ): Promise<string[]> {
   const existing = Array.isArray(existingCc)
@@ -76,9 +77,9 @@ async function buildCcList(
     }
   }
 
-  const toKey = sanitizeHeader(to).toLowerCase();
+  const toKeys = new Set(to.map(e=>e.toLowerCase()));
   const merged = dedupeEmails([...existing, ...always].map((e) => sanitizeHeader(e)))
-    .filter((e) => EMAIL_RE.test(e) && e.toLowerCase() !== toKey);
+    .filter((e) => EMAIL_RE.test(e) && !toKeys.has(e.toLowerCase()));
   return merged;
 }
 
@@ -103,13 +104,13 @@ function getTransporter(): Transporter | null {
 }
 
 export async function sendMail(input: MailInput): Promise<MailResult> {
-  const to = sanitizeHeader(input.to);
+  const recipients=parseEmailRecipients(input.to);
+  if(!recipients.ok)return{sent:false,error:recipients.error};
+  const to=recipients.emails;
   const subject = sanitizeHeader(input.subject);
   const text = input.text;
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
-    return { sent: false, error: "宛先メールアドレスが不正です" };
-  }
+
 
   const from = process.env.MAIL_FROM;
   const transporter = getTransporter();
