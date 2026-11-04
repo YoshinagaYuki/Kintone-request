@@ -463,18 +463,20 @@ export function ApplyForm({
         "「◯月分": fieldId("billingMonth"),
         "配送料": fieldId("shippingFee"),
         "配送日付": fieldId("deliveryDate"),
-        "配送の郵便番号": fieldId("deliveryPostal"),
-        "配送先住所": fieldId("deliveryAddress"),
-        "配送の受領者氏名": fieldId("deliveryReceiver"),
-        "配送の連絡先": fieldId("deliveryContact"),
+        "配送郵便番号": fieldId("deliveryPostal"),
+        "配送住所": fieldId("deliveryAddress"),
+        "当日受領者氏名": fieldId("deliveryReceiver"),
+        "配送連絡先": fieldId("deliveryContact"),
         "集荷日付": fieldId("pickupDate"),
-        "集荷の郵便番号": fieldId(sameAsDelivery ? "deliveryPostal" : "effPickupPostal"),
-        "集荷先住所": fieldId(sameAsDelivery ? "deliveryAddress" : "effPickupAddress"),
-        "集荷の受領者氏名": fieldId(sameAsDelivery ? "deliveryReceiver" : "effPickupHandover"),
-        "集荷の連絡先": fieldId(sameAsDelivery ? "deliveryContact" : "effPickupContact"),
+        "集荷郵便番号": fieldId(sameAsDelivery ? "deliveryPostal" : "effPickupPostal"),
+        "集荷住所": fieldId(sameAsDelivery ? "deliveryAddress" : "effPickupAddress"),
+        "当日引渡者氏名": fieldId(sameAsDelivery ? "deliveryReceiver" : "effPickupHandover"),
+        "集荷連絡先": fieldId(sameAsDelivery ? "deliveryContact" : "effPickupContact"),
         "要望・連絡事項": fieldId("customerRequests"),
         "イベントブース": fieldId("boothName"),
         "レンタルプラン": fieldId("rentalPlanId"),
+              "商品を1つ": fieldId("product-0"),
+        ...Object.fromEntries(products.flatMap((_, i) => [[`商品${i + 1}の数量`, fieldId(`quantity-${i}`)], [`商品${i + 1}が`, fieldId(`product-${i}`)]])),
       }} />}
 
       {/* 種別選択(複数種別がある場合のみ) */}
@@ -711,6 +713,7 @@ export function ApplyForm({
                 <div key={i} className="flex items-center gap-2">
                   <span className="w-6 shrink-0 text-xs text-gray-400">{i + 1}.</span>
                   <select
+                    id={fieldId(`product-${i}`)} aria-label={`商品${i + 1}`}
                     value={p.name}
                     onChange={(e) => updateProduct(i, { name: e.target.value })}
                     className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white p-2.5 text-sm focus:border-blue-500 focus:outline-none"
@@ -727,6 +730,7 @@ export function ApplyForm({
                     inputMode="numeric"
                     min={minimumOrderQuantity}
                     step={1}
+                    id={fieldId(`quantity-${i}`)} aria-label={`商品${i + 1}の数量`}
                     value={p.quantity}
                     onChange={(e) => updateProduct(i, { quantity: e.target.value })}
                     placeholder="数量"

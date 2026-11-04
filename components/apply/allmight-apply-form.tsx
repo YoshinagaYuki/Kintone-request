@@ -377,6 +377,7 @@ export function AllmightApplyForm({
         "イベントブース": fieldId("eventBooth"),
         "利用開始日": fieldId("usageStart"),
         "利用最終日": fieldId("usageEnd"),
+        "機器商品": fieldId("equipment-0"),
       }} />}
 
       {/* 入力者情報 */}
@@ -472,6 +473,7 @@ export function AllmightApplyForm({
               <span className="w-6 shrink-0 text-xs text-gray-400">{i + 1}.</span>
               <select
                 disabled={!!inventory}
+                id={fieldId(`equipment-${i}`)} aria-label={`レンタル機材${i + 1}`}
                 value={eq}
                 onChange={(e) => updateEquipment(i, e.target.value)}
                 className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white p-2.5 text-sm focus:border-blue-500 focus:outline-none"

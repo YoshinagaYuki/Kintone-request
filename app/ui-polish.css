@@ -210,3 +210,10 @@
 
 .application-error-summary a { color:inherit; text-decoration:underline; text-underline-offset:3px; text-decoration-color:#cc8b92; }
 .application-error-summary a:hover { text-decoration-color:currentColor; }
+
+.application-error-summary a { display:inline-block; padding-block:2px; }
+@media(max-width:639px) {
+ .application-form button[aria-label$="を削除"],.application-form button[aria-label$="を外す"] { min-width:44px; min-height:44px; border:1px solid #dfe5ef; border-radius:10px; background:#f8faff; color:#65738b; }
+ .application-form button[aria-label$="を削除"]:not(:disabled):hover,.application-form button[aria-label$="を外す"]:not(:disabled):hover { background:#fff3f3; border-color:#efcccf; color:#ac4952; }
+ .application-form button[aria-label$="を削除"]:disabled { opacity:.4; }
+}
