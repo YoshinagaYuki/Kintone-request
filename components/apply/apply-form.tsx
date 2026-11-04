@@ -538,7 +538,7 @@ export function ApplyForm({
                   className={inputClass}
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  カンマまたは改行で複数入力できます（20件まで）。申請完了・承認完了メールを入力した全員へお送りします。
+                  カンマまたは改行で複数入力できます（20件まで）。申請完了・承認完了メールを入力した全員へお送りします。<br/>配送伝票（伝票番号）に関するメールの送付先は、下の「伝票番号連絡先」に入力してください。
                 </p>
               </div>
               <div>
@@ -808,6 +808,7 @@ export function ApplyForm({
             <h2 className="text-sm font-semibold text-gray-800">
               伝票番号連絡先 <span className="text-xs font-normal text-gray-500">(任意)</span>
             </h2>
+            <p className="mt-2 rounded-lg bg-blue-50 px-3 py-2 text-xs leading-relaxed text-blue-900">配送伝票（伝票番号）の通知先をご入力ください。to・ccは、それぞれメールアドレス1件のみ登録できます。複数のメールアドレスは入力できません。</p>
             <div className="mt-3 space-y-3">
               <div>
                 <label className={labelClass}>to</label>
