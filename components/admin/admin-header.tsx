@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import {InventoryQuickHold} from "./inventory-quick-hold";
 import {adminSection} from "@/lib/admin-navigation";
 import { usePathname } from "next/navigation";
@@ -26,6 +27,15 @@ function activeNav(path:string,href:string){return href==='/admin/plans'?adminSe
 
 export function AdminHeader() {
   const pathname = usePathname();
+  const mobileMenu = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    function closeOutside(event: PointerEvent) {
+      const menu = mobileMenu.current;
+      if (menu?.open && event.target instanceof Node && !menu.contains(event.target)) menu.open = false;
+    }
+    document.addEventListener("pointerdown", closeOutside);
+    return () => document.removeEventListener("pointerdown", closeOutside);
+  }, []);
   if (pathname === "/admin/login") return null;
 
   return (
@@ -33,7 +43,7 @@ export function AdminHeader() {
       <div className="relative flex h-[60px] items-center justify-between gap-2 px-3 xl:hidden">
         <Link href="/admin/inventory/allmight" className="shrink-0 text-xs font-bold text-slate-900"><span className="min-[380px]:hidden">管理</span><span className="hidden min-[380px]:inline">レンタル管理</span></Link>
         <div className="flex items-center gap-2"><InventoryQuickHold header model={{staff:[],version:0,business:pathname.includes('/tezukuru')?'tezukuru':'allmight'}}/><Link href="/apply" className="flex min-h-11 items-center rounded-lg bg-indigo-600 px-2 text-sm font-medium text-white">＋ 新規申請</Link>
-        <details className="group" onKeyDown={e=>{if(e.key==="Escape"){e.currentTarget.open=false;e.currentTarget.querySelector("summary")?.focus();}}}><summary className="flex min-h-11 cursor-pointer list-none items-center rounded-lg border bg-white px-2 text-sm font-medium">メニュー ▾</summary><nav aria-label="スマホ管理メニュー" className="absolute left-3 right-3 top-[56px] z-50 grid max-h-[75dvh] grid-cols-2 gap-1 overflow-y-auto rounded-xl border bg-white p-2 shadow-xl">
+        <details ref={mobileMenu} className="group" onKeyDown={e=>{if(e.key==="Escape"){e.currentTarget.open=false;e.currentTarget.querySelector("summary")?.focus();}}}><summary className="flex min-h-11 cursor-pointer list-none items-center rounded-lg border bg-white px-2 text-sm font-medium">メニュー ▾</summary><nav aria-label="スマホ管理メニュー" className="absolute left-3 right-3 top-[56px] z-50 grid max-h-[75dvh] grid-cols-2 gap-1 overflow-y-auto rounded-xl border bg-white p-2 shadow-xl">
           {[{href:'/admin/inventory/allmight',label:'オールマイト在庫'},{href:'/admin/inventory/tezukuru',label:'てずくーる!!在庫'},...NAV_ITEMS].map(item=><Link key={item.href} href={item.href} aria-current={activeNav(pathname,item.href)?"page":undefined} onClick={e=>{const d=e.currentTarget.closest('details');if(d)d.open=false;}} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${activeNav(pathname,item.href)?'bg-indigo-50 font-semibold text-indigo-700':'text-slate-700 hover:bg-slate-50'}`}>{item.label}</Link>)}
         </nav></details></div>
       </div>

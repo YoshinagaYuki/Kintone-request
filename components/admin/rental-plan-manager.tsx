@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 
 export type RentalPlanRow = {
@@ -14,6 +14,7 @@ export type RentalPlanRow = {
 /** レンタルプランマスターのCRUD(管理画面) */
 export function RentalPlanManager({ plans }: { plans: RentalPlanRow[] }) {
   const router = useRouter();
+  const createPrefix = useId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,9 +82,9 @@ export function RentalPlanManager({ plans }: { plans: RentalPlanRow[] }) {
         className="management-form grid grid-cols-1 gap-2 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-[1fr_1fr_auto_auto] sm:items-end"
       >
         <div>
-          <label className="block text-xs font-medium text-gray-600">プラン名 *</label>
+          <label htmlFor={`${createPrefix}-newName`} className="block text-xs font-medium text-gray-600">プラン名 *</label>
           <input
-            value={newName}
+            id={`${createPrefix}-newName`} value={newName}
             onChange={(e) => setNewName(e.target.value)}
             required
             className="mt-1 w-full rounded-md border border-gray-300 p-2 text-sm"
@@ -91,19 +92,19 @@ export function RentalPlanManager({ plans }: { plans: RentalPlanRow[] }) {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600">説明</label>
+          <label htmlFor={`${createPrefix}-newDesc`} className="block text-xs font-medium text-gray-600">説明</label>
           <input
-            value={newDesc}
+            id={`${createPrefix}-newDesc`} value={newDesc}
             onChange={(e) => setNewDesc(e.target.value)}
             className="mt-1 w-full rounded-md border border-gray-300 p-2 text-sm"
             placeholder="週末レンタル"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600">表示順</label>
+          <label htmlFor={`${createPrefix}-newOrder`} className="block text-xs font-medium text-gray-600">表示順</label>
           <input
             type="number"
-            value={newOrder}
+            id={`${createPrefix}-newOrder`} value={newOrder}
             onChange={(e) => setNewOrder(Number(e.target.value))}
             className="mt-1 w-20 rounded-md border border-gray-300 p-2 text-sm"
           />

@@ -237,3 +237,16 @@
 @media(max-width:639px) { .inventory-stable-list { margin-block-start:calc(12px + env(safe-area-inset-top)); } }
 /* Balance long Japanese headings instead of leaving a lone final character. */
 .inventory-case-card h3,.application-page-heading h1 { text-wrap:balance; }
+
+.management-filter button[aria-pressed="true"] { border-color:#465bd1; background:#465bd1; color:#fff; }
+@media(max-width:639px) {
+ .management-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:end; }
+ .management-form>div { grid-column:1/-1; }
+ .management-form>div:has(input[type="number"]) { grid-column:auto; }
+ .management-form>button[type="submit"] { grid-column:auto; width:100%; }
+ .management-form>label { grid-column:1/-1; min-height:44px; padding-bottom:0; }
+ .management-form input:not([type="checkbox"]):not([type="number"]),.management-form select { width:100%; }
+ .management-filter { flex-wrap:wrap; }
+ .management-filter button { min-height:44px; padding-inline:12px; border-radius:10px; }
+ .management-table td[data-label]>span { justify-self:start; }
+}

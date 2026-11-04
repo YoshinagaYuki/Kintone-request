@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 
 export type StaffRow = {
@@ -16,6 +16,7 @@ export type StaffRow = {
 /** 担当者マスターのCRUD(管理画面) */
 export function StaffManager({ staff }: { staff: StaffRow[] }) {
   const router = useRouter();
+  const createPrefix = useId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -114,29 +115,29 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
         className="management-form flex flex-wrap items-end gap-2 rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
       >
         <div>
-          <label className="block text-xs font-medium text-gray-600">氏名 *</label>
+          <label htmlFor={`${createPrefix}-newName`} className="block text-xs font-medium text-gray-600">氏名 *</label>
           <input
-            value={newName}
+            id={`${createPrefix}-newName`} value={newName}
             onChange={(e) => setNewName(e.target.value)}
             required
             className={cell}
-            placeholder="吉永 勇樹"
+            placeholder="例：山田 太郎"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600">所属会社</label>
+          <label htmlFor={`${createPrefix}-newCompany`} className="block text-xs font-medium text-gray-600">所属会社</label>
           <input
-            value={newCompany}
+            id={`${createPrefix}-newCompany`} value={newCompany}
             onChange={(e) => setNewCompany(e.target.value)}
             className={cell}
             placeholder="株式会社ユニティ"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600">メールアドレス</label>
+          <label htmlFor={`${createPrefix}-newEmail`} className="block text-xs font-medium text-gray-600">メールアドレス</label>
           <input
             type="email"
-            value={newEmail}
+            id={`${createPrefix}-newEmail`} value={newEmail}
             onChange={(e) => setNewEmail(e.target.value)}
             className={`${cell} w-56`}
             placeholder="staff@unity-corp.jp"
@@ -152,10 +153,10 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
           メール通知
         </label>
         <div>
-          <label className="block text-xs font-medium text-gray-600">表示順</label>
+          <label htmlFor={`${createPrefix}-newOrder`} className="block text-xs font-medium text-gray-600">表示順</label>
           <input
             type="number"
-            value={newOrder}
+            id={`${createPrefix}-newOrder`} value={newOrder}
             onChange={(e) => setNewOrder(Number(e.target.value))}
             className={`${cell} w-20`}
           />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 
 export type ItemRow = {
@@ -28,6 +28,7 @@ function parseAliases(text: string): string[] {
 /** 名称正規化マスターのCRUD(管理画面) */
 export function ItemMasterManager({ items }: { items: ItemRow[] }) {
   const router = useRouter();
+  const createPrefix = useId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | ItemRow["category"]>("all");
@@ -112,9 +113,9 @@ export function ItemMasterManager({ items }: { items: ItemRow[] }) {
         className="management-form grid grid-cols-1 gap-2 rounded-lg border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-[auto_1fr_1fr_auto_auto] sm:items-end"
       >
         <div>
-          <label className="block text-xs font-medium text-gray-600">種別 *</label>
+          <label htmlFor={`${createPrefix}-newCategory`} className="block text-xs font-medium text-gray-600">種別 *</label>
           <select
-            value={newCategory}
+            id={`${createPrefix}-newCategory`} value={newCategory}
             onChange={(e) => setNewCategory(e.target.value as ItemRow["category"])}
             className="mt-1 rounded-md border border-gray-300 p-2 text-sm"
           >
@@ -123,9 +124,9 @@ export function ItemMasterManager({ items }: { items: ItemRow[] }) {
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600">正式名称 *</label>
+          <label htmlFor={`${createPrefix}-newName`} className="block text-xs font-medium text-gray-600">正式名称 *</label>
           <input
-            value={newName}
+            id={`${createPrefix}-newName`} value={newName}
             onChange={(e) => setNewName(e.target.value)}
             required
             className="mt-1 w-full rounded-md border border-gray-300 p-2 text-sm"
@@ -133,21 +134,21 @@ export function ItemMasterManager({ items }: { items: ItemRow[] }) {
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600">
+          <label htmlFor={`${createPrefix}-newAliases`} className="block text-xs font-medium text-gray-600">
             別名/ゆらぎ表記(カンマ・改行区切り)
           </label>
           <input
-            value={newAliases}
+            id={`${createPrefix}-newAliases`} value={newAliases}
             onChange={(e) => setNewAliases(e.target.value)}
             className="mt-1 w-full rounded-md border border-gray-300 p-2 text-sm"
             placeholder="スティックキャッチ大, スティックキャッチ(大)"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-600">表示順</label>
+          <label htmlFor={`${createPrefix}-newOrder`} className="block text-xs font-medium text-gray-600">表示順</label>
           <input
             type="number"
-            value={newOrder}
+            id={`${createPrefix}-newOrder`} value={newOrder}
             onChange={(e) => setNewOrder(Number(e.target.value))}
             className="mt-1 w-20 rounded-md border border-gray-300 p-2 text-sm"
           />
@@ -162,10 +163,11 @@ export function ItemMasterManager({ items }: { items: ItemRow[] }) {
       </form>
 
       {/* 種別フィルタ */}
-      <div className="mt-4 flex gap-2 text-sm">
+      <div className="management-filter mt-4 flex gap-2 text-sm">
         {(["all", "allmight", "tezukuru"] as const).map((f) => (
           <button
             key={f}
+            aria-pressed={filter === f}
             onClick={() => setFilter(f)}
             className={`rounded-full border px-3 py-1 ${
               filter === f
