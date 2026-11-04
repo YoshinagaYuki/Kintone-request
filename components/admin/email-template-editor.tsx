@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 
 export type EmailTemplateRow = { key: "application" | "approval"; subject: string; body: string };
@@ -33,6 +33,7 @@ const PLACEHOLDERS = [
 /** メールテンプレート編集(事業切替: てずくーる/オールマイト × 申請完了/承認完了)。本文はDB保存 */
 export function EmailTemplateEditor({ templates }: { templates: EmailTemplatesByBusiness }) {
   const router = useRouter();
+  const fieldPrefix = useId();
   const [business, setBusiness] = useState<BusinessKey>("tezukuru");
   const [active, setActive] = useState<EmailTemplateRow["key"]>("application");
   const [drafts, setDrafts] = useState<Record<string, { subject: string; body: string }>>(() => {
@@ -91,6 +92,7 @@ export function EmailTemplateEditor({ templates }: { templates: EmailTemplatesBy
         {BUSINESS_TABS.map((b) => (
           <button
             key={b.key}
+            aria-pressed={business === b.key}
             onClick={() => {
               setBusiness(b.key);
               resetMsg();
@@ -117,6 +119,7 @@ export function EmailTemplateEditor({ templates }: { templates: EmailTemplatesBy
         {TABS.map((t) => (
           <button
             key={t.key}
+            aria-pressed={active === t.key}
             onClick={() => {
               setActive(t.key);
               resetMsg();
@@ -133,27 +136,29 @@ export function EmailTemplateEditor({ templates }: { templates: EmailTemplatesBy
       </div>
 
       {error && (
-        <p className="mt-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">{error}</p>
+        <p role="alert" className="mt-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">{error}</p>
       )}
       {saved && (
-        <p className="mt-4 rounded-md border border-green-300 bg-green-50 p-3 text-sm text-green-700">
+        <p role="status" className="mt-4 rounded-md border border-green-300 bg-green-50 p-3 text-sm text-green-700">
           保存しました。
         </p>
       )}
 
       <div className="mt-4 space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700">件名</label>
+          <label htmlFor={`${fieldPrefix}-subject`} className="block text-sm font-medium text-gray-700">件名</label>
           <input
             type="text"
+            id={`${fieldPrefix}-subject`}
             value={current.subject}
             onChange={(e) => update({ subject: e.target.value })}
             className="mt-1 w-full rounded-md border border-gray-300 bg-white p-2.5 text-sm focus:border-blue-500 focus:outline-none"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700">本文</label>
+          <label htmlFor={`${fieldPrefix}-body`} className="block text-sm font-medium text-gray-700">本文</label>
           <textarea
+            id={`${fieldPrefix}-body`}
             value={current.body}
             onChange={(e) => update({ body: e.target.value })}
             rows={20}

@@ -217,3 +217,13 @@
  .application-form button[aria-label$="を削除"]:not(:disabled):hover,.application-form button[aria-label$="を外す"]:not(:disabled):hover { background:#fff3f3; border-color:#efcccf; color:#ac4952; }
  .application-form button[aria-label$="を削除"]:disabled { opacity:.4; }
 }
+
+.management-editor>div:first-child button[aria-pressed="true"] { border-color:#465bd1; background:#465bd1; color:#fff; }
+.management-editor>div.border-b button[aria-pressed="true"] { border-color:#465bd1; color:#3e50b6; }
+.management-editor>div:last-child>button { background:#465bd1; }
+.management-editor>div:last-child>button:disabled { opacity:.5; box-shadow:none; }
+
+.management-loading { padding-top:24px; }
+.management-loading>div { border-radius:12px; }
+.management-loading>p { color:#65738b; }
+@media(prefers-reduced-motion:reduce) { .management-loading .animate-pulse { animation:none; } }

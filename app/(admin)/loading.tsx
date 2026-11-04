@@ -8,7 +8,7 @@
  */
 export default function AdminLoading() {
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:py-10" aria-busy="true">
+    <main className="management-loading mx-auto w-full max-w-5xl px-4 py-8 sm:py-10" aria-busy="true">
       <div className="h-7 w-40 animate-pulse rounded bg-gray-200" />
       <div className="mt-4 flex gap-2">
         {Array.from({ length: 4 }).map((_, i) => (
@@ -20,7 +20,7 @@ export default function AdminLoading() {
           <div key={i} className="h-14 w-full animate-pulse rounded-lg bg-gray-100" />
         ))}
       </div>
-      <p className="mt-6 text-center text-sm text-gray-400">読み込み中…</p>
+      <p role="status" className="mt-6 text-center text-sm text-slate-500">読み込み中…</p>
     </main>
   );
 }
