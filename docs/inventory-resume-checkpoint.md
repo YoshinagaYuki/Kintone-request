@@ -268,3 +268,8 @@
 
 ### 2026-11-04 22:00まで全体UI改善を継続中
 - User explicitly requested iterative other-company research/comparison/polish until22:00 JST, no premature stop. Active goal created, heartbeat22-ui every15min created. Full work state and next tasks: docs/ui-polish-2026-11-04.md. Goal not complete before deadline. No actual business-data writes during visual QA.
+
+### 2026-11-04 22:00 UI改善完了
+- UI最終公開d133691。全体配色・フォーム・マスタのスマホカード・ダイアログ・エラー導線・時刻表示を改善。詳細は docs/ui-polish-2026-11-04.md。
+- 最終buildと在庫194テスト正常。PC/スマホ幅で確認、実機Safari未検証。QAで顧客申請・在庫・kintone・メールは変更していない。
+- 22-ui再開automation削除済み。期限後の新規UI変更なし、完了監査のみ。旧再開指示でこの完了済み作業を再開しない。
