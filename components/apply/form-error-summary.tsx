@@ -22,7 +22,7 @@ export function FormErrorSummary({ errors, targets = {} }: { errors: string[]; t
             if (!field) return;
             event.preventDefault();
             field.focus({ preventScroll: true });
-            field.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+            field.scrollIntoView({ block: "center", behavior: "auto" });
           }}>{message}</a> : message}</li>;
         })}
       </ul>

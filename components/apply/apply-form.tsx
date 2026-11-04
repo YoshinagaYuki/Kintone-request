@@ -311,7 +311,7 @@ export function ApplyForm({
     const errs = validate();
     if (errs.length > 0) {
       setErrors(errs);
-      if(inventory)requestAnimationFrame(()=>document.querySelector('[data-tezukuru-errors]')?.scrollIntoView({block:"nearest",behavior:"smooth"}));else window.scrollTo({ top: 0, behavior: "smooth" });
+      if(inventory)requestAnimationFrame(()=>document.querySelector('[data-tezukuru-errors]')?.scrollIntoView({block:"nearest",behavior:"auto"}));else window.scrollTo({ top: 0, behavior: "auto" });
       return;
     }
     setSubmitting(true);
@@ -379,7 +379,7 @@ export function ApplyForm({
           return;
         }
         setErrors(body?.errors ?? ["保存に失敗しました。"]);
-        if(inventory)requestAnimationFrame(()=>document.querySelector('[data-tezukuru-errors]')?.scrollIntoView({block:"nearest",behavior:"smooth"}));else window.scrollTo({ top: 0, behavior: "smooth" });
+        if(inventory)requestAnimationFrame(()=>document.querySelector('[data-tezukuru-errors]')?.scrollIntoView({block:"nearest",behavior:"auto"}));else window.scrollTo({ top: 0, behavior: "auto" });
         return;
       }
 
@@ -395,9 +395,9 @@ export function ApplyForm({
         return;
       }
       setErrors(body?.errors ?? ["送信に失敗しました。時間をおいて再度お試しください。"]);
-      if(inventory)requestAnimationFrame(()=>document.querySelector('[data-tezukuru-errors]')?.scrollIntoView({block:"nearest",behavior:"smooth"}));else window.scrollTo({ top: 0, behavior: "smooth" });
+      if(inventory)requestAnimationFrame(()=>document.querySelector('[data-tezukuru-errors]')?.scrollIntoView({block:"nearest",behavior:"auto"}));else window.scrollTo({ top: 0, behavior: "auto" });
     } catch(e) {
-      if(inventory&&e instanceof Error){setErrors([e.message]);requestAnimationFrame(()=>document.querySelector('[data-tezukuru-errors]')?.scrollIntoView({block:"nearest",behavior:"smooth"}));}else setErrors(["通信エラーが発生しました。時間をおいて再度お試しください。"]);
+      if(inventory&&e instanceof Error){setErrors([e.message]);requestAnimationFrame(()=>document.querySelector('[data-tezukuru-errors]')?.scrollIntoView({block:"nearest",behavior:"auto"}));}else setErrors(["通信エラーが発生しました。時間をおいて再度お試しください。"]);
     } finally {
       setSubmitting(false);
     }

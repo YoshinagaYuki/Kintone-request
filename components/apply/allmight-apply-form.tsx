@@ -137,7 +137,7 @@ export function AllmightApplyForm({
   const formRef = useRef<HTMLFormElement>(null);
   const inventoryMode = !!inventory;
   useEffect(() => {
-    if (inventoryMode && errors.length) formRef.current?.querySelector('[role="alert"]')?.scrollIntoView({ block: "start", behavior: "smooth" });
+    if (inventoryMode && errors.length) formRef.current?.querySelector('[role="alert"]')?.scrollIntoView({ block: "start", behavior: "auto" });
   }, [errors, inventoryMode]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -245,7 +245,7 @@ export function AllmightApplyForm({
     const errs = validate();
     if (errs.length > 0) {
       setErrors(errs);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo({ top: 0, behavior: "auto" });
       return;
     }
     setSubmitting(true);
@@ -307,7 +307,7 @@ export function AllmightApplyForm({
           return;
         }
         setErrors(body?.errors ?? ["保存に失敗しました。"]);
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        window.scrollTo({ top: 0, behavior: "auto" });
         return;
       }
 
@@ -323,7 +323,7 @@ export function AllmightApplyForm({
         return;
       }
       setErrors(body?.errors ?? ["送信に失敗しました。時間をおいて再度お試しください。"]);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo({ top: 0, behavior: "auto" });
     } catch (error) {
       setErrors([error instanceof Error ? error.message : "通信エラーが発生しました。入力は保持しています。"]);
     } finally {
