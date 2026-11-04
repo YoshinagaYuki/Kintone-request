@@ -121,7 +121,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+    <section className="request-detail-section mt-6 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
       <h2 className="border-b border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-semibold text-gray-700">
         {title}
       </h2>
@@ -371,7 +371,7 @@ export default async function RequestDetailPage({
 
   const inventoryJobs=await supabase.from('inventory_change_jobs').select('id,request_id,status,error,created_at').eq('request_id',request.id).neq('status','succeeded');
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:py-10">
+    <main className="request-detail mx-auto w-full max-w-4xl px-4 py-8 sm:py-10">
       <Link
         href="/admin/requests"
         className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
@@ -440,7 +440,7 @@ export default async function RequestDetailPage({
 
       {/* 登録完了の成功メッセージ(ページ再読み込み後も登録済みなら表示・自動消去しない) */}
       {request.status === "registered" && (
-        <div className="mt-5 rounded-lg border-2 border-green-400 bg-green-50 p-5 shadow-sm">
+        <div className="request-detail-success mt-5 rounded-lg border-2 border-green-400 bg-green-50 p-5 shadow-sm">
           <p className="text-lg font-bold text-green-800">✅ 登録が完了しました</p>
           <p className="mt-1 text-sm text-green-900">
             kintoneへの登録と配送管理連携が正常に完了しました。
@@ -488,18 +488,12 @@ export default async function RequestDetailPage({
       )}
 
       {/* kintone連携サマリー */}
-      {request.kintone_record_id && (
+      {request.kintone_record_id && request.status !== "registered" && (
         <div
-          className={`mt-5 overflow-hidden rounded-lg border shadow-sm ${
-            request.status === "registered"
-              ? "border-green-300 bg-green-50"
-              : "border-orange-300 bg-orange-50"
-          }`}
+          className="mt-5 overflow-hidden rounded-lg border border-orange-300 bg-orange-50 shadow-sm"
         >
           <div
-            className={`grid grid-cols-1 divide-y sm:grid-cols-3 sm:divide-x sm:divide-y-0 ${
-              request.status === "registered" ? "divide-green-200" : "divide-orange-200"
-            }`}
+            className="grid grid-cols-1 divide-y divide-orange-200 sm:grid-cols-3 sm:divide-x sm:divide-y-0"
           >
             <div className="px-4 py-3">
               <p className="text-xs text-gray-600">管理番号</p>
@@ -523,15 +517,9 @@ export default async function RequestDetailPage({
             </div>
           </div>
           <p
-            className={`border-t px-4 py-2 text-xs ${
-              request.status === "registered"
-                ? "border-green-200 text-green-800"
-                : "border-orange-200 text-orange-800"
-            }`}
+            className="border-t border-orange-200 px-4 py-2 text-xs text-orange-800"
           >
-            {request.status === "registered"
-              ? "kintone登録・管理番号採番・配送管理連携まで自動実行済みです。"
-              : "連携が未完了です。エラーを確認のうえ、下の「再実行」ボタンで再開してください。"}
+            連携が未完了です。エラーを確認のうえ、下の「再実行」ボタンで再開してください。
           </p>
         </div>
       )}
