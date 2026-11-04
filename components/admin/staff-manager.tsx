@@ -171,8 +171,8 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
 
       {/* 一覧 */}
       <div className="management-table mt-4 overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-        <table className="w-full text-sm">
-          <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs text-gray-500">
+        <table role="table" className="w-full text-sm">
+          <thead role="rowgroup" className="border-b border-gray-200 bg-gray-50 text-left text-xs text-gray-500">
             <tr>
               <th className="px-4 py-2">氏名</th>
               <th className="px-4 py-2">所属会社</th>
@@ -183,7 +183,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
               <th className="px-4 py-2"><span className="sr-only">操作</span></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody role="rowgroup" className="divide-y divide-gray-100">
             {staff.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
@@ -193,22 +193,22 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
             )}
             {staff.map((row) =>
               editingId === row.id ? (
-                <tr key={row.id} className="bg-blue-50/40">
-                  <td className="px-4 py-2">
+                <tr role="row" key={row.id} className="bg-blue-50/40">
+                  <td role="cell" data-label="氏名" className="px-4 py-2">
                     <input
                       value={edit.name}
                       onChange={(e) => setEdit({ ...edit, name: e.target.value })}
                       className="w-full rounded-md border border-gray-300 p-1.5 text-sm"
                     />
                   </td>
-                  <td className="px-4 py-2">
+                  <td role="cell" data-label="所属会社" className="px-4 py-2">
                     <input
                       value={edit.company}
                       onChange={(e) => setEdit({ ...edit, company: e.target.value })}
                       className="w-full rounded-md border border-gray-300 p-1.5 text-sm"
                     />
                   </td>
-                  <td className="px-4 py-2">
+                  <td role="cell" data-label="メール" className="px-4 py-2">
                     <input
                       type="email"
                       value={edit.email}
@@ -217,7 +217,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
                       className="w-full rounded-md border border-gray-300 p-1.5 text-sm"
                     />
                   </td>
-                  <td className="px-4 py-2 text-center">
+                  <td role="cell" data-label="メール通知" className="px-4 py-2 text-center">
                     <input
                       type="checkbox"
                       checked={edit.email_notify_enabled}
@@ -227,7 +227,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
                       className="h-4 w-4 accent-blue-600"
                     />
                   </td>
-                  <td className="px-4 py-2">
+                  <td role="cell" data-label="表示順" className="px-4 py-2">
                     <input
                       type="number"
                       value={edit.sort_order}
@@ -237,8 +237,8 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
                       className="w-20 rounded-md border border-gray-300 p-1.5 text-sm"
                     />
                   </td>
-                  <td className="px-4 py-2 text-gray-400">-</td>
-                  <td className="whitespace-nowrap px-4 py-2 text-right">
+                  <td role="cell" data-label="公開" className="px-4 py-2 text-gray-400">-</td>
+                  <td role="cell" data-label="操作" className="whitespace-nowrap px-4 py-2 text-right">
                     <button
                       onClick={() => saveEdit(row.id)}
                       disabled={busy}
@@ -255,11 +255,11 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
                   </td>
                 </tr>
               ) : (
-                <tr key={row.id} className={row.is_active ? "" : "bg-gray-50 text-gray-400"}>
-                  <td className="px-4 py-2">{row.name}</td>
-                  <td className="px-4 py-2">{row.company || "-"}</td>
-                  <td className="break-all px-4 py-2">{row.email || "-"}</td>
-                  <td className="px-4 py-2">
+                <tr role="row" key={row.id} className={row.is_active ? "" : "bg-gray-50 text-gray-400"}>
+                  <td role="cell" data-label="氏名" className="px-4 py-2">{row.name}</td>
+                  <td role="cell" data-label="所属会社" className="px-4 py-2">{row.company || "-"}</td>
+                  <td role="cell" data-label="メール" className="break-all px-4 py-2">{row.email || "-"}</td>
+                  <td role="cell" data-label="メール通知" className="px-4 py-2">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                         row.email_notify_enabled
@@ -270,8 +270,8 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
                       {row.email_notify_enabled ? "ON" : "OFF"}
                     </span>
                   </td>
-                  <td className="px-4 py-2">{row.sort_order}</td>
-                  <td className="px-4 py-2">
+                  <td role="cell" data-label="表示順" className="px-4 py-2">{row.sort_order}</td>
+                  <td role="cell" data-label="公開" className="px-4 py-2">
                     <button
                       onClick={() => toggleActive(row)}
                       disabled={busy}
@@ -284,7 +284,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
                       {row.is_active ? "公開中" : "非公開"}
                     </button>
                   </td>
-                  <td className="whitespace-nowrap px-4 py-2 text-right">
+                  <td role="cell" data-label="操作" className="whitespace-nowrap px-4 py-2 text-right">
                     <button
                       onClick={() => {
                         setEditingId(row.id);

@@ -20,6 +20,7 @@ type TrashRow = {
 function fmt(iso: string | null): string {
   if (!iso) return "-";
   return new Date(iso).toLocaleString("ja-JP", {
+    timeZone: "Asia/Tokyo",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

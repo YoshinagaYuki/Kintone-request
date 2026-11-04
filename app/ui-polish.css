@@ -15,7 +15,7 @@
 .application-form section>h2 { display:flex; align-items:center; gap:9px; color:#304563; font-size:15px; line-height:1.5; }
 .application-form section>h2::before { content:""; width:4px; height:16px; flex:none; border-radius:3px; background:#8392de; }
 .application-form input:not([type="checkbox"]):not([type="radio"]),.application-form select,.application-form textarea { border:1px solid #d9e1ee; border-radius:10px; background:#fbfcff; color:#23314a; transition:border-color .15s,box-shadow .15s,background-color .15s; }
-.application-form input::placeholder,.application-form textarea::placeholder { color:#8a96aa; opacity:1; }
+.application-form input::placeholder,.application-form textarea::placeholder { color:#68768c; opacity:1; }
 .application-form input:not([type="checkbox"]):not([type="radio"]):focus-visible,.application-form select:focus-visible,.application-form textarea:focus-visible { outline:none; background:#fff; border-color:#7385dc; box-shadow:0 0 0 3px #e7ecff; }
 .application-form fieldset:disabled section { background:#f5f7fa; box-shadow:none; }
 .application-form fieldset:disabled input { background:#eef1f5; color:#8994a6; }
@@ -135,7 +135,7 @@
 .inventory-calendar-month select { background:transparent; border-color:transparent; color:#344d79; }
 .inventory-range-calendar button:focus-visible { outline:2px solid #7181d5; outline-offset:-2px; border-radius:10px; }
 .inventory-calendar-selection>div { display:flex; flex-direction:column; gap:4px; border:1px solid #e4e9f5; border-radius:10px; background:#f6f8ff; padding:9px 10px; }
-.inventory-calendar-selection span { color:#6c7b97; font-size:10px; }
+.inventory-calendar-selection span { color:#61708b; font-size:10px; }
 .inventory-calendar-selection strong { color:#3d5792; font-size:11px; font-weight:600; line-height:1.5; }
 .inventory-editor-header>button { min-height:40px; border-radius:10px; border-color:#dfe5ef; color:#53647f; }
 .inventory-editor-body { background:#fbfcfe; }
@@ -179,4 +179,20 @@
  .request-detail-success>p:first-child { font-size:16px; }
  .request-detail-success>dl:first-of-type { gap:8px; }
  .request-detail-success>dl:first-of-type dt { font-size:10px; line-height:1.5; }
+}
+
+/* Phone master lists become labelled cards instead of narrow, broken columns. */
+@media(max-width:639px) {
+ .management-table { overflow:visible; border:0; border-radius:0; box-shadow:none; background:transparent; }
+ .management-table table,.management-table tbody { display:block; width:100%; }
+ .management-table thead { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+ .management-table tbody>tr { display:block; margin-bottom:12px; overflow:hidden; border:1px solid #dfe5ef; border-radius:14px; background:#fff; box-shadow:var(--ui-card-shadow); }
+ .management-table td[data-label] { display:grid; grid-template-columns:84px minmax(0,1fr); align-items:center; gap:10px; padding:10px 14px; text-align:left; white-space:normal; overflow-wrap:anywhere; line-height:1.6; }
+ .management-table td[data-label]::before { content:attr(data-label); color:#65738b; font-size:11px; font-weight:500; }
+ .management-table td[data-label]:first-child { background:#f5f7fd; }
+ .management-table td[data-label="操作"] { display:flex; justify-content:flex-end; gap:8px; border-top:1px solid #edf0f6; padding-block:6px; }
+ .management-table td[data-label="操作"]::before { margin-right:auto; }
+ .management-table td[data-label]>button { justify-self:start; }
+ .management-table td[data-label] input:not([type="checkbox"]),.management-table td[data-label] select { min-width:0; max-width:100%; min-height:44px; font-size:16px; border-radius:9px; }
+ .management-table td[data-label][colspan] { display:block; }
 }

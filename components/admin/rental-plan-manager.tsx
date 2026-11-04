@@ -123,8 +123,8 @@ export function RentalPlanManager({ plans }: { plans: RentalPlanRow[] }) {
 
       {/* 一覧 */}
       <div className="management-table mt-4 overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-        <table className="w-full text-sm">
-          <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs text-gray-500">
+        <table role="table" className="w-full text-sm">
+          <thead role="rowgroup" className="border-b border-gray-200 bg-gray-50 text-left text-xs text-gray-500">
             <tr>
               <th className="px-4 py-2">プラン名</th>
               <th className="px-4 py-2">説明</th>
@@ -133,7 +133,7 @@ export function RentalPlanManager({ plans }: { plans: RentalPlanRow[] }) {
               <th className="px-4 py-2"><span className="sr-only">操作</span></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody role="rowgroup" className="divide-y divide-gray-100">
             {plans.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
@@ -143,22 +143,22 @@ export function RentalPlanManager({ plans }: { plans: RentalPlanRow[] }) {
             )}
             {plans.map((row) =>
               editingId === row.id ? (
-                <tr key={row.id} className="bg-blue-50/40">
-                  <td className="px-4 py-2">
+                <tr role="row" key={row.id} className="bg-blue-50/40">
+                  <td role="cell" data-label="プラン名" className="px-4 py-2">
                     <input
                       value={edit.name}
                       onChange={(e) => setEdit({ ...edit, name: e.target.value })}
                       className="w-full rounded-md border border-gray-300 p-1.5 text-sm"
                     />
                   </td>
-                  <td className="px-4 py-2">
+                  <td role="cell" data-label="説明" className="px-4 py-2">
                     <input
                       value={edit.description}
                       onChange={(e) => setEdit({ ...edit, description: e.target.value })}
                       className="w-full rounded-md border border-gray-300 p-1.5 text-sm"
                     />
                   </td>
-                  <td className="px-4 py-2">
+                  <td role="cell" data-label="表示順" className="px-4 py-2">
                     <input
                       type="number"
                       value={edit.sort_order}
@@ -166,8 +166,8 @@ export function RentalPlanManager({ plans }: { plans: RentalPlanRow[] }) {
                       className="w-20 rounded-md border border-gray-300 p-1.5 text-sm"
                     />
                   </td>
-                  <td className="px-4 py-2 text-gray-400">-</td>
-                  <td className="whitespace-nowrap px-4 py-2 text-right">
+                  <td role="cell" data-label="状態" className="px-4 py-2 text-gray-400">-</td>
+                  <td role="cell" data-label="操作" className="whitespace-nowrap px-4 py-2 text-right">
                     <button onClick={() => saveEdit(row.id)} disabled={busy} className="mr-2 font-medium text-blue-600 hover:underline">
                       保存
                     </button>
@@ -177,11 +177,11 @@ export function RentalPlanManager({ plans }: { plans: RentalPlanRow[] }) {
                   </td>
                 </tr>
               ) : (
-                <tr key={row.id} className={row.is_active ? "" : "bg-gray-50 text-gray-400"}>
-                  <td className="px-4 py-2 font-medium">{row.name}</td>
-                  <td className="px-4 py-2 text-gray-600">{row.description || "-"}</td>
-                  <td className="px-4 py-2">{row.sort_order}</td>
-                  <td className="px-4 py-2">
+                <tr role="row" key={row.id} className={row.is_active ? "" : "bg-gray-50 text-gray-400"}>
+                  <td role="cell" data-label="プラン名" className="px-4 py-2 font-medium">{row.name}</td>
+                  <td role="cell" data-label="説明" className="px-4 py-2 text-gray-600">{row.description || "-"}</td>
+                  <td role="cell" data-label="表示順" className="px-4 py-2">{row.sort_order}</td>
+                  <td role="cell" data-label="状態" className="px-4 py-2">
                     <button
                       onClick={() => call(`/api/admin/plans/${row.id}`, "PATCH", { is_active: !row.is_active })}
                       disabled={busy}
@@ -192,7 +192,7 @@ export function RentalPlanManager({ plans }: { plans: RentalPlanRow[] }) {
                       {row.is_active ? "有効" : "無効"}
                     </button>
                   </td>
-                  <td className="whitespace-nowrap px-4 py-2 text-right">
+                  <td role="cell" data-label="操作" className="whitespace-nowrap px-4 py-2 text-right">
                     <button
                       onClick={() => {
                         setEditingId(row.id);

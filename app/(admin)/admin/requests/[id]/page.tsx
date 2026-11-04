@@ -105,6 +105,7 @@ const HISTORY_DOT: Partial<Record<HistoryAction, string>> = {
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString("ja-JP", {
+    timeZone: "Asia/Tokyo",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
