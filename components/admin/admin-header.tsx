@@ -7,8 +7,8 @@ import { usePathname } from "next/navigation";
 
 /**
  * 管理画面の共通ナビゲーションバー(全 /admin/* ページ。ログイン画面では非表示)。
- * ・現在開いているページは青背景+白文字(active)
- * ・PCはフルラベル、スマホ(480px未満)はアイコン+短縮ラベルで1行表示
+ * ・現在開いているページは淡い青で強調(active)
+ * ・画面幅に合わせてPCナビとコンパクトなメニューを切り替える
  * ・「➕ 新規申請」は /apply へ(種別が増えても申請画面側の選択で吸収)
  */
 
@@ -32,9 +32,9 @@ export function AdminHeader() {
     <header className="rental-header sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur">
       <div className="relative flex h-[60px] items-center justify-between gap-2 px-3 xl:hidden">
         <Link href="/admin/inventory/allmight" className="shrink-0 text-xs font-bold text-slate-900"><span className="min-[380px]:hidden">管理</span><span className="hidden min-[380px]:inline">レンタル管理</span></Link>
-        <div className="flex items-center gap-2"><Link href="/apply" className="flex min-h-11 items-center rounded-lg bg-indigo-600 px-2 text-sm font-medium text-white">＋ 新規申請</Link><InventoryQuickHold header model={{staff:[],version:0,business:pathname.includes('/tezukuru')?'tezukuru':'allmight'}}/>
-        <details className="group"><summary className="flex min-h-11 cursor-pointer list-none items-center rounded-lg border bg-white px-2 text-sm font-medium">メニュー ▾</summary><nav aria-label="スマホ管理メニュー" className="absolute left-3 right-3 top-[56px] z-50 grid max-h-[75dvh] grid-cols-2 gap-1 overflow-y-auto rounded-xl border bg-white p-2 shadow-xl">
-          {[{href:'/admin/inventory/allmight',label:'オールマイト在庫'},{href:'/admin/inventory/tezukuru',label:'てずくーる!!在庫'},...NAV_ITEMS].map(item=><Link key={item.href} href={item.href} onClick={e=>{const d=e.currentTarget.closest('details');if(d)d.open=false;}} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${activeNav(pathname,item.href)?'bg-indigo-50 font-semibold text-indigo-700':'text-slate-700 hover:bg-slate-50'}`}>{item.label}</Link>)}
+        <div className="flex items-center gap-2"><InventoryQuickHold header model={{staff:[],version:0,business:pathname.includes('/tezukuru')?'tezukuru':'allmight'}}/><Link href="/apply" className="flex min-h-11 items-center rounded-lg bg-indigo-600 px-2 text-sm font-medium text-white">＋ 新規申請</Link>
+        <details className="group" onKeyDown={e=>{if(e.key==="Escape"){e.currentTarget.open=false;e.currentTarget.querySelector("summary")?.focus();}}}><summary className="flex min-h-11 cursor-pointer list-none items-center rounded-lg border bg-white px-2 text-sm font-medium">メニュー ▾</summary><nav aria-label="スマホ管理メニュー" className="absolute left-3 right-3 top-[56px] z-50 grid max-h-[75dvh] grid-cols-2 gap-1 overflow-y-auto rounded-xl border bg-white p-2 shadow-xl">
+          {[{href:'/admin/inventory/allmight',label:'オールマイト在庫'},{href:'/admin/inventory/tezukuru',label:'てずくーる!!在庫'},...NAV_ITEMS].map(item=><Link key={item.href} href={item.href} aria-current={activeNav(pathname,item.href)?"page":undefined} onClick={e=>{const d=e.currentTarget.closest('details');if(d)d.open=false;}} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${activeNav(pathname,item.href)?'bg-indigo-50 font-semibold text-indigo-700':'text-slate-700 hover:bg-slate-50'}`}>{item.label}</Link>)}
         </nav></details></div>
       </div>
       <div className="mx-auto hidden xl:flex min-h-[60px] max-w-[1900px] flex-wrap items-center justify-between gap-1.5 px-3 sm:gap-3 sm:px-6">

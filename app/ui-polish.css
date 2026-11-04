@@ -235,3 +235,5 @@
 /* Keep search and week controls anchored when a result list becomes short. */
 .inventory-stable-list { margin-block-start:max(12px,7dvh); margin-block-end:auto; }
 @media(max-width:639px) { .inventory-stable-list { margin-block-start:calc(12px + env(safe-area-inset-top)); } }
+/* Balance long Japanese headings instead of leaving a lone final character. */
+.inventory-case-card h3,.application-page-heading h1 { text-wrap:balance; }
