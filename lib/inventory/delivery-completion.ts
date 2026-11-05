@@ -21,6 +21,6 @@ export function completionRange(from: unknown, to: unknown) {
 /** Resolve against the edited server model: never trust browser dates or case details. */
 export function completionDelivery(rows: DeliveryRow[], key: string) {
   const row = rows.find(row => row.key === key);
-  if (!row) throw Error('納品予定が変更されています。一覧を開き直して確認してください。');
+  if (!row) throw Error('納品予定が変更されています。ページを再読み込みして確認してください。');
   return row;
 }

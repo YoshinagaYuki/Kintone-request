@@ -279,3 +279,6 @@
 - inventory_delivery_completionsはサーバー専用。APIでactive admin+担当事業を検証し、PUTは最新ガントモデルの実在納品予定から日付等を解決。匿名/認証クライアントのテーブル直接read/writeを拒否。既存admin_user_businessesはRLSで非公開のため、担当事業照合は既存方式と同じサーバークライアントを使用（既存権限テーブルは変更しない）。
 - migration20261105013929適用・履歴記録済み、RLS有効。完了stamp/解除/同キーupsert/サーバーロールread-write/stock clock不変をSQLトランザクションで検証し全テスト行rollback。実際の顧客配送完了データは未変更。
 - 在庫198テスト成功、build成功。シート同期・申請status・kintone・メールへの書き込みなし。公開後のPC/スマホ表示を確認する。
+- 公開37a6fa3で実画面確認: オールマイト12件、てずくーる14件ともAPI読込後チェックが操作可能。週切替で読込中は無効→取得後有効、未完了/完了件数表示。390pxで横はみ出しなし、チェック行44px。PC/スマホ画像はチャットoutputs/delivery-completion-1105/desktop.png,mobile.png。
+- 実案件を配送完了にするUI書込テストは実施せず、サーバーロールの保存/解除はSQL検証後rollbackし、完了記録0行を確認。匿名APIは403。直接テーブルread/writeを許可しないRLS/no-policyは意図した構成（security advisor INFOのみ、新規警告なし）。
+- 保存結果が不明な場合は断定せず一覧の開き直しを案内。予定そのものが変わった409の場合はページ再読込を案内（同じ古いpropsの一覧開閉では直らないため）。エラー案内文の調整後も198テスト/typecheck正常。

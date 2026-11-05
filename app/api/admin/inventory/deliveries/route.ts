@@ -49,7 +49,7 @@ export async function PUT(req: NextRequest) {
       completed: input.completed,
       updated_by: access.admin.auth_user_id,
     }, { onConflict: 'business,delivery_id' }).select('delivery_key,completed,completed_at').single();
-    if (result.error || !result.data) throw Error('配送完了を保存できませんでした。チェックは変更されていません。再度お試しください。');
+    if (result.error || !result.data) throw Error('配送完了の保存結果を確認できませんでした。一覧を開き直して確認してください。');
     return response({ completion: { key: result.data.delivery_key, completed: result.data.completed, completedAt: result.data.completed_at } });
   } catch (error) { return response({ error: (error as Error).message }, 500); }
 }
