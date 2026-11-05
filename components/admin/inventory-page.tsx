@@ -32,7 +32,7 @@ export async function InventoryPage({ searchParams,business='allmight' }: {busin
   return <main className="inventory-workspace mx-auto w-full max-w-[1900px] px-4 py-4 sm:px-6">
     <div className="inventory-page-heading mb-4 flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-2xl font-bold tracking-tight text-slate-900">{business==='tezukuru'?'てずくーる!!':'オールマイト'} 在庫管理表</h1>
     <p className="mt-1 text-xs text-slate-500">貸出・仮押さえ・返却予定を、ひとつのスケジュールで。</p>
-    </div><div className="inventory-toolbar"><div className="inventory-quick-actions"><InventoryDeliveries rows={deliveryRows(model.records,model.items)} today={today}/><InventoryHoldList model={model} today={today}/></div><InventoryPeriodForm start={start} period={period} end={validDate(params.end)?params.end:undefined} product={params.product} presets={Object.entries(PRESETS).map(([key,[label]])=>({key,label}))}/></div></div>
+    </div><div className="inventory-toolbar"><div className="inventory-quick-actions"><InventoryDeliveries business={business} rows={deliveryRows(model.records,model.items)} today={today}/><InventoryHoldList model={model} today={today}/></div><InventoryPeriodForm start={start} period={period} end={validDate(params.end)?params.end:undefined} product={params.product} presets={Object.entries(PRESETS).map(([key,[label]])=>({key,label}))}/></div></div>
     <InventoryWorkspace model={model} start={start} end={end} dates={dates} product={params.product} period={period} customEnd={validDate(params.end)?params.end:undefined}/>
 
   </main>;

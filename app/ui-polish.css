@@ -256,3 +256,8 @@
  .management-checkbox-target { min-width:44px; min-height:44px; }
  .management-checkbox-target input { width:20px; height:20px; }
 }
+
+.inventory-case-card[data-delivered="true"] { background:#f0faf5; border-color:#b7dfcb; }
+.inventory-case-card[data-delivered="true"] .inventory-delivery-progress { border-color:#d2eade; color:#287353; }
+.inventory-delivery-progress label:has(input:disabled) { cursor:wait; }
+.inventory-delivery-progress input:focus-visible { outline:2px solid #398264; outline-offset:3px; }
