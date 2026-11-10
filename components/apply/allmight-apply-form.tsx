@@ -28,6 +28,7 @@ const BILLING_MONTHS = Array.from({ length: 12 }, (_, i) => `${i + 1}月分`);
 /** 編集モードの初期値(申請詳細から parsed_data + 申請者情報を詰めて渡す) */
 export type AllmightInitialValues = {
   applicantName?: string;
+  skipApplicantContact?: boolean;
   applicantPhone?: string;
   applicantEmail?: string;
   companyStaffName?: string;
@@ -83,6 +84,9 @@ export function AllmightApplyForm({
   const pickupRequired=inventory?.pickupRequired??shippingRequirements?.pickupRequired??true;
   const router = useRouter();
   const iv = initialValues ?? {};
+  const [skipApplicantContact,setSkipApplicantContact]=useState(!!iv.skipApplicantContact);
+  const canSkipApplicantContact=!!inventory || (mode === "edit" && !!iv.skipApplicantContact);
+  const omitApplicantContact=canSkipApplicantContact && skipApplicantContact;
 
   // 入力者情報
   const fieldPrefix = useId();
@@ -184,9 +188,9 @@ export function AllmightApplyForm({
   function validate(): string[] {
     const errs: string[] = [];
     if (!applicantName.trim()) errs.push("入力者氏名を入力してください。");
-    if (!applicantPhone.trim()) errs.push("入力者電話番号を入力してください。");
+    if (!omitApplicantContact && !applicantPhone.trim()) errs.push("入力者電話番号を入力してください。");
     const emailRecipients=parseEmailRecipients(applicantEmail);
-    if(!emailRecipients.ok)errs.push(emailRecipients.error);
+    if(!omitApplicantContact && !emailRecipients.ok)errs.push(emailRecipients.error);
     if (!companyStaffName.trim()) errs.push("弊社担当者氏名を入力してください。");
 
     if (!agencyName.trim()) errs.push("取次店名を入力してください。");
@@ -281,8 +285,9 @@ export function AllmightApplyForm({
       raw_text: rawText,
       structured: true,
       applicant_name: applicantName.trim(),
-      applicant_phone: applicantPhone.trim(),
-      applicant_email: applicantEmail.trim(),
+      skip_applicant_contact: omitApplicantContact,
+      applicant_phone: omitApplicantContact ? "" : applicantPhone.trim(),
+      applicant_email: omitApplicantContact ? "" : applicantEmail.trim(),
       company_staff_name: companyStaffName.trim(),
       rental_status: null,
       rental_plan_id: null,
@@ -388,7 +393,9 @@ export function AllmightApplyForm({
             <label htmlFor={fieldId("applicantName")} className={labelClass}>氏名 {req}</label>
             <input type="text" id={fieldId("applicantName")} value={applicantName} onChange={(e) => setApplicantName(e.target.value)} maxLength={100} autoComplete="name" placeholder="山田 太郎" className={inputClass} />
           </div>
-          <div>
+          {canSkipApplicantContact && <label className="flex min-h-11 items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm"><input type="checkbox" checked={omitApplicantContact} onChange={e=>setSkipApplicantContact(e.target.checked)} className="mt-0.5 h-5 !min-h-0 w-5 shrink-0"/><span>社内で本登録するため、電話番号・メールアドレスの入力を省略する<span className="mt-1 block text-xs text-slate-600">申請・承認完了メールは送信されません。配送先の連絡先・伝票番号連絡先は別途入力してください。</span></span></label>}
+              {!omitApplicantContact && <>
+              <div>
             <label htmlFor={fieldId("applicantPhone")} className={labelClass}>電話番号 {req}</label>
             <input type="tel" id={fieldId("applicantPhone")} value={applicantPhone} onChange={(e) => setApplicantPhone(e.target.value)} maxLength={30} inputMode="tel" placeholder="090-1234-5678" className={inputClass} />
           </div>
@@ -397,7 +404,8 @@ export function AllmightApplyForm({
             <textarea rows={2} aria-label="メールアドレス" id={fieldId("applicantEmail")} value={applicantEmail} onChange={(e) => setApplicantEmail(e.target.value)} maxLength={MAX_RECIPIENT_INPUT} inputMode="email" placeholder="example@example.com, another@example.com" className={inputClass} />
             <p className="mt-1 text-xs text-gray-500">カンマまたは改行で複数入力できます（20件まで）。申請完了・承認完了メールを入力した全員へお送りします。<br/>配送伝票（伝票番号）に関するメールの送付先は、下の「伝票番号連絡先」に入力してください。</p>
           </div>
-          <div>
+          </>}
+              <div>
             <label htmlFor={fieldId("companyStaffName")} className={labelClass}>弊社担当者氏名 {req}</label>
             {inventory?<select aria-label="弊社担当者氏名" id={fieldId("companyStaffName")} value={companyStaffName} onChange={e=>setCompanyStaffName(e.target.value)} className={inputClass}><option value="">正式名称を選択</option>{inventory.staff.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</select>:<input type="text" id={fieldId("companyStaffName")} value={companyStaffName} onChange={(e) => setCompanyStaffName(e.target.value)} maxLength={100} placeholder="例：吉永、田中、山田太郎" className={inputClass} />}
             <p className="mt-1 text-xs text-gray-500">弊社の担当者名をご入力ください(社内で正式名称に確認・修正します)。</p>

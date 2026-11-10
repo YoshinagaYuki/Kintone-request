@@ -74,6 +74,7 @@ export type ProductItem = {
 /** 編集モードの初期値(申請詳細から parsed_data + 申請者情報を詰めて渡す) */
 export type TezukuruInitialValues = {
   applicantName?: string;
+  skipApplicantContact?: boolean;
   applicantPhone?: string;
   applicantEmail?: string;
   companyStaffName?: string;
@@ -135,6 +136,9 @@ export function ApplyForm({
 }) {
   const router = useRouter();
   const iv = initialValues ?? {};
+  const [skipApplicantContact,setSkipApplicantContact]=useState(!!iv.skipApplicantContact);
+  const canSkipApplicantContact=!!inventory || (mode === "edit" && !!iv.skipApplicantContact);
+  const omitApplicantContact=canSkipApplicantContact && skipApplicantContact;
   const[rentalItems,setRentalItems]=useState<RentalDraft[]>(iv.rentalItems??[]);
   const fieldPrefix = useId();
   const fieldId = (name: string) => `${fieldPrefix}-${name}`;
@@ -229,9 +233,9 @@ export function ApplyForm({
 
     // 入力者情報
     if (!applicantName.trim()) errs.push("入力者氏名を入力してください。");
-    if (!applicantPhone.trim()) errs.push("入力者電話番号を入力してください。");
+    if (!omitApplicantContact && !applicantPhone.trim()) errs.push("入力者電話番号を入力してください。");
     const emailRecipients=parseEmailRecipients(applicantEmail);
-    if(!emailRecipients.ok)errs.push(emailRecipients.error);
+    if(!omitApplicantContact && !emailRecipients.ok)errs.push(emailRecipients.error);
     if (!companyStaffName.trim()) errs.push("弊社担当者氏名を入力してください。");
 
     // レンタル
@@ -352,8 +356,9 @@ export function ApplyForm({
       raw_text: rawText,
       structured: true,
       applicant_name: applicantName.trim(),
-      applicant_phone: applicantPhone.trim(),
-      applicant_email: applicantEmail.trim(),
+      skip_applicant_contact: omitApplicantContact,
+      applicant_phone: omitApplicantContact ? "" : applicantPhone.trim(),
+      applicant_email: omitApplicantContact ? "" : applicantEmail.trim(),
       company_staff_name: companyStaffName.trim(),
       rental_status: usesRentalPlan ? rentalStatus : null,
       rental_plan_id: rentalStatus === "new_rental" ? rentalPlanId : null,
@@ -531,6 +536,8 @@ export function ApplyForm({
                   className={inputClass}
                 />
               </div>
+              {canSkipApplicantContact && <label className="flex min-h-11 items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm"><input type="checkbox" checked={omitApplicantContact} onChange={e=>setSkipApplicantContact(e.target.checked)} className="mt-0.5 h-5 !min-h-0 w-5 shrink-0"/><span>社内で本登録するため、電話番号・メールアドレスの入力を省略する<span className="mt-1 block text-xs text-slate-600">申請・承認完了メールは送信されません。配送先の連絡先・伝票番号連絡先は別途入力してください。</span></span></label>}
+              {!omitApplicantContact && <>
               <div>
                 <label htmlFor={fieldId("applicantPhone")} className={labelClass}>電話番号 {req}</label>
                 <input
@@ -561,6 +568,7 @@ export function ApplyForm({
                   カンマまたは改行で複数入力できます（20件まで）。申請完了・承認完了メールを入力した全員へお送りします。<br/>配送伝票（伝票番号）に関するメールの送付先は、下の「伝票番号連絡先」に入力してください。
                 </p>
               </div>
+              </>}
               <div>
                 <label htmlFor={fieldId("companyStaffName")} className={labelClass}>弊社担当者氏名 {req}</label>
                 <input

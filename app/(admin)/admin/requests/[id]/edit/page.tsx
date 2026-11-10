@@ -131,6 +131,7 @@ export default async function RequestEditPage({
     const L = ALLMIGHT_FMT_LABELS;
     const initialValues: AllmightInitialValues = {
       applicantName: data.applicant_name ?? "",
+      skipApplicantContact: (pd as Record<string, unknown>)._inventory_skip_applicant_contact === true,
       applicantPhone: data.applicant_phone ?? "",
       applicantEmail: data.applicant_email ?? "",
       companyStaffName: data.company_staff_name_input ?? "",
@@ -228,7 +229,8 @@ export default async function RequestEditPage({
   const initialValues: TezukuruInitialValues = {
     rentalItems:Array.isArray(pd._inventory_rental_items)?existingKits:legacyKits,
     applicantName: data.applicant_name ?? "",
-    applicantPhone: data.applicant_phone ?? "",
+    skipApplicantContact: (pd as Record<string, unknown>)._inventory_skip_applicant_contact === true,
+      applicantPhone: data.applicant_phone ?? "",
     applicantEmail: data.applicant_email ?? "",
     companyStaffName: data.company_staff_name_input ?? "",
     rentalStatus: (data.rental_status as RentalStatus | null) ?? "",

@@ -49,6 +49,7 @@ async function PATCHHandler(
     rental_items?:unknown;
     structured?: boolean;
     applicant_name?: string;
+    skip_applicant_contact?: boolean;
     applicant_phone?: string;
     applicant_email?: string;
     company_staff_name?: string;
@@ -131,9 +132,10 @@ async function PATCHHandler(
   const errors: string[] = [];
   const raw_text = typeof body.raw_text === "string" ? body.raw_text : "";
   const applicant_name = (body.applicant_name ?? "").toString().trim();
-  const applicant_phone = (body.applicant_phone ?? "").toString().trim();
+  const omitApplicantContact = request.parsed_data?._inventory_skip_applicant_contact === true && body.skip_applicant_contact === true;
+  const applicant_phone = omitApplicantContact ? "" : (body.applicant_phone ?? "").toString().trim();
   const emailRecipients=parseEmailRecipients((body.applicant_email??" ").toString());
-  const applicant_email=emailRecipients.ok?emailRecipients.value:(body.applicant_email??"").toString().trim();
+  const applicant_email=omitApplicantContact?"":emailRecipients.ok?emailRecipients.value:(body.applicant_email??"").toString().trim();
   const company_staff_name = (body.company_staff_name ?? "").toString().trim();
   const rental_status = body.rental_status ?? null;
   const rental_plan_id = body.rental_plan_id ?? null;
@@ -142,9 +144,9 @@ async function PATCHHandler(
   if (!raw_text.trim()) errors.push("申請内容を入力してください。");
   if (!applicant_name) errors.push("入力者氏名を入力してください。");
   else if (applicant_name.length > MAX_NAME) errors.push("氏名が長すぎます。");
-  if (!applicant_phone) errors.push("入力者電話番号を入力してください。");
+  if (!omitApplicantContact && !applicant_phone) errors.push("入力者電話番号を入力してください。");
   else if (applicant_phone.length > MAX_PHONE) errors.push("電話番号が長すぎます。");
-  if(!emailRecipients.ok)errors.push(emailRecipients.error);
+  if(!omitApplicantContact && !emailRecipients.ok)errors.push(emailRecipients.error);
   if (!company_staff_name) errors.push("弊社担当者氏名を入力してください。");
   else if (company_staff_name.length > MAX_NAME) errors.push("弊社担当者氏名が長すぎます。");
   if (customer_requests.length > MAX_CUSTOMER_REQUESTS) errors.push("要望・連絡事項が長すぎます。");

@@ -1,3 +1,4 @@
+import{confirmationApplicant}from'@/lib/inventory/confirmation-applicant';
 import{assertTransportReady,shippingPlan}from'@/lib/inventory/shipping-policy';
 import{withShippingRecord,transportFromParsed}from'@/lib/inventory/shipping-record';
 import{rentalMetadata}from'@/lib/inventory/rental-items';
@@ -40,14 +41,13 @@ async function handler(req:NextRequest){const a=await inventoryAccess();if('erro
  const model=await loadInventoryModel(a.db,'','all'),p=confirmationSource(model,body.key),b=p.source.booking,tezu=model.items.find(i=>i.id===p.source.itemId)?.inventory_role==='rental_kit',f=await formConfig(db,a.admin.id,tezu);
  if(body.baseline!==p.baseline)return NextResponse.json({code:'target_changed',latestBaseline:p.baseline,latest:p.records.map(r=>({name:model.items.find(i=>i.id===r.itemId)!.name,number:r.booking.unitNumber??null,store:r.booking.store,start:r.booking.start,end:r.booking.end})),deliveryRequired:b.deliveryRequired!==false,pickupRequired:b.pickupRequired!==false,error:'仮押さえの内容が変更されています。最新内容を確認してから保存してください。入力は保持しています。'},{status:409});
  const input=body.payload,staff=model.staff.find(s=>s.name===input.company_staff_name);if(!staff)throw Error('担当者マスターの正式名称を選択してください');
- for(const [key,max]of[['applicant_name',100],['applicant_phone',30],['applicant_email',254]]as const)if(typeof input[key]!=='string'||!input[key].trim()||input[key].length>max)throw Error('入力者の氏名・電話番号・メールを入力してください');
- if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.applicant_email))throw Error('メールアドレスを確認してください');
+ Object.assign(input,confirmationApplicant(input));
  if(input.customer_requests!=null&&(typeof input.customer_requests!=='string'||input.customer_requests.length>2000))throw Error('要望・連絡事項は2000文字までです');
  const deliveryRequired=b.deliveryRequired!==false,pickupRequired=b.pickupRequired!==false;
  const shipping=[...(!deliveryRequired?[L.deliveryDate,L.deliveryPostal,L.deliveryAddress,L.deliveryReceiver,L.deliveryContact]:[]),...(!pickupRequired?[L.pickupDate,L.pickupPostal,L.pickupAddress,L.pickupHandover,L.pickupContact]:[])];
  let rawText=input.raw_text;
  if(tezu){if(!['paid','free'].includes(input.billing_type))throw Error('料金区分を選択してください');const plan=await db.from('rental_plans').select('id,name').eq('id',input.rental_plan_id).eq('is_active',true).maybeSingle();if(!plan.data)throw Error('レンタルプランを選択してください');rawText=`レンタルプラン：${plan.data.name}\n${rawText}`;input.rental_status='new_rental';}
- const parsed=parseFmt(rawText,{...f.parser_config,required_labels:(f.parser_config?.required_labels??[]).filter((v:string)=>!shipping.includes(v as any))});if(!parsed.ok)throw Error(parsed.errors.join(' '));const data:Record<string,unknown>={...parsed.data};
+ const parsed=parseFmt(rawText,{...f.parser_config,required_labels:(f.parser_config?.required_labels??[]).filter((v:string)=>!shipping.includes(v as any))});if(!parsed.ok)throw Error(parsed.errors.join(' '));const data:Record<string,unknown>={...parsed.data,_inventory_skip_applicant_contact:input.skip_applicant_contact===true};
  if(tezu){const min=await getMinimumOrderQuantity(db),products=await db.from('item_name_master').select('name,excluded_slots').eq('category','tezukuru').is('inventory_role',null).eq('is_active',true);let count=0;for(let i=1;i<=10;i++){const name=data[`コンテンツ${i}`],qty=data[`数量${i}`];if(!name&&!qty)continue;const item=products.data?.find(p=>p.name===name);if(!item||!/^\d+$/.test(String(qty))||Number(qty)<min||(item.excluded_slots??[]).includes(i))throw Error('教材の商品・数量・入力位置を確認してください');count++;}if(!count)throw Error('教材を入力してください');}
 
  for(const key of[L.agencyName,tezu?L.eventBoothName:L.eventBooth,L.billingMonth,...(deliveryRequired?[L.deliveryDate,L.deliveryPostal,L.deliveryAddress,L.deliveryReceiver,L.deliveryContact]:[]),...(pickupRequired?[L.pickupDate,L.pickupPostal,L.pickupAddress,L.pickupHandover,L.pickupContact]:[])])if(typeof data[key]!=='string'||!String(data[key]).trim())throw Error(`${key}を入力してください`);
