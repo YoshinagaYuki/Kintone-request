@@ -1,3 +1,5 @@
+import {eventShippingDates} from '@/lib/tezukuru-application';
+import {assertKitProducts} from '@/lib/tezukuru-application-server';
 import{parseEmailRecipients}from'@/lib/email-recipients';
 import{confirmationShippingLabels}from'@/lib/inventory/confirmation-shipping';
 import{refreshTransportAddresses}from'@/lib/inventory/shipping-record';
@@ -47,6 +49,8 @@ async function PATCHHandler(
   let body: {
     raw_text?: string;
     rental_items?:unknown;
+    event_start?:unknown;
+    event_end?:unknown;
     structured?: boolean;
     applicant_name?: string;
     skip_applicant_contact?: boolean;
@@ -199,6 +203,7 @@ async function PATCHHandler(
 
   const omittedShipping=confirmationShippingLabels({...request.parsed_data,...(copy.data?{_inventory_copy:true}:{})});
   effectiveConfig.required_labels=(effectiveConfig.required_labels??[]).filter(label=>!omittedShipping.includes(label as any));
+  if(isTezukuru&&!copy.data&&(body.event_start!==undefined||body.event_end!==undefined)){try{const dates=eventShippingDates(body.event_start,body.event_end);effectiveRawText=rewriteInventoryFmt(effectiveRawText,{'配送日付':dates.delivery,'集荷日付':dates.pickup});}catch(e){return NextResponse.json({errors:[e instanceof Error?e.message:'イベント実施日を確認してください']},{status:400});}}
   const result = parseFmt(effectiveRawText, effectiveConfig);
   if (!result.ok) {
     return NextResponse.json({ errors: result.errors }, { status: 400 });
@@ -245,7 +250,7 @@ async function PATCHHandler(
     return NextResponse.json({ errors: slotErrors }, { status: 400 });
   }
 
-  const before=request.parsed_data??{};const internal=Object.fromEntries(Object.entries(before).filter(([key])=>key.startsWith('_inventory_')));Object.assign(result.data,internal);if(isTezukuru){if(body.rental_items!==undefined){const kits=await admin.from('item_name_master').select('id,name,is_active').eq('category','tezukuru').eq('inventory_role','rental_kit').eq('is_active',true);if(kits.error)return NextResponse.json({errors:['レンタル品マスタを確認できません']},{status:503});try{const meta=rentalMetadata(validateRentalItems(body.rental_items,kits.data??[],rental_status==='already_renting'));Object.assign(result.data,meta);effectiveRawText=rewriteInventoryFmt(effectiveRawText,{'レンタル品一覧':meta['レンタル品一覧']});}catch(e){return NextResponse.json({errors:[e instanceof Error?e.message:'レンタル品を確認してください']},{status:400});}}for(const [date,key,offset]of[['配送日付','_inventory_usage_start',1],['集荷日付','_inventory_usage_end',-1]]as const)if((result.data[date]!==before[date]||!validDate((result.data as any)[key]))&&validDate(result.data[date]))Object.assign(result.data,{[key]:addDays(result.data[date],offset)});}
+  const before=request.parsed_data??{};const internal=Object.fromEntries(Object.entries(before).filter(([key])=>key.startsWith('_inventory_')));Object.assign(result.data,internal);if(isTezukuru){if(body.rental_items!==undefined){const kits=await admin.from('item_name_master').select('id,name,is_active').eq('category','tezukuru').eq('inventory_role','rental_kit').eq('is_active',true);if(kits.error)return NextResponse.json({errors:['レンタル品マスタを確認できません']},{status:503});try{const meta=rentalMetadata(validateRentalItems(body.rental_items,kits.data??[],false));await assertKitProducts(admin,result.data,meta._inventory_rental_items.map(l=>l.item_id));Object.assign(result.data,meta);effectiveRawText=rewriteInventoryFmt(effectiveRawText,{'レンタル品一覧':meta['レンタル品一覧']});}catch(e){return NextResponse.json({errors:[e instanceof Error?e.message:'レンタル品を確認してください']},{status:400});}}for(const [date,key,offset]of[['配送日付','_inventory_usage_start',1],['集荷日付','_inventory_usage_end',-1]]as const)if((result.data[date]!==before[date]||!validDate((result.data as any)[key]))&&validDate(result.data[date]))Object.assign(result.data,{[key]:addDays(result.data[date],offset)});}
 
   const transport=refreshTransportAddresses(before,result.data);if(transport)Object.assign(result.data,{_inventory_transport:transport});
   const newParsed = result.data;

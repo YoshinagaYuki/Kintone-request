@@ -1,3 +1,5 @@
+import {eventShippingDates} from '@/lib/tezukuru-application';
+import {assertKitProducts} from '@/lib/tezukuru-application-server';
 import{parseEmailRecipients}from'@/lib/email-recipients';
 import{validateRentalItems,rentalMetadata}from'@/lib/inventory/rental-items';
 import{rewriteInventoryFmt}from'@/lib/inventory/request-change';
@@ -51,6 +53,8 @@ async function POSTHandler(req: NextRequest) {
     form_type_id?: string;
     raw_text?: string;
     rental_items?:unknown;
+    event_start?:unknown;
+    event_end?:unknown;
     structured?: boolean;
     applicant_name?: string;
     applicant_phone?: string;
@@ -192,6 +196,7 @@ async function POSTHandler(req: NextRequest) {
   }
 
   // FMT形式チェック + パース
+  if(isTezukuru&&body.structured===true){try{const dates=eventShippingDates(body.event_start,body.event_end);effectiveRawText=rewriteInventoryFmt(effectiveRawText,{'配送日付':dates.delivery,'集荷日付':dates.pickup});}catch(e){return NextResponse.json({errors:[e instanceof Error?e.message:'イベント実施日を確認してください']},{status:400});}}
   const result = parseFmt(effectiveRawText, effectiveConfig);
   if (!result.ok) {
     return NextResponse.json({ errors: result.errors }, { status: 400 });
@@ -252,7 +257,7 @@ async function POSTHandler(req: NextRequest) {
     return NextResponse.json({ errors: slotErrors }, { status: 400 });
   }
 
-  if(isTezukuru&&body.rental_items!==undefined){const kits=await supabase.from('item_name_master').select('id,name,is_active').eq('category','tezukuru').eq('inventory_role','rental_kit').eq('is_active',true);if(kits.error)return NextResponse.json({errors:['レンタル品マスタを確認できません']},{status:503});try{const meta=rentalMetadata(validateRentalItems(body.rental_items,kits.data??[],rental_status==='already_renting'));if(meta._inventory_kit_names.length){const delivery=result.data['配送日付'],pickup=result.data['集荷日付'];if(!validDate(delivery)||!validDate(pickup)||addDays(delivery,1)>addDays(pickup,-1))throw Error('納品日と集荷日の間に利用日が1日以上ある日程を指定してください');Object.assign(result.data,{_inventory_usage_start:addDays(delivery,1),_inventory_usage_end:addDays(pickup,-1)});}Object.assign(result.data,meta);effectiveRawText=rewriteInventoryFmt(effectiveRawText,{'レンタル品一覧':meta['レンタル品一覧']});}catch(e){return NextResponse.json({errors:[e instanceof Error?e.message:'レンタル品を確認してください']},{status:400});}}
+  if(isTezukuru&&body.rental_items!==undefined){const kits=await supabase.from('item_name_master').select('id,name,is_active').eq('category','tezukuru').eq('inventory_role','rental_kit').eq('is_active',true);if(kits.error)return NextResponse.json({errors:['レンタル品マスタを確認できません']},{status:503});try{const meta=rentalMetadata(validateRentalItems(body.rental_items,kits.data??[],false));await assertKitProducts(supabase,result.data,meta._inventory_rental_items.map(l=>l.item_id));if(meta._inventory_kit_names.length){const delivery=result.data['配送日付'],pickup=result.data['集荷日付'];if(!validDate(delivery)||!validDate(pickup)||addDays(delivery,1)>addDays(pickup,-1))throw Error('納品日と集荷日の間に利用日が1日以上ある日程を指定してください');Object.assign(result.data,{_inventory_usage_start:addDays(delivery,1),_inventory_usage_end:addDays(pickup,-1)});}Object.assign(result.data,meta);effectiveRawText=rewriteInventoryFmt(effectiveRawText,{'レンタル品一覧':meta['レンタル品一覧']});}catch(e){return NextResponse.json({errors:[e instanceof Error?e.message:'レンタル品を確認してください']},{status:400});}}
 
   const { data: request, error: insertError } = await supabase
     .from("requests")

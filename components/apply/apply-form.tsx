@@ -1,5 +1,7 @@
 "use client";
 
+import {eventShippingDates,kitAllowsProduct,type KitProductRule} from '@/lib/tezukuru-application';
+import {addDays,validDate} from '@/lib/inventory/gantt';
 import { FormErrorSummary } from "./form-error-summary";
 
 import{parseEmailRecipients,MAX_RECIPIENT_INPUT}from'@/lib/email-recipients';
@@ -9,8 +11,6 @@ import{validateRentalItems}from'@/lib/inventory/rental-items';
 import { useState, useId } from "react";
 import { useRouter } from "next/navigation";
 import {
-  RENTAL_STATUSES,
-  RENTAL_STATUS_LABELS,
   type RentalPlan,
   type RentalStatus,
 } from "@/types/request";
@@ -66,6 +66,7 @@ const emptyProduct = (): ProductRow => ({ name: "", quantity: "" });
 
 /** 商品マスターの1件(スロット固有の除外情報つき) */
 export type ProductItem = {
+  id?:string;
   name: string;
   /** このスロット番号(1〜10)では選択不可 */
   excludedSlots: number[];
@@ -131,7 +132,7 @@ export function ApplyForm({
   initialValues?: TezukuruInitialValues;
   /** 編集開始時の updated_at(楽観ロック用。mode="edit" で渡す) */
   baseUpdatedAt?: string;
-  rentalItemsOptions?:{id:string;name:string}[];
+  rentalItemsOptions?:(KitProductRule&{name:string})[];
   inventory?:{deliveryRequired:boolean;pickupRequired:boolean;onBack:()=>void;onSubmit:(payload:Record<string,unknown>)=>Promise<void>};
 }) {
   const router = useRouter();
@@ -170,14 +171,14 @@ export function ApplyForm({
   );
 
   // 配送
-  const [deliveryDate, setDeliveryDate] = useState(iv.deliveryDate ?? "");
+  const [manualDeliveryDate, setDeliveryDate] = useState(iv.deliveryDate ?? "");
   const [deliveryPostal, setDeliveryPostal] = useState(iv.deliveryPostal ?? "");
   const [deliveryAddress, setDeliveryAddress] = useState(iv.deliveryAddress ?? "");
   const [deliveryReceiver, setDeliveryReceiver] = useState(iv.deliveryReceiver ?? "");
   const [deliveryContact, setDeliveryContact] = useState(iv.deliveryContact ?? "");
 
   // 集荷
-  const [pickupDate, setPickupDate] = useState(iv.pickupDate ?? "");
+  const [manualPickupDate, setPickupDate] = useState(iv.pickupDate ?? "");
   const [pickupPostal, setPickupPostal] = useState(iv.pickupPostal ?? "");
   const [pickupAddress, setPickupAddress] = useState(iv.pickupAddress ?? "");
   const [pickupHandover, setPickupHandover] = useState(iv.pickupHandover ?? "");
@@ -201,9 +202,15 @@ export function ApplyForm({
 
   const selected = formTypes.find((f) => f.id === selectedId) ?? null;
   const usesRentalPlan = Boolean(selected?.has_rental_plan);
-  const showPlanSelect = usesRentalPlan && rentalStatus === "new_rental";
   // てずくーる限定項目(SNS宣伝)の表示判定。表示名ではなく is_tezukuru(App49)で判定
   const isTezukuru = Boolean(selected?.is_tezukuru);
+  const lockEventDates=isTezukuru&&!inventory&&(mode!=='edit'||!!iv.deliveryDate&&!!iv.pickupDate);
+  const [eventStart,setEventStart]=useState(iv.deliveryDate&&validDate(iv.deliveryDate)?addDays(iv.deliveryDate,1):'');
+  const [eventEnd,setEventEnd]=useState(iv.pickupDate&&validDate(iv.pickupDate)?addDays(iv.pickupDate,-1):'');
+  const deliveryDate=lockEventDates?(validDate(eventStart)?addDays(eventStart,-1):''):manualDeliveryDate;
+  const pickupDate=lockEventDates?(validDate(eventEnd)?addDays(eventEnd,1):''):manualPickupDate;
+  const effectiveRentalStatus=isTezukuru?(mode==='edit'&&rentalStatus?rentalStatus:'already_renting'):rentalStatus;
+
 
   // 集荷の実効値(「配送情報と同じ」時は配送の値を使用。個別入力値 pickup* は保持し、
   // チェック解除で元の入力が消えない)。日付は対象外(独立入力)。
@@ -214,7 +221,7 @@ export function ApplyForm({
 
   /** スロット番号(行番号=idx+1)で選択可能な商品名(除外スロットを反映) */
   function slotOptions(slot: number): string[] {
-    return productItems.filter((it) => !it.excludedSlots.includes(slot)).map((it) => it.name);
+    return productItems.filter((it) => !it.excludedSlots.includes(slot)&&(!rentalItemsOptions||!!it.id&&kitAllowsProduct(it.id,rentalItemsOptions,rentalItems.map(l=>l.item_id)))).map((it) => it.name);
   }
 
   function updateProduct(i: number, patch: Partial<ProductRow>) {
@@ -240,18 +247,19 @@ export function ApplyForm({
 
     // レンタル
     if (usesRentalPlan) {
-      if (!rentalStatus) errs.push("レンタル状況を選択してください。");
-      if (rentalStatus === "new_rental" && !rentalPlanId)
+      if (!isTezukuru && !rentalStatus) errs.push("レンタル状況を選択してください。");
+      if (effectiveRentalStatus === "new_rental" && !rentalPlanId)
         errs.push("レンタルプランを選択してください。");
     }
 
     // Rental validation belongs with field validation, before the network step.
     // Otherwise missing kits are caught as a misleading communication failure.
-    if(rentalItemsOptions){try{validateRentalItems(rentalItems,rentalItemsOptions,rentalStatus==='already_renting');}catch(error){errs.push(error instanceof Error?error.message:'レンタル品と台数を確認してください');}}
+    if(rentalItemsOptions){try{validateRentalItems(rentalItems,rentalItemsOptions,false);}catch(error){errs.push(error instanceof Error?error.message:'レンタル品と台数を確認してください');}}
 
     // 基本情報
-    if (!agencyName.trim()) errs.push("取次店名を入力してください。");
-    if (!boothName.trim()) errs.push("イベントブース名を入力してください。");
+    if(lockEventDates){try{eventShippingDates(eventStart,eventEnd);}catch(e){errs.push(e instanceof Error?e.message:'イベント実施日を確認してください');}}
+    if (!agencyName.trim()) errs.push("企業名を入力してください。");
+    if (!boothName.trim()) errs.push("送付先名を入力してください。");
     if (!billingMonth.trim()) errs.push("「◯月分として請求」を選択してください。");
 
     // 商品・数量(セット必須・整数・最小数量)
@@ -277,6 +285,7 @@ export function ApplyForm({
         errs.push(`商品${n}の数量は${minimumOrderQuantity}以上で入力してください。`);
         return;
       }
+      if(!slotOptions(n).includes(name))errs.push(`商品${n}は選択したレンタル品の候補から選び直してください。`);
       hasProduct = true;
     });
     if (!hasProduct) errs.push("商品を1つ以上入力してください。");
@@ -355,13 +364,14 @@ export function ApplyForm({
       form_type_id: selected.id,
       raw_text: rawText,
       structured: true,
+      ...(lockEventDates?{event_start:eventStart,event_end:eventEnd}:{}),
       applicant_name: applicantName.trim(),
       skip_applicant_contact: omitApplicantContact,
       applicant_phone: omitApplicantContact ? "" : applicantPhone.trim(),
       applicant_email: omitApplicantContact ? "" : applicantEmail.trim(),
       company_staff_name: companyStaffName.trim(),
-      rental_status: usesRentalPlan ? rentalStatus : null,
-      rental_plan_id: rentalStatus === "new_rental" ? rentalPlanId : null,
+      rental_status: usesRentalPlan ? effectiveRentalStatus : null,
+      rental_plan_id: effectiveRentalStatus === "new_rental" ? rentalPlanId : null,
       customer_requests: customerRequests.trim() || null,
       sns_promotion_requested: snsPromotion === "" ? null : snsPromotion === "yes",
       expected_updated_at: baseUpdatedAt ?? null,
@@ -586,71 +596,14 @@ export function ApplyForm({
             </div>
           </section>
 
-          {/* レンタル状況(レンタルプランを使う種別のみ) */}
-          {usesRentalPlan && (
-            <fieldset>
-              <legend className="text-sm font-medium text-gray-700">
-                てずくーるのレンタル状況を選択してください {req}
-              </legend>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {RENTAL_STATUSES.filter(s=>!inventory||s==="new_rental").map((s) => (
-                  <label
-                    key={s}
-                    className={`flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors ${
-                      rentalStatus === s
-                        ? "border-blue-600 bg-blue-50 text-blue-800"
-                        : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="rental_status"
-                      value={s}
-                      checked={rentalStatus === s}
-                      onChange={() => {
-                        setRentalStatus(s);
-                        setRentalPlanId("");
-                        setErrors([]);
-                      }}
-                      className="h-4 w-4 accent-blue-600"
-                    />
-                    {RENTAL_STATUS_LABELS[s]}
-                  </label>
-                ))}
-              </div>
-              {showPlanSelect && (
-                <div className="mt-3">
-                  <label htmlFor={fieldId("rentalPlanId")} className={labelClass}>レンタルプラン {req}</label>
-                  <select
-                    id={fieldId("rentalPlanId")} value={rentalPlanId}
-                    onChange={(e) => setRentalPlanId(e.target.value)}
-                    className={inputClass}
-                  >
-                    <option value="">選択してください</option>
-                    {rentalPlans.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                        {p.description ? `（${p.description}）` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              {rentalStatus === "already_renting" && (
-                <p className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
-                  レンタルプランは社内確認後に設定されます。このまま申請いただけます。
-                </p>
-              )}
-            </fieldset>
-          )}
-
           {rentalItemsOptions&&<RentalItemFields options={rentalItemsOptions} value={rentalItems} onChange={setRentalItems}/>}
+          {lockEventDates&&<section className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4"><h2 className="font-semibold text-slate-800">イベント実施日</h2><div className="mt-3 grid grid-cols-2 gap-3"><label className={labelClass}>開始日 {req}<input aria-label="イベント開始日" type="date" required min="2000-01-02" max="2100-12-30" value={eventStart} onChange={e=>{const d=e.target.value;setEventStart(d);if(!eventEnd||eventEnd<d)setEventEnd(d);}} className={inputClass}/></label><label className={labelClass}>終了日 {req}<input aria-label="イベント終了日" type="date" required min={eventStart||'2000-01-02'} max="2100-12-30" value={eventEnd} onChange={e=>setEventEnd(e.target.value)} className={inputClass}/></label></div><p className="mt-2 text-xs leading-6 text-slate-500">配送日は開始日の前日、集荷日は終了日の翌日に自動設定します。</p></section>}
           {/* 基本情報 */}
           <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-gray-800">基本情報</h2>
             <div className="mt-3 space-y-3">
               <div>
-                <label htmlFor={fieldId("agencyName")} className={labelClass}>取次店名 {req}</label>
+                <label htmlFor={fieldId("agencyName")} className={labelClass}>企業名 {req}</label>
                 <input
                   type="text"
                   id={fieldId("agencyName")} value={agencyName}
@@ -661,7 +614,7 @@ export function ApplyForm({
                 />
               </div>
               <div>
-                <label htmlFor={fieldId("boothName")} className={labelClass}>イベントブース名 {req}</label>
+                <label htmlFor={fieldId("boothName")} className={labelClass}>送付先名 {req}</label>
                 <input
                   type="text"
                   id={fieldId("boothName")} value={boothName}
@@ -727,6 +680,7 @@ export function ApplyForm({
                     className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white p-2.5 text-sm focus:border-blue-500 focus:outline-none"
                   >
                     <option value="">商品を選択</option>
+                    {p.name&&!slotOptions(i+1).includes(p.name)&&<option value={p.name} disabled>{p.name}（レンタル品の候補から選び直してください）</option>}
                     {slotOptions(i + 1).map((name) => (
                       <option key={name} value={name}>
                         {name}
@@ -773,7 +727,7 @@ export function ApplyForm({
             <div className="mt-3 space-y-3">
               <div>
                 <label htmlFor={fieldId("deliveryDate")} className={labelClass}>配送日付 {req}</label>
-                <input type="date" id={fieldId("deliveryDate")} value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} className={inputClass} />
+                <input type="date" id={fieldId("deliveryDate")} readOnly={lockEventDates} aria-readonly={lockEventDates} value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} className={inputClass} />
               </div>
               <div>
                 <label htmlFor={fieldId("deliveryPostal")} className={labelClass}>郵便番号 {req}</label>
@@ -812,7 +766,7 @@ export function ApplyForm({
               <div>
                 <label htmlFor={fieldId("pickupDate")} className={labelClass}>集荷日付 {req}</label>
                 {/* 集荷日付は「配送情報と同じ」の対象外(独立入力) */}
-                <input type="date" id={fieldId("pickupDate")} value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} className={inputClass} />
+                <input type="date" id={fieldId("pickupDate")} readOnly={lockEventDates} aria-readonly={lockEventDates} value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} className={inputClass} />
               </div>
               <div>
                 <label htmlFor={fieldId("effPickupPostal")} className={labelClass}>郵便番号 {req}</label>

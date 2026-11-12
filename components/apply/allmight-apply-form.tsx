@@ -193,7 +193,7 @@ export function AllmightApplyForm({
     if(!omitApplicantContact && !emailRecipients.ok)errs.push(emailRecipients.error);
     if (!companyStaffName.trim()) errs.push("弊社担当者氏名を入力してください。");
 
-    if (!agencyName.trim()) errs.push("取次店名を入力してください。");
+    if (!agencyName.trim()) errs.push("企業名を入力してください。");
     if (!eventBooth.trim()) errs.push("イベントブースを入力してください。");
     if (!billingMonth.trim()) errs.push("「◯月分として請求」を選択してください。");
 
@@ -418,7 +418,7 @@ export function AllmightApplyForm({
         <h2 className="text-sm font-semibold text-gray-800">基本情報</h2>
         <div className="mt-3 space-y-3">
           <div>
-            <label htmlFor={fieldId("agencyName")} className={labelClass}>取次店名 {req}</label>
+            <label htmlFor={fieldId("agencyName")} className={labelClass}>企業名 {req}</label>
             <input type="text" id={fieldId("agencyName")} value={agencyName} onChange={(e) => setAgencyName(e.target.value)} maxLength={200} placeholder="株式会社〇〇" className={inputClass} />
           </div>
           <div>

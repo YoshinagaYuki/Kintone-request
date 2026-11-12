@@ -203,12 +203,13 @@ export default async function RequestEditPage({
 
   const { data: itemData } = await admin
     .from("item_name_master")
-    .select("name, sort_order, is_active, category, excluded_slots").is("inventory_role",null)
+    .select("id, name, sort_order, is_active, category, excluded_slots").is("inventory_role",null)
     .eq("category", "tezukuru")
     .eq("is_active", true)
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
   const productItems = (itemData ?? []).map((r) => ({
+    id:r.id,
     name: r.name as string,
     excludedSlots: Array.isArray(r.excluded_slots) ? (r.excluded_slots as number[]) : [],
   }));
@@ -226,7 +227,7 @@ export default async function RequestEditPage({
   }
   const trimmedProducts = products.slice(0, Math.max(lastFilled, 1));
 
-  const kits=await admin.from('item_name_master').select('id,name,aliases,is_active').eq('category','tezukuru').eq('inventory_role','rental_kit').order('sort_order');
+  const kits=await admin.from('item_name_master').select('id,name,aliases,is_active,rental_product_ids').eq('category','tezukuru').eq('inventory_role','rental_kit').order('sort_order');
   const existingKits=savedRentalItems(pd,kits.data??[]);const legacyKits=tezukuruKitNames(pd).map(name=>matchCapacityItem(name,kits.data??[])).filter(Boolean).map(i=>({item_id:i!.id,quantity:1}));
   const snsBool = data.sns_promotion_requested;
   const initialValues: TezukuruInitialValues = {
