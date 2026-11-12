@@ -13,6 +13,7 @@ export function changeInventoryDate(previous:InventoryDates,key:keyof InventoryD
  if(key==='pickup'&&validDate(value)&&previous.pickupRequired!==false)next.end=offset(value,-1);
  if(key==='start'&&previous.deliveryRequired!==false&&(!previous.delivery||previous.delivery===offset(previous.start,-1)))next.delivery=offset(value,-1);
  if(key==='end'&&previous.pickupRequired!==false&&(!previous.pickup||previous.pickup===offset(previous.end,1)))next.pickup=offset(value,1);
+ if(options.fixedStart&&key==='end'&&validDate(value)&&previous.pickupRequired!==false&&validDate(next.pickup)&&next.pickup<value)next.pickup=offset(value,1);
  const priorFrom=min(previous.start,previous.delivery),priorTo=max(previous.end,previous.pickup);
  if(key!=='from')next.from=previous.from===priorFrom?min(next.start,next.delivery):min(previous.from,next.start,next.delivery);
  if(key!=='to')next.to=previous.to===priorTo?max(next.end,next.pickup):max(previous.to,next.end,next.pickup);
