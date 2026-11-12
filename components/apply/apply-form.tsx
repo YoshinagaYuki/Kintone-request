@@ -1,10 +1,11 @@
 "use client";
+import {EmailRecipientFields} from "./email-recipient-fields";
 
 import {eventShippingDates,kitAllowsProduct,type KitProductRule} from '@/lib/tezukuru-application';
 import {addDays,validDate} from '@/lib/inventory/gantt';
 import { FormErrorSummary } from "./form-error-summary";
 
-import{parseEmailRecipients,MAX_RECIPIENT_INPUT}from'@/lib/email-recipients';
+import{parseEmailRecipients}from'@/lib/email-recipients';
 
 import{RentalItemFields,type RentalDraft}from'./rental-item-fields';
 import{validateRentalItems}from'@/lib/inventory/rental-items';
@@ -563,19 +564,9 @@ export function ApplyForm({
               </div>
               <div>
                 <label htmlFor={fieldId("applicantEmail")} className={labelClass}>メールアドレス {req}</label>
-                <textarea
-                  rows={2}
-                  aria-label="メールアドレス"
-                  id={fieldId("applicantEmail")} value={applicantEmail}
-                  onChange={(e) => setApplicantEmail(e.target.value)}
-                  maxLength={MAX_RECIPIENT_INPUT}
-                  autoComplete="email"
-                  inputMode="email"
-                  placeholder="example@example.com, another@example.com"
-                  className={inputClass}
-                />
+                <EmailRecipientFields id={fieldId("applicantEmail")} value={applicantEmail} onChange={setApplicantEmail} inputClass={inputClass}/>
                 <p className="mt-1 text-xs text-gray-500">
-                  カンマまたは改行で複数入力できます（20件まで）。申請完了・承認完了メールを入力した全員へお送りします。<br/>配送伝票（伝票番号）に関するメールの送付先は、下の「伝票番号連絡先」に入力してください。
+                  1行に1件入力してください。「＋」で追加できます（20件まで）。申請完了・承認完了メールを入力した全員へお送りします。<br/>配送伝票（伝票番号）に関するメールの送付先は、下の「伝票番号連絡先」に入力してください。
                 </p>
               </div>
               </>}
