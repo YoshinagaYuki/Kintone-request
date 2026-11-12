@@ -1,3 +1,4 @@
+import{applyCopyShipping}from'@/lib/inventory/copy-shipping';
 import{requestShipping}from'@/lib/inventory/request-shipping';
 import{parseTransport,assertTransportReady}from'@/lib/inventory/shipping-policy';
 import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
@@ -86,11 +87,14 @@ async function POSTHandler(
   // 事業判定は表示名ではなく kintone_app_id(49=てずくーる)で行う。
   // てずくーるのみ料金区分(有償/無償)を必須にする。オールマイトは対象外。
   const isTezukuru = formType?.kintone_app_id === 49;
+  const copy=await supabase.from('inventory_copy_requests').select('id,state').eq('id',id).maybeSingle();
+  if(copy.error)return NextResponse.json({error:'コピー申請の状態を確認できません'},{status:503});
   let shippingData:Record<string,unknown>|undefined;
   if([10,49].includes(formType?.kintone_app_id??0)){
     try{
       const transport=parseTransport(body.transport)??requestShipping({...request,management_no:null,approved_staff_name:null},formType!.kintone_app_id!)?.transport;
-      shippingData={...(request.parsed_data??{}),...(transport?{_inventory_transport:transport}:{})};
+      const currentShipping:Record<string,unknown>={...(request.parsed_data??{}),...(transport?{_inventory_transport:transport}:{})};
+      shippingData=copy.data&&copy.data.state!=='cancelled'?applyCopyShipping(currentShipping,transport,currentShipping._inventory_delivery_required!==false,currentShipping._inventory_pickup_required!==false):currentShipping;
       const plan=requestShipping({...request,management_no:null,parsed_data:shippingData??null,approved_staff_name:null,approved_contents:body.contents??undefined},formType!.kintone_app_id!);
       if(plan)for(const name of plan.names)assertTransportReady({...plan.dates,transport:plan.transport},name);
     }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'配送日数を確認してください'},{status:400});}

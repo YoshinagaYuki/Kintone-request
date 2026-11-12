@@ -60,5 +60,6 @@ export function inventoryCopyDraft(parsed:Record<string,string>,mapping:FieldMap
  const adjusted={...mapping,mappings:mapping.mappings.map(m=>m.kintone_code==='集荷_日付'&&(parsed as Record<string,unknown>)['_inventory_pickup_required']===false?{...m,required:false}:m)};
  const record=extensionDraft({...parsed,[L.pickupDate]:parsed[L.pickupDate]||''},adjusted,childId,parentNumber);
  if((parsed as Record<string,unknown>)['_inventory_delivery_required']===true){const codes=new Set(['納品_日付','納品_住所','納品_担当者','納品_電話番号','郵便番号','納品_時間']);const mapped=buildKintoneRecord(parsed,{mappings:mapping.mappings.filter(m=>codes.has(m.kintone_code))});if(!mapped.ok)throw Error(mapped.errors.join(' / '));Object.assign(record,mapped.record);}
+ if((parsed as Record<string,unknown>)['_inventory_pickup_required']!==false){const codes=new Set(['集荷_住所','集荷_担当者','集荷_電話番号','郵便番号_0']);const mapped=buildKintoneRecord(parsed,{mappings:mapping.mappings.filter(m=>codes.has(m.kintone_code))});if(!mapped.ok)throw Error(mapped.errors.join(' / '));Object.assign(record,mapped.record);}
  if((parsed as Record<string,unknown>)['_inventory_pickup_required']===false)record['集荷_日付']={value:''};return record;
 }

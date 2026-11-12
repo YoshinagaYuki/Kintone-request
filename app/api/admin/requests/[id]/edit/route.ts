@@ -128,11 +128,14 @@ async function PATCHHandler(
   } | null;
   const isTezukuru = formType?.kintone_app_id === 49;
 
+  const copy=await admin.from('inventory_copy_requests').select('id').eq('id',id).maybeSingle();
+  if(copy.error)return NextResponse.json({errors:['コピー申請の状態を確認できません']},{status:503});
+
   // ---- 入力検証(/api/requests と同じルール) ----
   const errors: string[] = [];
   const raw_text = typeof body.raw_text === "string" ? body.raw_text : "";
   const applicant_name = (body.applicant_name ?? "").toString().trim();
-  const omitApplicantContact = request.parsed_data?._inventory_skip_applicant_contact === true && body.skip_applicant_contact === true;
+  const omitApplicantContact = (!!copy.data || request.parsed_data?._inventory_skip_applicant_contact === true) && body.skip_applicant_contact === true;
   const applicant_phone = omitApplicantContact ? "" : (body.applicant_phone ?? "").toString().trim();
   const emailRecipients=parseEmailRecipients((body.applicant_email??" ").toString());
   const applicant_email=omitApplicantContact?"":emailRecipients.ok?emailRecipients.value:(body.applicant_email??"").toString().trim();
@@ -194,8 +197,6 @@ async function PATCHHandler(
     }
   }
 
-  const copy=await admin.from('inventory_copy_requests').select('id').eq('id',id).maybeSingle();
-  if(copy.error)return NextResponse.json({errors:['コピー申請の状態を確認できません']},{status:503});
   const omittedShipping=confirmationShippingLabels({...request.parsed_data,...(copy.data?{_inventory_copy:true}:{})});
   effectiveConfig.required_labels=(effectiveConfig.required_labels??[]).filter(label=>!omittedShipping.includes(label as any));
   const result = parseFmt(effectiveRawText, effectiveConfig);

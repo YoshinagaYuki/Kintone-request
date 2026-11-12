@@ -66,6 +66,9 @@ export default async function RequestEditPage({
   } | null;
   if (!ft) notFound();
 
+  const copy = await admin.from('inventory_copy_requests').select('id,state').eq('id',id).maybeSingle();
+  if(copy.error)throw Error('コピー申請の状態を確認できません');
+  const isCopy=!!copy.data && copy.data.state!=='cancelled';
   const pd = (data.parsed_data ?? {}) as Record<string, string>;
   const editable = data.status === "pending" && !data.kintone_record_id;
 
@@ -130,8 +133,8 @@ export default async function RequestEditPage({
 
     const L = ALLMIGHT_FMT_LABELS;
     const initialValues: AllmightInitialValues = {
-      applicantName: data.applicant_name ?? "",
-      skipApplicantContact: (pd as Record<string, unknown>)._inventory_skip_applicant_contact === true,
+      applicantName: data.applicant_name || (isCopy ? data.company_staff_name_input ?? "" : ""),
+      skipApplicantContact: isCopy || (pd as Record<string, unknown>)._inventory_skip_applicant_contact === true,
       applicantPhone: data.applicant_phone ?? "",
       applicantEmail: data.applicant_email ?? "",
       companyStaffName: data.company_staff_name_input ?? "",
@@ -228,8 +231,8 @@ export default async function RequestEditPage({
   const snsBool = data.sns_promotion_requested;
   const initialValues: TezukuruInitialValues = {
     rentalItems:Array.isArray(pd._inventory_rental_items)?existingKits:legacyKits,
-    applicantName: data.applicant_name ?? "",
-    skipApplicantContact: (pd as Record<string, unknown>)._inventory_skip_applicant_contact === true,
+    applicantName: data.applicant_name || (isCopy ? data.company_staff_name_input ?? "" : ""),
+    skipApplicantContact: isCopy || (pd as Record<string, unknown>)._inventory_skip_applicant_contact === true,
       applicantPhone: data.applicant_phone ?? "",
     applicantEmail: data.applicant_email ?? "",
     companyStaffName: data.company_staff_name_input ?? "",
