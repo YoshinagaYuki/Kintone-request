@@ -1,3 +1,4 @@
+import{shippingAddressIssues}from'@/lib/inventory/shipping-policy';
 import{confirmationMapping,applyConfirmationShipping}from'@/lib/inventory/confirmation-shipping';
 import{requestShipping}from'@/lib/inventory/request-shipping';
 import{loadInventoryModel}from'@/lib/inventory/model';
@@ -370,6 +371,8 @@ export default async function RequestDetailPage({
     .filter((f) => f.value.trim() !== "" && !/[-‐-―ー－−]/.test(f.value))
     .map((f) => f.label);
 
+  const approvalShipping=requestShipping(request,request.form_types?.kintone_app_id??0);
+  const copyShippingIssues=request.status==='pending'&&!isDeleted&&approvalShipping?shippingAddressIssues({...approvalShipping.dates,transport:approvalShipping.transport}):[];
   const inventoryJobs=await supabase.from('inventory_change_jobs').select('id,request_id,status,error,created_at').eq('request_id',request.id).neq('status','succeeded');
   return (
     <main className="request-detail mx-auto w-full max-w-4xl px-4 py-8 sm:py-10">
@@ -380,7 +383,7 @@ export default async function RequestDetailPage({
         ← 申請一覧へ戻る
       </Link>
 
-      <InventoryCopyPanel requestId={request.id}/><InventorySyncStatus jobs={inventoryJobs.data??[]}/>
+      <InventoryCopyPanel requestId={request.id} shippingIssues={copyShippingIssues}/><InventorySyncStatus jobs={inventoryJobs.data??[]}/>
       {/* ヘッダー */}
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <h1 className="text-xl font-bold sm:text-2xl">
@@ -832,7 +835,7 @@ export default async function RequestDetailPage({
         </div>
       ) : (
         <ApproveActions
-          shipping={requestShipping(request,request.form_types?.kintone_app_id??0)}
+          shipping={approvalShipping}
           requestId={request.id}
           status={request.status}
           previewOk={preview?.ok ?? false}

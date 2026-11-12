@@ -210,7 +210,7 @@ export function ApproveActions({
   }
 
   return (
-    <div className="mt-8">
+    <div id="request-approval" className="mt-8 scroll-mt-24">
       {shipping&&status==='pending'&&<InventoryShippingPlan value={transport} onChange={setTransport} dates={shipping.dates} names={shipping.names} required/>}
       {error && (
         <div className="mb-3 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
