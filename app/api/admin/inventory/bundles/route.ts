@@ -1,6 +1,6 @@
 import{editConflictSchedule}from'@/lib/inventory/edit-conflicts';
 import{withShippingRecord}from'@/lib/inventory/shipping-record';
-import{assertTransportReady}from'@/lib/inventory/shipping-policy';
+import{assertTransportReady,assertCopyTransportReady}from'@/lib/inventory/shipping-policy';
 import{turnaroundWarnings}from'@/lib/inventory/operations';
 import{rentalMetadata}from'@/lib/inventory/rental-items';
 import{linkedBookings,bookingEditBaseline,commonBookingPatch}from'@/lib/inventory/booking-bundles';
@@ -36,7 +36,10 @@ async function handler(req:NextRequest){const access=await inventoryAccess();if(
  Object.assign(r,withShippingRecord(r,model.items.find(i=>i.id===r.itemId)!.name));r.booking.unitNumber=resolveUnitNumber(model,r,choice,[...existing,...affected,...added]);validateNumber(model,r,r.booking.unitNumber??null);added.push(r);index++;
  if(!request){const staff=model.staff.find(s=>s.name===patch.staff);if(!staff)throw Error('追加する機器の担当者はマスタの正式名称を選択してください');const b=r.booking;holdRecords.push({shipping_base:b.shippingBase,transport:b.transport,shipping_override:typeof body.shipping_ack==='string'?body.shipping_ack:null,id:b.id,item_id:r.itemId,staff_id:staff.id,store_name:b.store,start_date:b.start,end_date:b.end,delivery_date:b.delivery||null,pickup_date:b.pickup||null,occupied_from:b.from,occupied_to:b.to,note:'在庫予定の編集画面で追加',unit_number:b.unitNumber,booking_status:b.status==='registered'?'registered':'hold',management_no:b.managementNo,background_screen_count:qty,parent_booking_key:b.parentKey});}
  }}
- for(const r of [...affected,...added]){if(r.booking.transport)assertTransportReady(r.booking,model.items.find(i=>i.id===r.itemId)!.name);Object.assign(r,withShippingRecord(r,model.items.find(i=>i.id===r.itemId)!.name));}
+ const copyRequest=original.booking.kind==='request'?await db.from('inventory_copy_requests').select('id,state').eq('id',original.booking.id).maybeSingle():null;
+ if(copyRequest?.error)throw Error('コピー申請の状態を確認できません');
+ const checkTransport=copyRequest?.data&&copyRequest.data.state!=='cancelled'?assertCopyTransportReady:assertTransportReady;
+ for(const r of [...affected,...added]){if(r.booking.transport)checkTransport(r.booking,model.items.find(i=>i.id===r.itemId)!.name);Object.assign(r,withShippingRecord(r,model.items.find(i=>i.id===r.itemId)!.name));}
  const candidates=[...affected,...added];const warnings=turnaroundWarnings(candidates,existing);if(warnings.length&&body.shipping_ack!==JSON.stringify(warnings))return NextResponse.json({code:'shipping_warning',warningKey:JSON.stringify(warnings),error:warnings.join('\n')+'\n手動指定で保存しますか？'},{status:409});for(const r of candidates)validateNumber(model,r,r.booking.unitNumber??null);assertScreenCapacity(model,candidates,existing);
  if(request?.form_types?.kintone_app_id===49){const kitLines:any[]=[];for(const r of candidates.filter(r=>r.booking.id===request.id)){const found=kitLines.find(l=>l.item_id===r.itemId);if(found)found.quantity++;else kitLines.push({item_id:r.itemId,name:model.items.find(i=>i.id===r.itemId)!.name,quantity:1});}Object.assign(updated.data,rentalMetadata(kitLines));raw=rewriteInventoryFmt(raw??'',{'レンタル品一覧':updated.data['レンタル品一覧']});}
  const updates=request?await prepareInventoryKintoneChange(db,request,updated.data):[];const assignments=candidates.filter(r=>request&&r.booking.id===request.id).map(r=>({group_key:r.booking.group,item_id:r.itemId,unit_number:r.booking.unitNumber??null,screen_quantity:r.booking.screenQuantity??0}));

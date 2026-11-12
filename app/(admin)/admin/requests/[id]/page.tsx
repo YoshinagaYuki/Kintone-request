@@ -834,7 +834,7 @@ export default async function RequestDetailPage({
           </p>
         </div>
       ) : (
-        <ApproveActions
+        <ApproveActions optionalShippingAddress={!!copyPreview.data}
           shipping={approvalShipping}
           requestId={request.id}
           status={request.status}

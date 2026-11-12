@@ -5,7 +5,8 @@ export function confirmationShippingLabels(parsed:Record<string,unknown>){
  return[...(parsed._inventory_delivery_required===false?[L.deliveryDate,L.deliveryPostal,L.deliveryAddress,L.deliveryReceiver,L.deliveryContact]:[]),...(parsed._inventory_pickup_required===false?[L.pickupDate,L.pickupPostal,L.pickupAddress,L.pickupHandover,L.pickupContact]:[])];
 }
 export function confirmationMapping(mapping:FieldMapping,parsed:Record<string,unknown>):FieldMapping{
- const omitted=confirmationShippingLabels(parsed);return{...mapping,mappings:mapping.mappings.map(m=>omitted.includes(m.fmt_label as any)?{...m,required:false}:m)};
+ const optional=parsed._inventory_copy===true?[L.deliveryPostal,L.deliveryAddress,L.deliveryReceiver,L.deliveryContact,L.pickupPostal,L.pickupAddress,L.pickupHandover,L.pickupContact]:[];
+ const omitted=[...confirmationShippingLabels(parsed),...optional];return{...mapping,mappings:mapping.mappings.map(m=>omitted.includes(m.fmt_label as any)?{...m,required:false}:m)};
 }
 export function applyRentalUsageDates(record:KintoneRecord,parsed:Record<string,unknown>){if(Array.isArray(parsed._inventory_kit_names)&&parsed._inventory_kit_names.length){if(parsed._inventory_usage_start)record['日付_0']={value:String(parsed._inventory_usage_start)};if(parsed._inventory_usage_end)record['日付_1']={value:String(parsed._inventory_usage_end)};}}
 export function applyConfirmationShipping(record:KintoneRecord,parsed:Record<string,unknown>,mapping:FieldMapping){

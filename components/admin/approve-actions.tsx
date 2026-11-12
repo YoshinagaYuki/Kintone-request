@@ -23,6 +23,7 @@ export type ApproveContentSlot = {
 export function ApproveActions({
   requestId,
   shipping,
+  optionalShippingAddress=false,
   status,
   previewOk,
   confirmWarnings = [],
@@ -44,6 +45,7 @@ export function ApproveActions({
   billingTypeDefault = "",
   dspHandoverNoteDefault = "",
 }: {
+  optionalShippingAddress?:boolean;
   shipping?:ReturnType<typeof requestShipping>;
   requestId: string;
   status: RequestStatus;
@@ -211,7 +213,8 @@ export function ApproveActions({
 
   return (
     <div id="request-approval" className="mt-8 scroll-mt-24">
-      {shipping&&status==='pending'&&<InventoryShippingPlan value={transport} onChange={setTransport} dates={shipping.dates} names={shipping.names} required/>}
+      {optionalShippingAddress&&status==='pending'&&<p className="text-sm text-slate-600">延長コピーの住所・連絡先は任意です。空欄でも本登録できます。住所がない区間は輸送日数を自動計算せず、入力済みの確保期間で登録します。</p>}
+      {shipping&&status==='pending'&&<InventoryShippingPlan value={transport} onChange={setTransport} dates={shipping.dates} names={shipping.names} required={!optionalShippingAddress}/>}
       {error && (
         <div className="mb-3 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
           {error}

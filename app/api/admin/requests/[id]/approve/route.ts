@@ -1,6 +1,6 @@
 import{applyCopyShipping}from'@/lib/inventory/copy-shipping';
 import{requestShipping}from'@/lib/inventory/request-shipping';
-import{parseTransport,assertTransportReady}from'@/lib/inventory/shipping-policy';
+import{parseTransport,assertTransportReady,assertCopyTransportReady}from'@/lib/inventory/shipping-policy';
 import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
 import {tezukuruKitNames} from '@/lib/inventory/business';
 import {matchCapacityItem} from '@/lib/inventory/availability';
@@ -96,7 +96,7 @@ async function POSTHandler(
       const currentShipping:Record<string,unknown>={...(request.parsed_data??{}),...(transport?{_inventory_transport:transport}:{})};
       shippingData=copy.data&&copy.data.state!=='cancelled'?applyCopyShipping(currentShipping,transport,currentShipping._inventory_delivery_required!==false,currentShipping._inventory_pickup_required!==false):currentShipping;
       const plan=requestShipping({...request,management_no:null,parsed_data:shippingData??null,approved_staff_name:null,approved_contents:body.contents??undefined},formType!.kintone_app_id!);
-      if(plan)for(const name of plan.names)assertTransportReady({...plan.dates,transport:plan.transport},name);
+      if(plan)for(const name of plan.names)(copy.data&&copy.data.state!=='cancelled'?assertCopyTransportReady:assertTransportReady)({...plan.dates,transport:plan.transport},name);
     }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'配送日数を確認してください'},{status:400});}
   }
   if (isTezukuru) {

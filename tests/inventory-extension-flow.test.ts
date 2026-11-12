@@ -31,3 +31,13 @@ test('copied invoice without delivery or pickup issues a different number and ke
 test('a separately transported copy does not cancel the old case pickup',async()=>{const f=fixture();await executeExtension({...f.plan,cancelParentPickup:false,deliveryRequired:true},f.ports);assert.equal(f.records.get('10:old')!['集荷_手配種別'].value,'通常配送');assert.equal(f.calls.some(c=>c.startsWith('update:10:old:')),false);});
 import{inventoryCopyDraft}from'../lib/inventory/extensions/model';
 test('copied invoice accepts explicitly absent pickup even when the normal form requires its date',()=>{const record=inventoryCopyDraft({'機器商品①':'JET Cola','利用開始日':'2026-11-01','利用最終日':'2026-11-30','集荷日付':'',_inventory_delivery_required:false,_inventory_pickup_required:false}as unknown as Record<string,string>,{mappings:[{fmt_label:'機器商品①',kintone_code:'レンタル機材',kintone_type:'DROP_DOWN'},{fmt_label:'利用開始日',kintone_code:'日付_0',kintone_type:'DATE',required:true},{fmt_label:'利用最終日',kintone_code:'日付_1',kintone_type:'DATE',required:true},{fmt_label:'集荷日付',kintone_code:'集荷_日付',kintone_type:'DATE',required:true}]},childId,'949');assert.equal(record['集荷_日付'].value,'');assert.equal(record['納品_日付'].value,'');assert.equal(record['利用日数'].value,'30');assert.equal('管理番号'in record,false);});
+
+test('continuation copy accepts a cleared old pickup without changing original usage dates',async()=>{
+ const f=fixture();f.records.get('10:old')!['集荷_日付']={value:''};f.records.get('11:oldshipping')!['集荷_日付']={value:''};
+ await executeExtension({...f.plan,allowClearedParentPickup:true},f.ports);
+ assert.equal(f.records.get('10:old')!['集荷_日付'].value,'');assert.equal(f.records.get('10:old')!['日付_1'].value,f.plan.parentUsageEnd);
+ assert.equal(f.creates,2);assert.equal(f.numbers,1);
+});
+test('continuation copy still rejects a changed nonempty pickup date or usage end',async()=>{
+ for(const field of ['集荷_日付','日付_1']){const f=fixture();f.records.get('10:old')![field]={value:'2026-10-28'};await assert.rejects(executeExtension({...f.plan,allowClearedParentPickup:true},f.ports),/変更/);assert.equal(f.creates,0);}
+});

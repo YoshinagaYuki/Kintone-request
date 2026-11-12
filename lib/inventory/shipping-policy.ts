@@ -77,3 +77,11 @@ export function shippingAddressIssues(b:ShippingBooking){
  for(const [required,label,address]of [[b.deliveryRequired!==false,'配送先',t?.address??''],[b.pickupRequired!==false,'集荷先',t?.returnAddress||t?.address||'']]as const){if(!required)continue;if(!address.trim())issues.push(`${label}住所を入力してください`);else if(!destinationPrefecture(address))issues.push(`${label}住所「${address.slice(0,70)}」から都道府県を判別できません。東京都・京都府など、都道府県名から正しく入力してください`);}
  return issues;
 }
+
+/** Internal copied invoices may be registered before transport addresses are known.
+ * Validate any supplied destination normally; never invent a transit estimate for a blank leg. */
+export function assertCopyTransportReady(b:ShippingBooking,item:string){
+ const deliveryKnown=!!b.transport?.address.trim();
+ const pickupKnown=!!(b.transport?.returnAddress||b.transport?.address||'').trim();
+ return assertTransportReady({...b,deliveryRequired:b.deliveryRequired!==false&&deliveryKnown,pickupRequired:b.pickupRequired!==false&&pickupKnown},item);
+}
