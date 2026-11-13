@@ -1,4 +1,5 @@
 "use client";
+import {ApprovalFeeFields} from "./approval-fee-fields";
 import{InventoryShippingPlan}from'./inventory-shipping-plan';
 import type{requestShipping}from'@/lib/inventory/request-shipping';
 
@@ -23,6 +24,7 @@ export type ApproveContentSlot = {
 export function ApproveActions({
   requestId,
   shipping,
+  defaultDeliveryFee="",defaultRentalFee="",
   optionalShippingAddress=false,
   status,
   previewOk,
@@ -46,6 +48,7 @@ export function ApproveActions({
   dspHandoverNoteDefault = "",
 }: {
   optionalShippingAddress?:boolean;
+  defaultDeliveryFee?:string;defaultRentalFee?:string;
   shipping?:ReturnType<typeof requestShipping>;
   requestId: string;
   status: RequestStatus;
@@ -86,6 +89,7 @@ export function ApproveActions({
   /** DSP様共有事項の初期値(保存済みがあれば再利用表示。通常は空) */
   dspHandoverNoteDefault?: string;
 }) {
+  const[deliveryFee,setDeliveryFee]=useState(defaultDeliveryFee),[rentalFee,setRentalFee]=useState(defaultRentalFee);
   const[transport,setTransport]=useState(shipping?.transport??{address:''});
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -129,7 +133,7 @@ export function ApproveActions({
       const res = await fetch(`/api/admin/requests/${requestId}/${action}`, {
         method: "POST",
         headers: payload ? { "Content-Type": "application/json" } : undefined,
-        body: payload ? JSON.stringify({...payload,...(shipping?{transport}: {})}) : undefined,
+        body: payload ? JSON.stringify({...payload,...(action==='approve'?{delivery_fee:deliveryFee,rental_fee:rentalFee}:{}),...(shipping?{transport}: {})}) : undefined,
       });
       const body = await res.json().catch(() => null);
       if (!res.ok) {
@@ -214,6 +218,7 @@ export function ApproveActions({
   return (
     <div id="request-approval" className="mt-8 scroll-mt-24">
       {optionalShippingAddress&&status==='pending'&&<p className="text-sm text-slate-600">延長コピーの住所・連絡先は任意です。空欄でも本登録できます。住所がない区間は輸送日数を自動計算せず、入力済みの確保期間で登録します。</p>}
+      {status==='pending'&&<ApprovalFeeFields delivery={deliveryFee} rental={rentalFee} onDelivery={setDeliveryFee} onRental={setRentalFee}/>}
       {shipping&&status==='pending'&&<InventoryShippingPlan value={transport} onChange={setTransport} dates={shipping.dates} names={shipping.names} required={!optionalShippingAddress}/>}
       {error && (
         <div className="mb-3 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">

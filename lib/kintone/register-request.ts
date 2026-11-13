@@ -1,3 +1,4 @@
+import {applyApprovalFees} from '../approval-fees';
 import{rentalNote}from'../inventory/rental-items';
 import{confirmationMapping,applyConfirmationShipping}from'../inventory/confirmation-shipping';
 /**
@@ -267,6 +268,7 @@ async function registerRequestInternal(
       pricingWarnings.forEach((w) => console.warn("[pricing]", w));
     }
 
+    applyApprovalFees(mapped.record,parsedData);
     try {
       const result = await registerRecord(appId, mapped.record);
       recordId = result.recordId;

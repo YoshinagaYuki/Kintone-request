@@ -1,3 +1,4 @@
+import {applyApprovalFees} from '../../approval-fees';
 import { ALLMIGHT_FMT_LABELS as L } from "@/lib/allmight-fmt";
 import { addDays, validDate } from "../gantt";
 import { buildKintoneRecord, type FieldMapping, type KintoneRecord } from "@/lib/kintone/mapper";
@@ -42,6 +43,7 @@ export function extensionDraft(parsed: Record<string, string>, mapping: FieldMap
   record["文字列__複数行_"] = { value: `管理番号${parentNumber}からの延長（新規納品なし）` };
   const pricing = applyAllmightPricing(record);
   if (pricing.warnings.length) throw new Error(`延長料金を計算できません: ${pricing.warnings.join(" / ")}`);
+  applyApprovalFees(record,parsed);
   return record;
 }
 export function extensionShippingDraft(source: KintoneRecord, managementNo: string): KintoneRecord {

@@ -331,3 +331,11 @@
 - カレンダーの選択日自体、集荷前日を利用終了とする計算、輸送期間/衝突/自動番号の制約は維持。通常の前日配送はOFFで従来通り。
 - UI表示・送信・配送計算で共通rangeUsageを使用。220在庫テスト、typecheck/build成功。保存用bookingPatchも1日利用を受理する回帰テスト追加。
 - 顧客在庫のテスト登録なし。本番画面での選択確認後に完了報告。
+
+### 2026-11-13 承認費用・企業名バックフィル
+- 本登録/承認に配送費とレンタル費用(任意、整数0〜999999999円)追加。parsed_data._approved_delivery_fee/_internal_rental_feeで保存。配送費だけapplyApprovalFeesの明示コード「配送費」に反映。レンタル費用はkintoneへ送らない。通常App10/App49、旧延長、延長コピー、新規承認/仮押さえ確定に適用。登録済み費用を詳細に表示、再実行は保存値を使用。
+- company_nameをparsed_dataから生成するstored列+index追加(20261113093000 migration適用済み)。既存FMTキー取次店名を維持し、将来の企業別検索に利用可能。
+- kintone App10:769件、App49:351件を$id keyset全走査。事業+管理番号(数字正規化)+既存record_idを照合、重複/不存在は更新対象外。56申請の企業名/原文を転記、既存updated_at/processing_atで競合保護、remoteも更新直前再照合。56件適用、競合0、履歴edited(kind=company_backfill)記録。Kintoneへの書込なし。
+- 全70申請中69件企業名あり、有効63申請は空欄0。空欄1件は削除済み/未採番。番号なし10件、kintone不存在1件(削除済み1114)の既存値を保護。
+- 変更前バックアップ: チャットwork/company-reconciliation-20261113.json(mode600)、結果: 同-result.json。途中の履歴action制約エラーを既存editedへ修正し、先行1件は現在値の完全一致確認後に履歴を補完。最終56件完了。
+- 222在庫テスト/typecheck/build成功。実案件の承認・請求作成・メール送信は検証では行わない。

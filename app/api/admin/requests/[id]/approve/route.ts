@@ -1,3 +1,4 @@
+import {approvalFees} from '@/lib/approval-fees';
 import{applyCopyShipping}from'@/lib/inventory/copy-shipping';
 import{requestShipping}from'@/lib/inventory/request-shipping';
 import{parseTransport,assertTransportReady,assertCopyTransportReady}from'@/lib/inventory/shipping-policy';
@@ -37,6 +38,8 @@ async function POSTHandler(
 
   let body: {
     transport?:unknown;
+    delivery_fee?:unknown;
+    rental_fee?:unknown;
     rental_plan_id?: string | null;
     /** 承認画面で確定したコンテンツ正式名称 { "コンテンツ1": "..." } */
     contents?: Record<string, string> | null;
@@ -99,6 +102,7 @@ async function POSTHandler(
       if(plan)for(const name of plan.names)(copy.data&&copy.data.state!=='cancelled'?assertCopyTransportReady:assertTransportReady)({...plan.dates,transport:plan.transport},name);
     }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'配送日数を確認してください'},{status:400});}
   }
+  try{shippingData=approvalFees(shippingData??request.parsed_data??{},body);}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'費用を確認してください'},{status:400});}
   if (isTezukuru) {
     const kits = await supabase.from('item_name_master').select('id,name,aliases,is_active').eq('category','tezukuru').eq('inventory_role','rental_kit');
     if (kits.error) return NextResponse.json({error:'レンタル品マスタを確認できません'},{status:503});

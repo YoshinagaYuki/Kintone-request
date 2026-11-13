@@ -1,3 +1,4 @@
+import {applyApprovalFees} from '@/lib/approval-fees';
 import{shippingAddressIssues}from'@/lib/inventory/shipping-policy';
 import{confirmationMapping,applyConfirmationShipping}from'@/lib/inventory/confirmation-shipping';
 import{requestShipping}from'@/lib/inventory/request-shipping';
@@ -352,6 +353,8 @@ export default async function RequestDetailPage({
       : null;
   if(preview?.ok&&fieldMapping)applyConfirmationShipping(preview.record,previewParsed,fieldMapping);
 
+  if(preview?.ok)applyApprovalFees(preview.record,previewParsed);
+
   // 「確認が必要な項目」= 未入力の confirm_labels + 変換できず送信を見送った項目(請求月など)
   const confirmWarnings = [
     ...confirmLabelWarnings,
@@ -564,6 +567,7 @@ export default async function RequestDetailPage({
         </div>
       )}
 
+      {(request.parsed_data?._approved_delivery_fee!=null||request.parsed_data?._internal_rental_fee!=null)&&<SectionCard title="登録時の費用"><dl className="grid gap-3 p-4 text-sm sm:grid-cols-2"><div><dt className="text-slate-500">配送費（kintone連携）</dt><dd className="mt-1 font-semibold">{request.parsed_data?._approved_delivery_fee!=null?`${Number(request.parsed_data._approved_delivery_fee).toLocaleString('ja-JP')}円`:'未入力'}</dd></div><div><dt className="text-slate-500">レンタル費用（社内保存のみ）</dt><dd className="mt-1 font-semibold">{request.parsed_data?._internal_rental_fee!=null?`${Number(request.parsed_data._internal_rental_fee).toLocaleString('ja-JP')}円`:'未入力'}</dd></div></dl></SectionCard>}
       {/* 入力者情報 */}
       <SectionCard title="入力者情報">
         <table className="w-full text-sm">
@@ -834,7 +838,7 @@ export default async function RequestDetailPage({
           </p>
         </div>
       ) : (
-        <ApproveActions optionalShippingAddress={!!copyPreview.data}
+        <ApproveActions defaultDeliveryFee={String(request.parsed_data?._approved_delivery_fee??request.parsed_data?.['配送料']??request.parsed_data?.['内）配送料']??'')} defaultRentalFee={String(request.parsed_data?._internal_rental_fee??'')} optionalShippingAddress={!!copyPreview.data}
           shipping={approvalShipping}
           requestId={request.id}
           status={request.status}
