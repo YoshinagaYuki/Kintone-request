@@ -10,9 +10,13 @@ export function monthCells(month:string):(string|null)[]{
  const prefix=d.getUTCDay(),length=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();
  return [...Array.from({length:prefix},()=>null),...Array.from({length},(_,i)=>addDays(`${month}-01`,i))];
 }
-export function rangeError(range:ShippingRange){
+export function rangeError(range:ShippingRange,deliveryDayUse=false){
  if(!validDate(range.delivery)||!validDate(range.pickup))return'配送日と集荷日を選択してください';
  if(range.delivery<'2000-01-01'||range.pickup>'2100-12-31')return'2000〜2100年の日付を選んでください';
- if(range.pickup<addDays(range.delivery,2))return'利用日を1日以上確保するため、集荷日は配送日の2日後以降にしてください';
+ if(deliveryDayUse&&range.pickup<=range.delivery)return'配送当日利用の場合、集荷日は配送日の翌日以降にしてください';
+ if(!deliveryDayUse&&range.pickup<addDays(range.delivery,2))return'利用日を1日以上確保するため、集荷日は配送日の2日後以降にしてください';
  return'';
 }
+
+/** Same-day use is explicit; delivery and collection remain distinct occupied dates. */
+export function rangeUsage(range:ShippingRange,deliveryDayUse=false){return{start:validDate(range.delivery)?addDays(range.delivery,deliveryDayUse?0:1):'',end:validDate(range.pickup)?addDays(range.pickup,-1):''};}
