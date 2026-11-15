@@ -5,3 +5,6 @@ export function parseFee(value:unknown,label:string){if(value===''||value===null
 export function approvalFees(data:Record<string,unknown>,body:Record<string,unknown>){const result={...data};for(const [field,key,label]of [['delivery_fee',DELIVERY_FEE_KEY,'配送費'],['rental_fee',RENTAL_FEE_KEY,'レンタル費用']]as const)if(body[field]!==undefined){const fee=parseFee(body[field],label);if(fee===null)delete result[key];else result[key]=fee;}return result;}
 /** Explicit field allowlist: internal rental cost must never be sent to kintone. */
 export function applyApprovalFees(record:KintoneRecord,data:Record<string,unknown>){if(data[DELIVERY_FEE_KEY]!=null)record['配送費']={value:parseFee(data[DELIVERY_FEE_KEY],'配送費')??''};}
+
+/** An application text edit must not erase approval-only amounts or trust client metadata. */
+export function savedApprovalFees(data:Record<string,unknown>){return Object.fromEntries([DELIVERY_FEE_KEY,RENTAL_FEE_KEY].filter(key=>data[key]!==undefined).map(key=>[key,data[key]]));}
