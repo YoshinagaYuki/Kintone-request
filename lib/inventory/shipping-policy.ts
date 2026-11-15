@@ -5,6 +5,11 @@ export const PREFECTURES='北海道 青森県 岩手県 宮城県 秋田県 山�
 export const SHIPPING_SOURCES={seino:'https://track.seino.co.jp/lts/leadTimeSearch.do',sagawa:'https://www2.sagawa-exp.co.jp/send/days/input/',jitbox:'https://www.008008.jp/b/jitbox/',seinoCalendar:'https://www.seino.co.jp/seino/media/pdf-lib/20260312-01.pdf',jitCalendar:'https://yamatobc.com/assets/uploads/2025/11/JITBOXチャーター便-2025年度・2026年度配達定休日について_1762909920.pdf',notices:'https://www2.sagawa-exp.co.jp/information/detail/417/'};
 export type TransportInput={address:string;returnAddress?:string;carrier?:'seino'|'sagawa';specialArea?:boolean;outboundDays?:number;returnDays?:number;confirmed?:boolean};
 export type ShippingBooking={transport?:TransportInput;deliveryRequired?:boolean;pickupRequired?:boolean;start:string;end:string;delivery:string;pickup:string;from:string;to:string};
+/** Confirmation tracks shipping conditions only, never its own checked state or UI metadata. */
+export function shippingConfirmationKey(dates:ShippingBooking,names:string[],value:TransportInput){
+ const {start,end,delivery,pickup,from,to,deliveryRequired,pickupRequired}=dates;
+ return JSON.stringify({start,end,delivery,pickup,from,to,deliveryRequired:deliveryRequired!==false,pickupRequired:pickupRequired!==false,names:[...new Set(names)].sort(),address:value.address,returnAddress:value.returnAddress,carrier:value.carrier,special:value.specialArea,out:value.outboundDays,back:value.returnDays});
+}
 export type ShippingPlan={carrier:'seino'|'sagawa'|'jitbox';outboundDays:number|null;returnDays:number|null;dispatch:string;returned:string;from:string;to:string;warnings:string[];unresolved:boolean;nextDispatch:string};
 export const shippingCarrier=(name:string,choice?:TransportInput['carrier'])=>['クレーンゲーム','イライラスティックver.2'].includes(name.normalize('NFKC').replace(/\s/g,''))?'jitbox' as const:choice??'seino';
 export function parseTransport(value:unknown):TransportInput|undefined{

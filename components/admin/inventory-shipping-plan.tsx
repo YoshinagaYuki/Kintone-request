@@ -1,8 +1,8 @@
 "use client";
 import{useEffect,useRef}from'react';
-import{shippingPlan,SHIPPING_ORIGIN,SHIPPING_REVIEWED,SHIPPING_SOURCES,type ShippingBooking,type TransportInput}from'@/lib/inventory/shipping-policy';
+import{shippingConfirmationKey,shippingPlan,SHIPPING_ORIGIN,SHIPPING_REVIEWED,SHIPPING_SOURCES,type ShippingBooking,type TransportInput}from'@/lib/inventory/shipping-policy';
 export function InventoryShippingPlan({value,onChange,dates,names,required=false}:{value:TransportInput;onChange:(v:TransportInput)=>void;dates:ShippingBooking;names:string[];required?:boolean}){
- const signature=JSON.stringify({dates,names,address:value.address,returnAddress:value.returnAddress,carrier:value.carrier,special:value.specialArea,out:value.outboundDays,back:value.returnDays});const previous=useRef(signature);useEffect(()=>{if(previous.current!==signature){previous.current=signature;if(value.confirmed)onChange({...value,confirmed:false});}},[signature,value,onChange]);
+ const signature=shippingConfirmationKey(dates,names,value);const previous=useRef(signature);useEffect(()=>{if(previous.current!==signature){previous.current=signature;if(value.confirmed)onChange({...value,confirmed:false});}},[signature,value,onChange]);
  const delivery=dates.deliveryRequired!==false,pickup=dates.pickupRequired!==false;
  const activeAddress=delivery?value.address:value.returnAddress||value.address;
  const plans=[...new Set(names)].filter(Boolean).map(name=>({name,plan:shippingPlan({...dates,transport:value},name)}));

@@ -26,7 +26,7 @@ export function parseFmt(rawText: string, config: ParserConfig = {}): ParseResul
     return { ok: false, errors: [`FMTが長すぎます(${MAX_LENGTH}文字以内)。`] };
   }
 
-  const separators = [config.separator ?? ":", ":"];
+  const separators = [...new Set([config.separator ?? ":", ":", "："])];
   const blockAliases = config.block_aliases ?? {};
   const labelAliases = config.label_aliases ?? {};
   const data: Record<string, string> = {};

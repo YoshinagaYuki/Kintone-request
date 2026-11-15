@@ -633,7 +633,7 @@ export function ApplyForm({
                   選択した月の翌月に請求します(例: 7月分 → 8月請求)。
                 </p>
               </div>
-              <div>
+              {!inventory&&<div>
                 <label htmlFor={fieldId("shippingFee")} className={labelClass}>
                   配送料 <span className="text-xs font-normal text-gray-500">(任意)</span>
                 </label>
@@ -645,7 +645,7 @@ export function ApplyForm({
                   placeholder="未定の場合は空欄で構いません"
                   className={inputClass}
                 />
-              </div>
+              </div>}
             </div>
           </section>
 
