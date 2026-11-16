@@ -8,9 +8,9 @@ export function boardSegments(lane:BoardLane,dates:string[],locked:(d:string)=>b
  for(const date of dates){const occupied=bookingOn(lane,date),booking=occupied&&['outbound','inbound'].includes(bookingPhase(occupied,date))?undefined:occupied,inactive=locked(date),previous=result[result.length-1];if(previous&&date!==options.breakAt&&previous.booking?.id===booking?.id&&previous.inactive===inactive&&(options.splitPhases===false||!booking||bookingPhase(previous.booking!,previous.date)===bookingPhase(booking,date)))previous.span++;else result.push({date,booking,span:1,inactive});}
  return result;
 }
-export function bookingLabel(b:BoardBooking,date:string){const phase=bookingPhase(b,date);return phase==='outbound'?'輸送→':phase==='inbound'?'←返送':phase==='buffer'?'確保':phase==='delivery'?'配':phase==='return'?'返':b.status==='blocked'?b.store:`${b.managementNo?b.managementNo+'：':(b.kind!=='request'||b.status==='hold')?'(仮) ':'番号未発行：'}${b.store}${b.screenQuantity?' ［背景］':''}`;}
+export function bookingLabel(b:BoardBooking,date:string){const phase=bookingPhase(b,date);return phase==='outbound'?'輸送→':phase==='inbound'?'←返送':phase==='buffer'?'確保':phase==='delivery'?'配':phase==='return'?'返':b.status==='blocked'?b.store:`${b.managementNo?b.managementNo+'：':(b.kind!=='request'||b.status==='hold')?'(仮) ':'番号未発行：'}${b.extensionPossible?'↗ 延長候補 · ':''}${b.store}${b.screenQuantity?' ［背景］':''}`;}
 
 /** Restrained outlines keep status readable without turning the entire grid into solid color. */
-export function boardStroke(b:BoardBooking,date:string){return bookingPhase(b,date)!=='usage'||b.status==='blocked'?'#cbd5e1':b.status==='registered'?b.extension?'#c4b5fd':'#86d9b7':b.status==='pending'?'#93b8ee':'#e9cc78';}
+export function boardStroke(b:BoardBooking,date:string){return bookingPhase(b,date)!=='usage'||b.status==='blocked'?'#cbd5e1':b.extensionPossible?'#d97706':b.status==='registered'?b.extension?'#c4b5fd':'#86d9b7':b.status==='pending'?'#93b8ee':'#e9cc78';}
 
 export function isTransportDay(b:BoardBooking,date:string){const phase=bookingPhase(b,date);return phase==='delivery'||phase==='return';}
