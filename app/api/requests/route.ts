@@ -1,3 +1,4 @@
+import {applyUsageShippingDates} from '@/lib/application-shipping';
 import {eventShippingDates} from '@/lib/tezukuru-application';
 import {assertKitProducts} from '@/lib/tezukuru-application-server';
 import{parseEmailRecipients}from'@/lib/email-recipients';
@@ -197,6 +198,7 @@ async function POSTHandler(req: NextRequest) {
 
   // FMT形式チェック + パース
   if(isTezukuru&&body.structured===true){try{const dates=eventShippingDates(body.event_start,body.event_end);effectiveRawText=rewriteInventoryFmt(effectiveRawText,{'配送日付':dates.delivery,'集荷日付':dates.pickup});}catch(e){return NextResponse.json({errors:[e instanceof Error?e.message:'イベント実施日を確認してください']},{status:400});}}
+  if(formType.kintone_app_id===10&&body.structured===true){try{effectiveRawText=applyUsageShippingDates(effectiveRawText,effectiveConfig);}catch(e){return NextResponse.json({errors:[e instanceof Error?e.message:'利用期間を確認してください']},{status:400});}}
   const result = parseFmt(effectiveRawText, effectiveConfig);
   if (!result.ok) {
     return NextResponse.json({ errors: result.errors }, { status: 400 });

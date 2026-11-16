@@ -1,6 +1,7 @@
 "use client";
 import {EmailRecipientFields} from "./email-recipient-fields";
 
+import {SHIPPING_DATE_REQUEST_NOTE} from '@/lib/application-shipping';
 import {eventShippingDates,kitAllowsProduct,type KitProductRule} from '@/lib/tezukuru-application';
 import {addDays,validDate} from '@/lib/inventory/gantt';
 import { FormErrorSummary } from "./form-error-summary";
@@ -589,7 +590,7 @@ export function ApplyForm({
 
           {usesRentalPlan&&effectiveRentalStatus==='new_rental'&&<section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"><label htmlFor={fieldId("rentalPlanId")} className={labelClass}>レンタルプラン {req}</label><select id={fieldId("rentalPlanId")} value={rentalPlanId} onChange={e=>setRentalPlanId(e.target.value)} className={inputClass}><option value="">選択してください</option>{rentalPlans.filter(p=>p.is_active).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select><p className="mt-1 text-xs text-gray-500">本登録する案件のレンタルプランを選択してください。</p></section>}
           {rentalItemsOptions&&<RentalItemFields options={rentalItemsOptions} value={rentalItems} onChange={setRentalItems}/>}
-          {lockEventDates&&<section className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4"><h2 className="font-semibold text-slate-800">イベント実施日</h2><div className="mt-3 grid grid-cols-2 gap-3"><label className={labelClass}>開始日 {req}<input aria-label="イベント開始日" type="date" required min="2000-01-02" max="2100-12-30" value={eventStart} onChange={e=>{const d=e.target.value;setEventStart(d);if(!eventEnd||eventEnd<d)setEventEnd(d);}} className={inputClass}/></label><label className={labelClass}>終了日 {req}<input aria-label="イベント終了日" type="date" required min={eventStart||'2000-01-02'} max="2100-12-30" value={eventEnd} onChange={e=>setEventEnd(e.target.value)} className={inputClass}/></label></div><p className="mt-2 text-xs leading-6 text-slate-500">配送日は開始日の前日、集荷日は終了日の翌日に自動設定します。</p></section>}
+          {lockEventDates&&<section className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4"><h2 className="font-semibold text-slate-800">イベント実施日</h2><div className="mt-3 grid grid-cols-2 gap-3"><label className={labelClass}>開始日 {req}<input aria-label="イベント開始日" type="date" required min="2000-01-02" max="2100-12-30" value={eventStart} onChange={e=>{const d=e.target.value;setEventStart(d);if(!eventEnd||eventEnd<d)setEventEnd(d);}} className={inputClass}/></label><label className={labelClass}>終了日 {req}<input aria-label="イベント終了日" type="date" required min={eventStart||'2000-01-02'} max="2100-12-30" value={eventEnd} onChange={e=>setEventEnd(e.target.value)} className={inputClass}/></label></div><p className="mt-2 text-xs leading-6 text-slate-500">{SHIPPING_DATE_REQUEST_NOTE}</p></section>}
           {/* 基本情報 */}
           <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-gray-800">基本情報</h2>

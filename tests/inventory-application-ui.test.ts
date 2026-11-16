@@ -28,3 +28,9 @@ test('Allmight uses only the top fee control for internal confirmation, preservi
  assert.doesNotMatch(render(React.createElement(AllmightApplyForm,{...common,inventory:{...inventory,staff:[],equipments:['JET Cola']}})),/shippingFee/);
  assert.match(render(React.createElement(AllmightApplyForm,common)),/shippingFee/);
 });
+test('public Allmight derives locked delivery and collection dates from the manually selected usage period',()=>{
+ const html=render(React.createElement(AllmightApplyForm,{formTypeId:'a',productOptions:['JET Cola'],initialValues:{usageStart:'2026-11-21',usageEnd:'2026-11-22',deliveryDate:'2099-01-01',pickupDate:'2099-01-01'}}));
+ assert.match(html,/deliveryDate[^>]*readOnly=""[^>]*value="2026-11-20"/);
+ assert.match(html,/pickupDate[^>]*readOnly=""[^>]*value="2026-11-23"/);
+ assert.match(html,/希望日と理由/);assert.match(html,/お約束するものではありません/);
+});
