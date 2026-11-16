@@ -3,7 +3,7 @@ import {parseFmt} from './parser/fmt-parser';
 import {rewriteInventoryFmt} from './inventory/request-change';
 import type {ParserConfig} from '@/types/request';
 
-export const SHIPPING_DATE_REQUEST_NOTE='配送日・集荷日は利用開始日の前日・利用最終日の翌日に自動設定され、この画面では変更できません。別日をご希望の場合は、画面一番下の「お客様からの要望」に希望日と理由をご記入ください。ご記入いただいても、ご希望の日程での配送・集荷をお約束するものではありません。';
+export const SHIPPING_DATE_REQUEST_NOTE='ご利用料金は選択されたご利用期間において算出いたします。配送は開始日前日、集荷は終了日翌日です（変更不可）。別日希望は最下部の「お客様からの要望」に希望日と理由をご記入ください（確約不可）。';
 export function automaticShippingDay(date:string,offset:-1|1){return validDate(date)?addDays(date,offset):'';}
 /** Structured public Allmight applications derive dates on the server as well as the UI. */
 export function applyUsageShippingDates(raw:string,config:ParserConfig){

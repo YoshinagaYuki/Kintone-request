@@ -32,5 +32,5 @@ test('public Allmight derives locked delivery and collection dates from the manu
  const html=render(React.createElement(AllmightApplyForm,{formTypeId:'a',productOptions:['JET Cola'],initialValues:{usageStart:'2026-11-21',usageEnd:'2026-11-22',deliveryDate:'2099-01-01',pickupDate:'2099-01-01'}}));
  assert.match(html,/deliveryDate[^>]*readOnly=""[^>]*value="2026-11-20"/);
  assert.match(html,/pickupDate[^>]*readOnly=""[^>]*value="2026-11-23"/);
- assert.match(html,/希望日と理由/);assert.match(html,/お約束するものではありません/);
+ assert.match(html,/希望日と理由/);assert.match(html,/確約不可/);
 });
