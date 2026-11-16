@@ -8,3 +8,6 @@ export function rankCandidates(holds: HoldCandidate[], request: { start: string;
     .map(h => ({ ...h, score: (normalizeForCompare(h.staff_name) === normalizeForCompare(request.staff) && request.staff ? 40 : 0) + similarity(h.store_name, request.store) * 40 + (request.items.includes(h.item_name) ? 20 : 0) - diff(h.start_date, request.start) - diff(h.end_date, request.end) }))
     .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
 }
+
+/** Changing the item filter must never silently clear already linked holds. */
+export function filterHoldCandidates(candidates:HoldCandidate[],itemId:string,selected:string[]){return candidates.filter(c=>!itemId||c.item_id===itemId||selected.includes(c.id));}

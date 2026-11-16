@@ -708,7 +708,7 @@ export default async function RequestDetailPage({
       {isAllmight && <InventoryExtensionPanel request={request} canManage={canManage} />}
       {/* 手配種別(オールマイト=App10のみ。配送/集荷を独立編集。てずくーるでは非表示) */}
       {isAllmight && <InventoryImportLinks requestId={request.id}/>}
-      {isAllmight && !request.processing_at && <InventoryMatch request={request} />}
+      {[10,49].includes(request.form_types?.kintone_app_id??0) && !request.processing_at && <InventoryMatch request={request} business={isAllmight?"allmight":"tezukuru"} />}
       {isAllmight && (
         <SectionCard title="手配種別(配送 / 集荷)">
           <ArrangementEditor

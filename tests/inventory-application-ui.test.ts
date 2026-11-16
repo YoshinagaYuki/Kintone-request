@@ -34,3 +34,11 @@ test('public Allmight derives locked delivery and collection dates from the manu
  assert.match(html,/pickupDate[^>]*readOnly=""[^>]*value="2026-11-23"/);
  assert.match(html,/希望日と理由/);assert.match(html,/確約不可/);
 });
+
+import {InventoryMatchPicker} from '../components/admin/inventory-match-picker';
+test('hold matching opens on the requested master product and retains selected holds from other product filters',()=>{
+ const candidates=[{id:'a',item_id:'a',item_name:'JET Cola',staff_name:'担当',store_name:'候補A',start_date:'2026-11-21',end_date:'2026-11-22',quantity:1},{id:'b',item_id:'b',item_name:'クレーンゲーム',staff_name:'担当',store_name:'候補B',start_date:'2026-11-21',end_date:'2026-11-22',quantity:1}];
+ const props={requestId:'r',candidates,items:[{id:'a',name:'JET Cola'},{id:'b',name:'クレーンゲーム'}],masterLabel:'商品マスタ',initialItemId:'a'};
+ const filtered=render(React.createElement(InventoryMatchPicker,{...props,selected:[]}));assert.match(filtered,/商品マスタで絞り込み/);assert.match(filtered,/候補A/);assert.doesNotMatch(filtered,/候補B/);
+ const selected=render(React.createElement(InventoryMatchPicker,{...props,selected:['b']}));assert.match(selected,/候補B/);
+});
