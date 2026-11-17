@@ -47,11 +47,11 @@ export function InventoryMobileBoard(props:Props){
       const seg=segments[i];if(!seg.booking)continue;const day=seg.day,x=LABEL+day*DAY-l,span=seg.span*DAY;
       const next=segments[i+1],spill=!staff&&next&&!next.booking&&!next.inactive?Math.min(next.span,2)*DAY:0;
       if(x+span+spill<LABEL||x>w)continue;
-      const b=seg.booking,yy=y+(staff?0:30),color=seg.inactive?'#e2e8f0':overflow?'#ffe4e6':boardColor(b,staff?b.start:seg.date);
+      const b=seg.booking,yy=y+(staff?0:30),color=seg.inactive?'#e2e8f0':overflow?'#ffe4e6':boardColor(b,staff&&!(b.extensionPossible&&seg.date>b.end)?b.start:seg.date);
       const first=staff||seg.date===b.from,last=staff||p.dates[day+seg.span-1]===b.to;
       ctx.save();ctx.beginPath();ctx.roundRect(x+(first?1:0),yy+2,Math.max(1,span-(first?1:0)-(last?1:0)),26,[first?6:0,last?6:0,last?6:0,first?6:0]);
       if(staff){const gradient=ctx.createLinearGradient(0,yy,0,yy+30);gradient.addColorStop(0,'#ffffff');gradient.addColorStop(1,color);ctx.fillStyle=gradient;}else ctx.fillStyle=color;
-      ctx.fill();ctx.strokeStyle=overflow?'#fda4af':seg.inactive?'#cbd5e1':boardStroke(b,staff?b.start:seg.date);ctx.lineWidth=.7;ctx.stroke();
+      ctx.fill();ctx.strokeStyle=overflow?'#fda4af':seg.inactive?'#cbd5e1':boardStroke(b,staff&&!(b.extensionPossible&&seg.date>b.end)?b.start:seg.date);ctx.lineWidth=.7;ctx.stroke();
       if(staff){ctx.save();ctx.clip();fill(x+1,yy+3,3,24,boardStroke(b,b.start));ctx.restore();}ctx.restore();
       const tx=Math.max(LABEL,x);
       if(!staff&&isTransportDay(b,seg.date)){

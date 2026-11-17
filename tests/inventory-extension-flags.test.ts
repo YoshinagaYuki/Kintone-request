@@ -15,7 +15,7 @@ test('extension possibility is shared across the same invoice but separated by b
 import {occupiedCycle} from '../lib/inventory/occupied-cycle';
 import {slotSchedule,automaticNumberAvailable} from '../lib/inventory/operations';
 import {layoutBoard,bookingOn} from '../lib/inventory/board';
-import {boardColor} from '../lib/inventory/presentation';
+import {boardColor,boardSegments} from '../lib/inventory/presentation';
 import {unitSegments} from '../lib/inventory/unit-switches';
 test('extension reserves one calendar month, shades the tail and releases when cleared without changing actual dates',()=>{
  const source=row('a','source');source.booking.unitNumber=1;source.booking.extensionPossible=true;
@@ -38,3 +38,5 @@ test('calendar month clamps leap February and reserves only the final switched m
  assert.equal(slotSchedule([{itemId:'a',booking:b}])[1].occupied_to,'2028-02-29');
  const lanes=layoutBoard({id:'a',name:'機材',total_count:2,reserve_count:0},['2028-02-20'],[b]);assert.equal(bookingOn(lanes[0],'2028-02-20'),undefined);assert.equal(bookingOn(lanes[1],'2028-02-20')?.unitNumber,2);
 });
+
+test('two-row staff bars split at the extension boundary',()=>{const b={...row('a','staff').booking,unitNumber:1,extensionPossible:true};const lane={key:'one',number:1,kind:'normal' as const,bookings:[b]};const segments=boardSegments(lane,['2026-11-30','2026-12-01','2026-12-02'],()=>false,{splitPhases:false});assert.deepEqual(segments.map(s=>[s.date,s.span]),[['2026-11-30',1],['2026-12-01',2]]);});
