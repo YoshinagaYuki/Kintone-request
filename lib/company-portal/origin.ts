@@ -1,0 +1,2 @@
+/** Respect the public host/protocol when Next.js is behind a reverse proxy. */
+export function samePortalOrigin(req:Request){const origin=req.headers.get('origin');if(!origin)return true;try{const url=new URL(req.url),host=req.headers.get('x-forwarded-host')||req.headers.get('host')||url.host,proto=(req.headers.get('x-forwarded-proto')||url.protocol.replace(':','')).split(',')[0].trim();if(!['http','https'].includes(proto)||host.includes(','))return false;return new URL(origin).origin===new URL(`${proto}://${host}`).origin;}catch{return false;}}

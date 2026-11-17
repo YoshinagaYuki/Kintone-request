@@ -1,0 +1,2 @@
+'use client';
+export default function ErrorPage({reset}:{reset:()=>void}){return <main className="flex min-h-screen items-center justify-center bg-slate-50 p-6"><section className="max-w-md rounded-3xl border bg-white p-8 text-center"><h1 className="text-lg font-semibold text-slate-800">ご利用一覧を読み込めませんでした</h1><p className="mt-3 text-sm leading-7 text-slate-500">少し時間をおいて再度お試しください。</p><button onClick={reset} className="mt-5 min-h-11 rounded-xl bg-teal-900 px-5 text-sm text-white">もう一度読み込む</button></section></main>;}

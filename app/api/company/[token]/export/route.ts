@@ -1,0 +1,5 @@
+import {NextResponse} from 'next/server';
+import {publicPortalReport,PORTAL_HEADERS} from '@/lib/company-portal/server';
+import {monthBounds,filterPortalRows,portalCsv} from '@/lib/company-portal/report';
+export const dynamic='force-dynamic';
+export async function GET(req:Request,{params}:{params:Promise<{token:string}>}){try{const {token}=await params,u=new URL(req.url),month=u.searchParams.get('month')??'',q=u.searchParams.get('q')??'',brand=u.searchParams.get('brand')??'all';monthBounds(month);if(q.length>100||!['all','allmight','tezukuru'].includes(brand))throw Error('出力条件を確認してください');const report=await publicPortalReport(token,month);if(!report)return new NextResponse('このURLは利用できません',{status:404,headers:PORTAL_HEADERS});return new NextResponse(portalCsv(report.name,month,filterPortalRows(report.rows,q,brand)),{headers:{...PORTAL_HEADERS,'Content-Type':'text/csv; charset=utf-8','Content-Disposition':`attachment; filename="rentals-${month}.csv"`,'X-Content-Type-Options':'nosniff'}});}catch{return new NextResponse('出力条件を確認して、もう一度お試しください',{status:400,headers:PORTAL_HEADERS});}}

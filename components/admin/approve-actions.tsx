@@ -23,6 +23,7 @@ export type ApproveContentSlot = {
 
 export function ApproveActions({
   requestId,
+  defaultCompanyName,
   shipping,
   defaultDeliveryFee="",defaultRentalFee="",
   optionalShippingAddress=false,
@@ -50,6 +51,7 @@ export function ApproveActions({
   optionalShippingAddress?:boolean;
   defaultDeliveryFee?:string;defaultRentalFee?:string;
   shipping?:ReturnType<typeof requestShipping>;
+  defaultCompanyName?:string;
   requestId: string;
   status: RequestStatus;
   previewOk: boolean;
@@ -89,6 +91,7 @@ export function ApproveActions({
   /** DSP様共有事項の初期値(保存済みがあれば再利用表示。通常は空) */
   dspHandoverNoteDefault?: string;
 }) {
+  const[company,setCompany]=useState(defaultCompanyName??'');
   const[deliveryFee,setDeliveryFee]=useState(defaultDeliveryFee),[rentalFee,setRentalFee]=useState(defaultRentalFee);
   const[transport,setTransport]=useState(shipping?.transport??{address:''});
   const router = useRouter();
@@ -133,7 +136,7 @@ export function ApproveActions({
       const res = await fetch(`/api/admin/requests/${requestId}/${action}`, {
         method: "POST",
         headers: payload ? { "Content-Type": "application/json" } : undefined,
-        body: payload ? JSON.stringify({...payload,...(action==='approve'?{delivery_fee:deliveryFee,rental_fee:rentalFee}:{}),...(shipping?{transport}: {})}) : undefined,
+        body: payload ? JSON.stringify({...payload,...(action==='approve'?{delivery_fee:deliveryFee,rental_fee:rentalFee,...(defaultCompanyName!==undefined?{company_name:company}:{})}:{}),...(shipping?{transport}: {})}) : undefined,
       });
       const body = await res.json().catch(() => null);
       if (!res.ok) {
@@ -218,6 +221,7 @@ export function ApproveActions({
   return (
     <div id="request-approval" className="mt-8 scroll-mt-24">
       {optionalShippingAddress&&status==='pending'&&<p className="text-sm text-slate-600">延長コピーの住所・連絡先は任意です。空欄でも本登録できます。住所がない区間は輸送日数を自動計算せず、入力済みの確保期間で登録します。</p>}
+      {status==='pending'&&defaultCompanyName!==undefined&&<section className="mb-4 rounded-xl border border-teal-100 bg-teal-50/50 p-4"><label className="text-sm font-semibold text-slate-800">企業名<input aria-label="承認する企業名" maxLength={200} value={company} onChange={e=>setCompany(e.target.value)} className="mt-2 block min-h-11 w-full rounded-lg border bg-white px-3 text-base font-normal"/></label><p className="mt-2 text-xs leading-6 text-slate-500">ここで修正した企業名で承認し、企業別のご利用一覧へ紐付けます。未入力の案件は企業ページに表示されません。</p></section>}
       {status==='pending'&&<ApprovalFeeFields delivery={deliveryFee} rental={rentalFee} onDelivery={setDeliveryFee} onRental={setRentalFee}/>}
       {shipping&&status==='pending'&&<InventoryShippingPlan value={transport} onChange={setTransport} dates={shipping.dates} names={shipping.names} required={!optionalShippingAddress}/>}
       {error && (

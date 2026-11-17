@@ -1,3 +1,4 @@
+import {approvedCompanyName} from '@/lib/company-portal/company-name';
 import {approvalFees} from '@/lib/approval-fees';
 import{applyCopyShipping}from'@/lib/inventory/copy-shipping';
 import{requestShipping}from'@/lib/inventory/request-shipping';
@@ -37,6 +38,7 @@ async function POSTHandler(
   }
 
   let body: {
+    company_name?:unknown;
     transport?:unknown;
     delivery_fee?:unknown;
     rental_fee?:unknown;
@@ -102,7 +104,7 @@ async function POSTHandler(
       if(plan)for(const name of plan.names)(copy.data&&copy.data.state!=='cancelled'?assertCopyTransportReady:assertTransportReady)({...plan.dates,transport:plan.transport},name);
     }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'配送日数を確認してください'},{status:400});}
   }
-  try{shippingData=approvalFees(shippingData??request.parsed_data??{},body);}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'費用を確認してください'},{status:400});}
+  try{shippingData=approvalFees(shippingData??request.parsed_data??{},body);if([10,49].includes(formType?.kintone_app_id??0))shippingData=approvedCompanyName(shippingData,body.company_name);}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'費用を確認してください'},{status:400});}
   if (isTezukuru) {
     const kits = await supabase.from('item_name_master').select('id,name,aliases,is_active').eq('category','tezukuru').eq('inventory_role','rental_kit');
     if (kits.error) return NextResponse.json({error:'レンタル品マスタを確認できません'},{status:503});
@@ -282,7 +284,7 @@ async function POSTHandler(
     request_id: id,
     action: "approved",
     actor: user.id,
-    ...(isTezukuru ? { detail: { billing_type: body.billing_type } } : {}),
+    detail:{...(isTezukuru?{billing_type:body.billing_type}:{}),...(body.company_name!==undefined?{company_name_before:request.parsed_data?.['企業名']??request.parsed_data?.['取次店名']??'',company_name_after:shippingData?.['企業名']??''}:{})},
   });
 
   // kintone登録(共通処理。成功時に承認完了メールも送信される)

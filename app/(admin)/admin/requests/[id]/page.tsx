@@ -838,7 +838,7 @@ export default async function RequestDetailPage({
           </p>
         </div>
       ) : (
-        <ApproveActions defaultDeliveryFee={String(request.parsed_data?._approved_delivery_fee??request.parsed_data?.['配送料']??request.parsed_data?.['内）配送料']??'')} defaultRentalFee={String(request.parsed_data?._internal_rental_fee??'')} optionalShippingAddress={!!copyPreview.data}
+        <ApproveActions defaultCompanyName={[10,49].includes(request.form_types?.kintone_app_id??0)?String(request.parsed_data?.['企業名']||request.parsed_data?.['取次店名']||''):undefined} defaultDeliveryFee={String(request.parsed_data?._approved_delivery_fee??request.parsed_data?.['配送料']??request.parsed_data?.['内）配送料']??'')} defaultRentalFee={String(request.parsed_data?._internal_rental_fee??'')} optionalShippingAddress={!!copyPreview.data}
           shipping={approvalShipping}
           requestId={request.id}
           status={request.status}
