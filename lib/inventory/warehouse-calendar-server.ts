@@ -1,0 +1,4 @@
+import type {SupabaseClient} from '@supabase/supabase-js';
+import type {WarehouseClosure} from './warehouse-calendar';
+export async function loadWarehouseClosures(db:SupabaseClient):Promise<WarehouseClosure[]>{const r=await db.from('warehouse_closures').select('id,start_date,end_date,name').is('cancelled_at',null).order('start_date').limit(1001);if(r.error||!r.data||r.data.length>1000)throw Error('倉庫休業日を取得できませんでした');return r.data;}
+export async function loadWarehouseCalendar(db:SupabaseClient){for(let i=0;i<3;i++){const before=await db.from('inventory_change_clock').select('version').eq('id',1).single();if(before.error)throw Error('在庫設定を取得できません');const closures=await loadWarehouseClosures(db);const after=await db.from('inventory_change_clock').select('version').eq('id',1).single();if(!after.error&&before.data.version===after.data.version)return{closures,version:Number(after.data.version)};}throw Error('在庫が更新中です。もう一度お試しください');}

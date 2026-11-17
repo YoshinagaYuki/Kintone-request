@@ -1,11 +1,13 @@
 "use client";
+import {useWarehouseClosures} from './warehouse-calendar-context';
 import{useEffect,useRef}from'react';
 import{standardShippingDays,shippingCarrier,shippingConfirmationKey,shippingPlan,SHIPPING_ORIGIN,SHIPPING_REVIEWED,SHIPPING_SOURCES,type ShippingBooking,type TransportInput}from'@/lib/inventory/shipping-policy';
 export function InventoryShippingPlan({value,onChange,dates,names,required=false}:{value:TransportInput;onChange:(v:TransportInput)=>void;dates:ShippingBooking;names:string[];required?:boolean}){
+ const warehouseClosures=useWarehouseClosures();
  const signature=shippingConfirmationKey(dates,names,value);const previous=useRef(signature);useEffect(()=>{if(previous.current!==signature){previous.current=signature;if(value.confirmed)onChange({...value,confirmed:false});}},[signature,value,onChange]);
  const delivery=dates.deliveryRequired!==false,pickup=dates.pickupRequired!==false;
  const activeAddress=delivery?value.address:value.returnAddress||value.address;
- const plans=[...new Set(names)].filter(Boolean).map(name=>({name,plan:shippingPlan({...dates,transport:value},name)}));
+ const plans=[...new Set(names)].filter(Boolean).map(name=>({name,plan:shippingPlan({...dates,transport:value},name,warehouseClosures)}));
  const warnings=[...new Set(plans.flatMap(p=>p.plan.warnings))];
  const unresolved=!!activeAddress.trim()&&names.filter(Boolean).some(name=>{const carrier=shippingCarrier(name,value.carrier);return delivery&&standardShippingDays(value.address,carrier,value.specialArea)==null||pickup&&standardShippingDays(value.returnAddress||value.address,carrier,value.specialArea)==null;});
  const dayFields=<div className="grid grid-cols-2 gap-3">{([['outboundDays','往路の日数'],['returnDays','復路の日数']]as const).filter(([k])=>k==='outboundDays'?delivery:pickup).map(([k,label])=><label key={k} className="text-xs">{label}<input aria-label={label} type="number" min={1} max={30} placeholder="自動" value={value[k]??''} onChange={e=>set({[k]:e.target.value?Number(e.target.value):undefined})} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 text-base"/></label>)}</div>;
@@ -21,7 +23,7 @@ export function InventoryShippingPlan({value,onChange,dates,names,required=false
  {!unresolved&&dayFields}<p className="text-[11px] leading-5 text-slate-500">沖縄・離島・北海道の遠隔地は、確認した日数を入力してください。手動変更は警告の確認後に保存できます。</p></div></details>
  {!!activeAddress&&plans.map(({name,plan:p})=><div key={name} className="rounded-xl border border-blue-100 bg-white p-3 text-xs"><p className="font-medium">{name} <span className="ml-1 text-blue-700">{p.carrier==='jitbox'?'JITBOX便':p.carrier==='sagawa'?'佐川急便':'西濃運輸'} · 往路{p.outboundDays==null?'要確認':`${p.outboundDays}日`}／復路{p.returnDays==null?'要確認':`${p.returnDays}日`}</span></p><div className="mt-2 grid grid-cols-2 gap-2 leading-5"><p>倉庫から発送<br/><strong>{dates.deliveryRequired===false?'配送なし':p.unresolved?'日数の確認待ち':p.dispatch}</strong></p><p>倉庫へ返却<br/><strong>{dates.pickupRequired===false?'集荷なし':p.unresolved?'日数の確認待ち':p.returned}</strong></p></div><p className="mt-2 text-slate-500">次の発送可能日：{p.unresolved?'日数の確認待ち':p.nextDispatch}</p></div>)}
  {warnings.length>0&&!!activeAddress&&<div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-6 text-amber-950"><ul className="list-disc pl-4">{warnings.map(w=><li key={w}>{w}</li>)}</ul><label className="mt-2 flex min-h-11 items-center gap-2 font-medium"><input type="checkbox" checked={!!value.confirmed} onChange={e=>onChange({...value,confirmed:e.target.checked})}/>最新の運行状況・注意事項を確認しました</label></div>}
- <p className="text-[11px] leading-5 text-slate-500">納品日・集荷日は変更せず、輸送期間を在庫確保に加えます。集荷の翌日から丸3日を空け、返却完了前の発送も避けます。日数は通常地域の社内計画目安で、到着の保証ではありません。</p>
+ <p className="text-[11px] leading-5 text-slate-500">納品日・集荷日は変更せず、輸送期間を在庫確保に加えます。倉庫の土日祝・追加休業日に発送はできないため、直前の営業日に前倒しします。集荷の翌日から丸3日を空け、返却完了前の発送も避けます。日数は通常地域の社内計画目安で、到着の保証ではありません。</p>
  <details><summary className="cursor-pointer text-[11px] text-slate-500">公式日数・最新の運行情報（基準確認 {SHIPPING_REVIEWED}）</summary><div className="mt-2 flex flex-wrap gap-x-3 gap-y-2 text-xs text-blue-700">{[['西濃運輸の日数',SHIPPING_SOURCES.seino],['佐川急便の日数',SHIPPING_SOURCES.sagawa],['JITBOX便',SHIPPING_SOURCES.jitbox],['西濃営業カレンダー',SHIPPING_SOURCES.seinoCalendar],['JITBOX配達カレンダー',SHIPPING_SOURCES.jitCalendar],['佐川の最新運行状況',SHIPPING_SOURCES.notices]].map(([label,url])=><a key={url} href={url} target="_blank" rel="noreferrer" className="underline">{label} ↗</a>)}</div></details>
  </section>;
 }

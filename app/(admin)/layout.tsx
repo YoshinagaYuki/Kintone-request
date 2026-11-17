@@ -1,3 +1,6 @@
+import {WarehouseCalendarProvider} from '@/components/admin/warehouse-calendar-context';
+import {loadWarehouseClosures} from '@/lib/inventory/warehouse-calendar-server';
+import type {WarehouseClosure} from '@/lib/inventory/warehouse-calendar';
 import { HomeScreenStart } from "@/components/admin/home-screen-start";
 import {homePage} from "@/lib/home-screen";
 import {AdminSectionNav} from "@/components/admin/admin-section-nav";
@@ -10,6 +13,7 @@ import { getCurrentAdmin, touchLastLogin } from "@/lib/admin-users";
 export default async function AdminLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  let closures:WarehouseClosure[]=[];
   let preferred="/admin/requests";
   // 最終ログイン時刻の更新(10分間引き)。未ログイン(/admin/login)では admin=null で skip。
   try {
@@ -17,17 +21,17 @@ export default async function AdminLayout({
     const {data:{user}}=await supabase.auth.getUser();
     preferred=homePage(user?.user_metadata?.home_start_path);
     const admin = await getCurrentAdmin(supabase);
-    if (admin) await touchLastLogin(createAdminClient(), admin);
+    if (admin){await touchLastLogin(createAdminClient(), admin);closures=await loadWarehouseClosures(supabase);}
   } catch {
     /* 失敗しても画面表示は止めない */
   }
 
   return (
-    <div className="admin-shell min-h-screen">
+    <WarehouseCalendarProvider closures={closures}><div className="admin-shell min-h-screen">
       <HomeScreenStart preferred={preferred}/>
       <AdminHeader />
       <AdminSectionNav/>
       {children}
-    </div>
+    </div></WarehouseCalendarProvider>
   );
 }

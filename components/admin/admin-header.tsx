@@ -17,6 +17,7 @@ import { usePathname } from "next/navigation";
 // ナビから非表示にしている。ルート・API・DB・データは当面残置(URL直開きは可能)。
 // 【削除候補】旧FMT申請との互換が不要になった段階で /admin/form-settings 一式を完全撤去する。
 const NAV_ITEMS = [
+  { href: "/admin/warehouse-closures", label: "倉庫休業日", shortLabel: "倉庫休業日" },
   { href: "/admin/requests", label: "申請一覧", shortLabel: "申請" },
   { href: "/admin/plans", label: "マスタ", shortLabel: "マスタ" },
   { href: "/admin/staff", label: "担当者", shortLabel: "担当者" },
