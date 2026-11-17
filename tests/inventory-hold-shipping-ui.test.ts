@@ -17,7 +17,7 @@ test('remote destination shows lead-time inputs outside collapsed settings, incl
 });
 test('unknown address can be held without guessing transit times and without an HTML required field',()=>{
  const html=render({address:''});assert.match(html,/住所未定でも仮押さえできます/);assert.doesNotMatch(html,/<input[^>]*required/);
- const b={...dates,transport:{address:''}};assert.doesNotThrow(()=>assertCopyTransportReady(b,'JET Cola'));const p=shippingPlan(b,'JET Cola');assert.equal(p.dispatch,dates.from);assert.equal(p.returned,dates.to);
+ const b={...dates,transport:{address:''}};assert.doesNotThrow(()=>assertCopyTransportReady(b,'JET Cola'));const p=shippingPlan(b,'JET Cola');assert.equal(p.dispatch,dates.from);assert.equal(p.returned,'2026-12-14') /* Saturday receipt waits until Monday. */;
 });
 test('pickup-only remote continuation shows only the return lead-time input',()=>{
  const html=render({address:'',returnAddress:'沖縄県那覇市'},{deliveryRequired:false,pickupRequired:true});assert.doesNotMatch(html,/aria-label="往路の日数"/);assert.equal((html.match(/aria-label="復路の日数"/g)||[]).length,1);

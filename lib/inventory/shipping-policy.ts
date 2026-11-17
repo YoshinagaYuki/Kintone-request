@@ -71,6 +71,8 @@ export function shippingPlan(b:ShippingBooking,itemName:string,closures:Warehous
  if(safety){if(out&&od!=null)dispatch=backwards(dispatch,1,carrier);if(back&&rd!=null)returned=move(returned,1,carrier);warnings.push('繁忙期・積雪期の社内余裕を往復それぞれ1運行日加算しています（遅延保証ではありません）');}
  // Warehouse dispatch is separate from carrier transit. Moving dispatch does not move customer delivery.
  if(b.deliveryRequired!==false)dispatch=warehouseOpenDay(dispatch,-1,closures,d=>carrierClosed(d,carrier));
+ // Customer collection stays fixed; receiving at a closed warehouse waits until the next joint working day.
+ if(b.pickupRequired!==false)returned=warehouseOpenDay(returned,1,closures,d=>carrierClosed(d,carrier));
  const from=[b.from,dispatch].filter(validDate).sort()[0]||b.from,to=[b.to,returned].filter(validDate).sort().at(-1)||b.to;
  const unresolved=!!t&&((out&&od==null)||(back&&rd==null));
  // Three whole calendar days AFTER collection, plus an actual return to the warehouse.
