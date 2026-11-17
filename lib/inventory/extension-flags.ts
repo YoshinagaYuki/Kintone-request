@@ -5,5 +5,5 @@ export function extensionNumber(booking:Pick<BoardBooking,'managementNo'>){const
 /** A case may occupy several machines or monthly source rows; its marker is shared. */
 export function applyExtensionFlags(records:InventoryRecord[],items:{id:string;inventory_role?:string|null}[],flags:ExtensionFlag[]){
  const marked=new Set(flags.filter(f=>f.possible).map(f=>`${f.business}:${f.management_no}`));
- return records.map(r=>({...r,booking:{...r.booking,extensionPossible:marked.has(`${items.find(i=>i.id===r.itemId)?.inventory_role==='rental_kit'?'tezukuru':'allmight'}:${extensionNumber(r.booking)}`)}}));
+ return records.map(r=>{const possible=marked.has(`${items.find(i=>i.id===r.itemId)?.inventory_role==='rental_kit'?'tezukuru':'allmight'}:${extensionNumber(r.booking)}`);return {...r,booking:{...r.booking,extensionPossible:possible}};});
 }
