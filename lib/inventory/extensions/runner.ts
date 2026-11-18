@@ -1,3 +1,4 @@
+import{transportFromRequest}from'../shipping-record';
 import { canManageInventoryRequest } from "../request-access";
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -24,7 +25,7 @@ export async function runInventoryExtension(childId: string, actor: string) {
   }
   try {
     const [child, parent] = await Promise.all([
-      db.from("requests").select("parsed_data,form_type_id,form_type_version,approved_staff_name,dsp_handover_note,form_types(field_mapping)").eq("id",childId).single(),
+      db.from("requests").select("parsed_data,form_type_id,form_type_version,approved_staff_name,dsp_handover_note,allmight_delivery_arrangement,allmight_pickup_arrangement,allmight_delivery_time,allmight_pickup_time,allmight_arrangement_updated_at,form_types(field_mapping)").eq("id",childId).single(),
       db.from("requests").select("parsed_data,kintone_record_id,management_no").eq("id",job.parent_request_id).single(),
     ]);
     if (child.error || parent.error || !child.data || !parent.data) throw new Error("延長元または新申請を取得できませんでした");
@@ -32,11 +33,11 @@ export async function runInventoryExtension(childId: string, actor: string) {
     const version = await getVersionedConfig(db,c.form_type_id,c.form_type_version);
     const mapping = version?.field_mapping ?? (c.form_types as unknown as {field_mapping:FieldMapping})?.field_mapping;
     if (!mapping?.mappings?.length) throw new Error("申請時点のkintoneマッピングが未設定です");
-    const parsed = { ...c.parsed_data } as Record<string,string>;
+    const parsed = { ...c.parsed_data } as Record<string,string>;const transport=transportFromRequest(c);if(transport)(parsed as Record<string,unknown>)._inventory_transport=transport;
     if (c.approved_staff_name) parsed["担当者"] = c.approved_staff_name;
     const draft = extensionDraft(parsed,mapping,childId,p.management_no);
     await normalizeRecordItems(db,"オールマイト",draft);
-    const result = await executeExtension({ childId, parentRecordId:p.kintone_record_id, parentNumber:p.management_no, parentUsageEnd:p.parsed_data["利用最終日"], parentPickupDate:p.parsed_data["集荷日付"] ?? "", pickupDate:job.pickup_date, draft, progress:job.progress },{
+    const result = await executeExtension({ ...((parsed as Record<string,unknown>)._inventory_transport as import('../charter').InventoryArrangement??{}),childId, parentRecordId:p.kintone_record_id, parentNumber:p.management_no, parentUsageEnd:p.parsed_data["利用最終日"], parentPickupDate:p.parsed_data["集荷日付"] ?? "", pickupDate:job.pickup_date, draft, progress:job.progress },{
       async checkpoint(progress) {
         const { data, error } = await db.from("inventory_extensions").update({progress}).eq("id",childId).eq("lease_token",token).select("id").maybeSingle();
         if (error || !data) throw new Error("延長処理の保存に失敗、または処理権限を失いました");

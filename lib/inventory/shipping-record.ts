@@ -15,3 +15,10 @@ export function refreshTransportAddresses(before:Record<string,unknown>,after:Re
  if(!outboundChanged&&!inboundChanged)return saved;
  return{...saved,address,returnAddress,outboundDays:outboundChanged?undefined:saved.outboundDays,returnDays:inboundChanged?undefined:saved.returnDays,confirmed:false};
 }
+
+/** Existing request-level arrangement controls are the fallback after their explicit edit. */
+export function transportFromRequest(request:{parsed_data?:Record<string,unknown>|null;allmight_delivery_arrangement?:string|null;allmight_pickup_arrangement?:string|null;allmight_delivery_time?:string|null;allmight_pickup_time?:string|null;allmight_arrangement_updated_at?:string|null}){
+ let saved=transportFromParsed(request.parsed_data??{});if(saved&&request.allmight_arrangement_updated_at&&Date.parse(request.allmight_arrangement_updated_at)>Date.parse(saved.arrangementUpdatedAt??'1970-01-01')){const {deliveryArrangement,pickupArrangement,deliveryTime,pickupTime,...rest}=saved;saved=rest;}const delivery=request.allmight_delivery_arrangement,pickup=request.allmight_pickup_arrangement;
+ if(!saved&&!delivery&&!pickup)return undefined;
+ return{address:'',...saved,...(!saved?.deliveryArrangement&&delivery?{deliveryArrangement:delivery==='charter'?'charter' as const:'normal' as const,deliveryTime:request.allmight_delivery_time??''}:{}),...(!saved?.pickupArrangement&&pickup?{pickupArrangement:pickup==='charter'?'charter' as const:'normal' as const,pickupTime:request.allmight_pickup_time??''}:{})};
+}

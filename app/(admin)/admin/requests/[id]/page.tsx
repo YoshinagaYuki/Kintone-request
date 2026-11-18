@@ -1,3 +1,4 @@
+import{transportFromRequest}from'@/lib/inventory/shipping-record';
 import {applyApprovalFees} from '@/lib/approval-fees';
 import{shippingAddressIssues}from'@/lib/inventory/shipping-policy';
 import{confirmationMapping,applyConfirmationShipping}from'@/lib/inventory/confirmation-shipping';
@@ -144,7 +145,7 @@ export default async function RequestDetailPage({
   const { data } = await supabase
     .from("requests")
     .select(
-      "id, inventory_parent_request_id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, approved_contents, is_structured, sns_promotion_requested, billing_type, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, allmight_arrangement_sync_failed, deleted_at, deleted_by, processing_at, company_staff_name_input, approved_staff_name, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
+      "id, inventory_parent_request_id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, approved_contents, is_structured, sns_promotion_requested, billing_type, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, allmight_arrangement_updated_at, allmight_arrangement_sync_failed, deleted_at, deleted_by, processing_at, company_staff_name_input, approved_staff_name, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
     )
     .eq("id", id)
     .maybeSingle();
@@ -713,10 +714,10 @@ export default async function RequestDetailPage({
         <SectionCard title="手配種別(配送 / 集荷)">
           <ArrangementEditor
             requestId={request.id}
-            deliveryDefault={request.allmight_delivery_arrangement}
-            pickupDefault={request.allmight_pickup_arrangement}
-            deliveryTimeDefault={request.allmight_delivery_time}
-            pickupTimeDefault={request.allmight_pickup_time}
+            deliveryDefault={transportFromRequest(request)?.deliveryArrangement??request.allmight_delivery_arrangement}
+            pickupDefault={transportFromRequest(request)?.pickupArrangement??request.allmight_pickup_arrangement}
+            deliveryTimeDefault={transportFromRequest(request)?.deliveryTime??request.allmight_delivery_time}
+            pickupTimeDefault={transportFromRequest(request)?.pickupTime??request.allmight_pickup_time}
             canEdit={canEditArrangement && !isDeleted && !hasExtension}
             kintoneRegistered={Boolean(request.kintone_record_id)}
             syncFailed={request.allmight_arrangement_sync_failed === true}

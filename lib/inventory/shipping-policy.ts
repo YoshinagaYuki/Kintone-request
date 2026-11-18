@@ -1,10 +1,11 @@
+import{parseInventoryArrangement,type InventoryArrangement}from'./charter';
 import {warehouseOpenDay,type WarehouseClosure} from './warehouse-calendar';
 import {addDays,validDate} from './gantt';
 export const SHIPPING_ORIGIN='埼玉県朝霞市';
 export const SHIPPING_REVIEWED='2026-10-29';
 export const PREFECTURES='北海道 青森県 岩手県 宮城県 秋田県 山形県 福島県 茨城県 栃木県 群馬県 埼玉県 千葉県 東京都 神奈川県 新潟県 富山県 石川県 福井県 山梨県 長野県 岐阜県 静岡県 愛知県 三重県 滋賀県 京都府 大阪府 兵庫県 奈良県 和歌山県 鳥取県 島根県 岡山県 広島県 山口県 徳島県 香川県 愛媛県 高知県 福岡県 佐賀県 長崎県 熊本県 大分県 宮崎県 鹿児島県 沖縄県'.split(' ');
 export const SHIPPING_SOURCES={seino:'https://track.seino.co.jp/lts/leadTimeSearch.do',sagawa:'https://www2.sagawa-exp.co.jp/send/days/input/',jitbox:'https://www.008008.jp/b/jitbox/',seinoCalendar:'https://www.seino.co.jp/seino/media/pdf-lib/20260312-01.pdf',jitCalendar:'https://yamatobc.com/assets/uploads/2025/11/JITBOXチャーター便-2025年度・2026年度配達定休日について_1762909920.pdf',notices:'https://www2.sagawa-exp.co.jp/information/detail/417/'};
-export type TransportInput={address:string;returnAddress?:string;carrier?:'seino'|'sagawa';specialArea?:boolean;outboundDays?:number;returnDays?:number;confirmed?:boolean};
+export type TransportInput=InventoryArrangement&{address:string;returnAddress?:string;carrier?:'seino'|'sagawa';specialArea?:boolean;outboundDays?:number;returnDays?:number;confirmed?:boolean};
 export type ShippingBooking={warehouseClosures?:WarehouseClosure[];transport?:TransportInput;deliveryRequired?:boolean;pickupRequired?:boolean;start:string;end:string;delivery:string;pickup:string;from:string;to:string};
 /** Confirmation tracks shipping conditions only, never its own checked state or UI metadata. */
 export function shippingConfirmationKey(dates:ShippingBooking,names:string[],value:TransportInput){
@@ -17,7 +18,7 @@ export function parseTransport(value:unknown):TransportInput|undefined{
  if(value==null)return undefined;if(typeof value!=='object'||Array.isArray(value))throw Error('配送設定を確認してください');const v=value as Record<string,unknown>;
  if(typeof v.address!=='string'||v.address.length>500||v.returnAddress!=null&&(typeof v.returnAddress!=='string'||v.returnAddress.length>500))throw Error('配送・集荷先住所は500文字以内で入力してください');
  if(v.carrier!=null&&!['seino','sagawa'].includes(v.carrier as string))throw Error('配送会社を選択してください');
- const result:TransportInput={address:v.address.trim(),returnAddress:typeof v.returnAddress==='string'?v.returnAddress.trim():undefined,carrier:v.carrier as TransportInput['carrier']};
+ const result:TransportInput={...parseInventoryArrangement(v),address:v.address.trim(),returnAddress:typeof v.returnAddress==='string'?v.returnAddress.trim():undefined,carrier:v.carrier as TransportInput['carrier']};
  for(const key of ['outboundDays','returnDays']as const)if(v[key]!=null&&v[key]!==''){if(!Number.isInteger(v[key])||(v[key]as number)<1||(v[key]as number)>30)throw Error('輸送日数は1〜30日で指定してください');result[key]=v[key]as number;}
  for(const key of ['specialArea','confirmed']as const)if(v[key]!=null){if(typeof v[key]!=='boolean')throw Error('配送確認の選択内容を確認してください');result[key]=v[key]as boolean;}return result;
 }
@@ -49,7 +50,8 @@ function seasonal(date:string,address:string){const md=date.slice(5),month=Numbe
 }
 export function shippingPlan(b:ShippingBooking,itemName:string,closures:WarehouseClosure[]=b.warehouseClosures??[]):ShippingPlan{
  const t=b.transport,carrier=shippingCarrier(itemName,t?.carrier),out=!!t&&b.deliveryRequired!==false,back=!!t&&b.pickupRequired!==false;
- const od=out?(t?.outboundDays??standardShippingDays(t!.address,carrier,t?.specialArea)):0,rd=back?(t?.returnDays??standardShippingDays(t!.returnAddress||t!.address,carrier,t?.specialArea)):0;
+ const charterDelivery=t?.deliveryArrangement==='charter',charterPickup=t?.pickupArrangement==='charter';
+ const od=out?(charterDelivery?0:t?.outboundDays??standardShippingDays(t!.address,carrier,t?.specialArea)):0,rd=back?(charterPickup?0:t?.returnDays??standardShippingDays(t!.returnAddress||t!.address,carrier,t?.specialArea)):0;
  const warnings:string[]=[],delivery=validDate(b.delivery)?b.delivery:b.start,pickup=validDate(b.pickup)?b.pickup:b.end;
  let dispatch=out&&od!=null&&validDate(delivery)?backwards(delivery,od,carrier):b.from,returned=back&&rd!=null&&validDate(pickup)?move(pickup,rd,carrier):b.to;
  const allDates=[dispatch,delivery,pickup,returned].filter(validDate);const address=[t?.address,t?.returnAddress].filter(Boolean).join(' ');
@@ -68,11 +70,11 @@ export function shippingPlan(b:ShippingBooking,itemName:string,closures:Warehous
  }
  // Busy/snow periods get one extra operating day per leg as an internal safety margin.
  const safety=!!t&&(out||back)&&allDates.some(d=>seasonal(d,address).length>0);
- if(safety){if(out&&od!=null)dispatch=backwards(dispatch,1,carrier);if(back&&rd!=null)returned=move(returned,1,carrier);warnings.push('繁忙期・積雪期の社内余裕を往復それぞれ1運行日加算しています（遅延保証ではありません）');}
+ if(safety){if(out&&od!=null&&!charterDelivery)dispatch=backwards(dispatch,1,carrier);if(back&&rd!=null&&!charterPickup)returned=move(returned,1,carrier);warnings.push('繁忙期・積雪期の社内余裕を往復それぞれ1運行日加算しています（遅延保証ではありません）');}
  // Warehouse dispatch is separate from carrier transit. Moving dispatch does not move customer delivery.
- if(b.deliveryRequired!==false)dispatch=warehouseOpenDay(dispatch,-1,closures,d=>carrierClosed(d,carrier));
+ if(b.deliveryRequired!==false)dispatch=warehouseOpenDay(dispatch,-1,closures,d=>!charterDelivery&&carrierClosed(d,carrier));
  // Customer collection stays fixed; receiving at a closed warehouse waits until the next joint working day.
- if(b.pickupRequired!==false)returned=warehouseOpenDay(returned,1,closures,d=>carrierClosed(d,carrier));
+ if(b.pickupRequired!==false)returned=warehouseOpenDay(returned,1,closures,d=>!charterPickup&&carrierClosed(d,carrier));
  const from=[b.from,dispatch].filter(validDate).sort()[0]||b.from,to=[b.to,returned].filter(validDate).sort().at(-1)||b.to;
  const unresolved=!!t&&((out&&od==null)||(back&&rd==null));
  // Three whole calendar days AFTER collection, plus an actual return to the warehouse.

@@ -1,3 +1,4 @@
+import{transportFromRequest}from'../inventory/shipping-record';
 import {applyApprovalFees} from '../approval-fees';
 import{rentalNote}from'../inventory/rental-items';
 import{confirmationMapping,applyConfirmationShipping}from'../inventory/confirmation-shipping';
@@ -55,7 +56,7 @@ async function registerRequestInternal(
   const { data: request, error: fetchError } = await supabase
     .from("requests")
     .select(
-      "id, inventory_parent_request_id, parsed_data, status, kintone_record_id, form_type_id, form_type_version, applicant_name, applicant_email, approved_rental_plan_id, requested_rental_plan_id, approved_contents, company_staff_name_input, approved_staff_name, customer_requests, billing_type, dsp_handover_note, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, form_types(name, kintone_app_id, field_mapping)"
+      "id, inventory_parent_request_id, parsed_data, status, kintone_record_id, form_type_id, form_type_version, applicant_name, applicant_email, approved_rental_plan_id, requested_rental_plan_id, approved_contents, company_staff_name_input, approved_staff_name, customer_requests, billing_type, dsp_handover_note, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, allmight_arrangement_updated_at, form_types(name, kintone_app_id, field_mapping)"
     )
     .eq("id", requestId)
     .maybeSingle();
@@ -258,7 +259,7 @@ async function registerRequestInternal(
     }
 
     if(appId===49&&typeof parsedData['レンタル品一覧']==='string')mapped.record['文字列__複数行_']={value:rentalNote(String(mapped.record['文字列__複数行_']?.value??''),parsedData['レンタル品一覧'])};
-    if([10,49].includes(appId))applyConfirmationShipping(mapped.record,parsedData,fieldMapping);
+    if([10,49].includes(appId))applyConfirmationShipping(mapped.record,{...parsedData,_inventory_transport:transportFromRequest({...request,parsed_data:parsedData})},fieldMapping);
 
     // オールマイトのみ: API登録ではkintone JSが発火しないため、
     // 利用日数・利用金額①〜⑤をサーバー側で計算して補完(計算/配送費/調整額には触れない)

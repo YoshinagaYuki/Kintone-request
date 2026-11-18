@@ -7,13 +7,13 @@ export function initialInventoryDates(start:string,end=start,delivery='',pickup=
  const d=deliveryRequired?(delivery||offset(start,-1)):'',p=pickupRequired?(pickup||offset(end,1)):'';return{start,end,delivery:d,pickup:p,from:min(from,start,d),to:max(to,end,p),deliveryRequired,pickupRequired};
 }
 /** Shipping edits drive the adjacent usage date; usage edits retain custom shipping and inspection padding. */
-export function changeInventoryDate(previous:InventoryDates,key:keyof InventoryDates,value:string,options:{fixedStart?:boolean}={}):InventoryDates{
+export function changeInventoryDate(previous:InventoryDates,key:keyof InventoryDates,value:string,options:{fixedStart?:boolean;deliveryCharter?:boolean;pickupCharter?:boolean}={}):InventoryDates{
  const next={...previous,[key]:value};
- if(key==='delivery'&&validDate(value)&&previous.deliveryRequired!==false&&!options.fixedStart)next.start=offset(value,1);
- if(key==='pickup'&&validDate(value)&&previous.pickupRequired!==false)next.end=offset(value,-1);
- if(key==='start'&&previous.deliveryRequired!==false&&(!previous.delivery||previous.delivery===offset(previous.start,-1)))next.delivery=offset(value,-1);
- if(key==='end'&&previous.pickupRequired!==false&&(!previous.pickup||previous.pickup===offset(previous.end,1)))next.pickup=offset(value,1);
- if(options.fixedStart&&key==='end'&&validDate(value)&&previous.pickupRequired!==false&&validDate(next.pickup)&&next.pickup<value)next.pickup=offset(value,1);
+ if(key==='delivery'&&validDate(value)&&previous.deliveryRequired!==false&&!options.fixedStart)next.start=offset(value,options.deliveryCharter?0:1);
+ if(key==='pickup'&&validDate(value)&&previous.pickupRequired!==false)next.end=offset(value,options.pickupCharter?0:-1);
+ if(key==='start'&&previous.deliveryRequired!==false&&(!previous.delivery||previous.delivery===offset(previous.start,options.deliveryCharter?0:-1)))next.delivery=offset(value,options.deliveryCharter?0:-1);
+ if(key==='end'&&previous.pickupRequired!==false&&(!previous.pickup||previous.pickup===offset(previous.end,options.pickupCharter?0:1)))next.pickup=offset(value,options.pickupCharter?0:1);
+ if(options.fixedStart&&key==='end'&&validDate(value)&&previous.pickupRequired!==false&&validDate(next.pickup)&&next.pickup<value)next.pickup=offset(value,options.pickupCharter?0:1);
  const priorFrom=min(previous.start,previous.delivery),priorTo=max(previous.end,previous.pickup);
  if(key!=='from')next.from=previous.from===priorFrom?min(next.start,next.delivery):min(previous.from,next.start,next.delivery);
  if(key!=='to')next.to=previous.to===priorTo?max(next.end,next.pickup):max(previous.to,next.end,next.pickup);
@@ -21,9 +21,16 @@ export function changeInventoryDate(previous:InventoryDates,key:keyof InventoryD
 }
 
 /** Explicitly absent shipping never regains a default date. Preserve only deliberate extra padding. */
-export function chooseInventoryShipping(previous:InventoryDates,kind:'delivery'|'pickup',required:boolean):InventoryDates{
- const next={...previous,[`${kind}Required`]:required,[kind]:required?(previous[kind]||offset(kind==='delivery'?previous.start:previous.end,kind==='delivery'?-1:1)):''};
+export function chooseInventoryShipping(previous:InventoryDates,kind:'delivery'|'pickup',required:boolean,charter=false):InventoryDates{
+ const next={...previous,[`${kind}Required`]:required,[kind]:required?(previous[kind]||offset(kind==='delivery'?previous.start:previous.end,charter?0:kind==='delivery'?-1:1)):''};
  const priorFrom=min(previous.start,previous.delivery),priorTo=max(previous.end,previous.pickup);
  next.from=previous.from===priorFrom?min(next.start,next.delivery):min(previous.from,next.start,next.delivery);
  next.to=previous.to===priorTo?max(next.end,next.pickup):max(previous.to,next.end,next.pickup);return next;
+}
+
+/** Changing transport type aligns its customer date; deliberate extra occupancy padding is retained. */
+export function chooseInventoryArrangement(previous:InventoryDates,kind:'delivery'|'pickup',charter:boolean):InventoryDates{
+ const next={...previous,[kind]:previous[kind==='delivery'?'deliveryRequired':'pickupRequired']===false?'':offset(kind==='delivery'?previous.start:previous.end,charter?0:kind==='delivery'?-1:1)};
+ next.from=previous.from===min(previous.start,previous.delivery)?min(next.start,next.delivery):min(previous.from,next.start,next.delivery);
+ next.to=previous.to===max(previous.end,previous.pickup)?max(next.end,next.pickup):max(previous.to,next.end,next.pickup);return next;
 }

@@ -16,6 +16,7 @@ export const SHIPPING_FIELD_MAPPING: ShippingFieldMapping[] = [
   // 納品
   { from: "手配種別", to: "手配種別" },
   { from: "納品_日付", to: "納品_日付" },
+  { from: "納品_時間", to: "納品_時間" },
   { from: "納品_住所", to: "納品_住所" },
   { from: "納品_担当者", to: "納品_担当者" },
   { from: "納品_電話番号", to: "納品_電話番号" },
@@ -23,6 +24,7 @@ export const SHIPPING_FIELD_MAPPING: ShippingFieldMapping[] = [
   // 集荷
   { from: "集荷_手配種別", to: "集荷_手配種別" },
   { from: "集荷_日付", to: "集荷_日付" },
+  { from: "集荷_時刻", to: "集荷_時刻" },
   { from: "集荷_住所", to: "集荷_住所" },
   { from: "集荷_担当者", to: "集荷_担当者" },
   { from: "集荷_電話番号", to: "集荷_電話番号" },

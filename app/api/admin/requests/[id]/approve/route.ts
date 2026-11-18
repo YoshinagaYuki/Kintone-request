@@ -61,7 +61,7 @@ async function POSTHandler(
   const { data: request } = await supabase
     .from("requests")
     .select(
-      "id, status, deleted_at, form_type_id, form_type_version, parsed_data, requested_rental_plan_id, approved_rental_plan_id, company_staff_name_input, form_types(field_mapping, parser_config, kintone_app_id)"
+      "id, status, deleted_at, form_type_id, form_type_version, parsed_data, requested_rental_plan_id, approved_rental_plan_id, company_staff_name_input, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, allmight_arrangement_updated_at, form_types(field_mapping, parser_config, kintone_app_id)"
     )
     .eq("id", id)
     .maybeSingle();
