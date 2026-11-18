@@ -7,7 +7,7 @@ import type {ScreenDay} from '@/lib/inventory/shared-screen';
 import {pinchViewport} from '@/lib/inventory/pinch';
 import {mobileWindow,mobileHit,MOBILE_DAY as DAY,MOBILE_LABEL as LABEL,MOBILE_LANE as ROW} from '@/lib/inventory/mobile-viewport';
 
-type Props={item:CapacityItem;dates:string[];lanes:BoardLane[];backgroundDays?:ScreenDay[];today:string;zoom:number;scrollRef:RefObject<HTMLDivElement|null>;trailingSpace:number;onOpen:(date:string,booking?:BoardBooking,number?:number|null)=>void;onZoom:(zoom:number,left:number,top:number)=>void};
+type Props={item:CapacityItem;dates:string[];lanes:BoardLane[];backgroundDays?:ScreenDay[];today:string;zoom:number;scrollRef:RefObject<HTMLDivElement|null>;trailingSpace:number;onOpen:(date:string,booking?:BoardBooking,number?:number|null,itemId?:string)=>void;onZoom:(zoom:number,left:number,top:number)=>void};
 /** A viewport-sized surface: the browser never rasterizes a year-wide sticky table on phones. */
 export function InventoryMobileBoard(props:Props){
  const canvasRef=useRef<HTMLCanvasElement>(null),spaceRef=useRef<HTMLDivElement>(null),live=useRef(props),sync=useRef<(()=>void)|null>(null);live.current=props;
@@ -74,7 +74,7 @@ export function InventoryMobileBoard(props:Props){
     ctx.save();ctx.beginPath();ctx.rect(0,header,LABEL,h-header);ctx.clip();
     const reserve=lane.kind==='reserve',bad=lane.kind==='overflow';fill(0,y,LABEL,ROW,bad?'#ffe4e6':reserve?'#e2e8f0':'#f8fafc');
     text(`${lane.kind==='unassigned'?'未':bad?'競':lane.kind==='unconfigured'?'未':''}${lane.number}`,0,y+30,36,13,'#17243b','center');
-    text(reserve?'予備':'担当者',36,y+15,84,10,'#475569','center');text(reserve?'使用可能':'イベント場所',36,y+45,84,10,'#475569','center');line(36,y,36,y+ROW);line(36,y+30,LABEL,y+30);line(0,y+ROW,LABEL,y+ROW);ctx.restore();
+    text(lane.label??(reserve?'予備':'担当者'),36,y+15,84,10,'#475569','center');text(lane.label??(reserve?'使用可能':'イベント場所'),36,y+45,84,10,'#475569','center');line(36,y,36,y+ROW);line(36,y+30,LABEL,y+30);line(0,y+ROW,LABEL,y+ROW);ctx.restore();
    }
    fill(0,0,w,header,'#f8fafc');
    ctx.save();ctx.beginPath();ctx.rect(LABEL,0,w-LABEL,header);ctx.clip();
@@ -101,7 +101,7 @@ export function InventoryMobileBoard(props:Props){
   const end=()=>{if(!gesture)return;if(frame)cancelAnimationFrame(frame);frame=0;if(pending){const n=pinchViewport(gesture,pending.distance,pending.center);zoom=Math.round(n.zoom);resizeSpace();grid.scrollLeft=Math.max(0,gesture.x*zoom/100-pending.center.x);grid.scrollTop=Math.max(0,gesture.y*zoom/100-pending.center.y);}gesture=null;pending=null;suppressUntil=Date.now()+500;draw();live.current.onZoom(zoom,grid.scrollLeft,grid.scrollTop);};
   const start=(e:TouchEvent)=>{if(e.touches.length!==2){end();return;}if(e.cancelable)e.preventDefault();const rect=grid.getBoundingClientRect(),center=point(e,rect);gesture={distance:Math.max(1,distance(e)),zoom,x:(grid.scrollLeft+center.x)/(zoom/100),y:(grid.scrollTop+center.y)/(zoom/100),rect};pending={distance:gesture.distance,center};suppressUntil=Date.now()+500;};
   const move=(e:TouchEvent)=>{if(e.touches.length!==2)return;if(e.cancelable)e.preventDefault();if(!gesture){start(e);return;}pending={distance:distance(e),center:point(e,gesture.rect)};schedule();};
-  const click=(e:MouseEvent)=>{if(Date.now()<suppressUntil||gesture)return;const p=live.current,r=grid.getBoundingClientRect(),header=56+(p.backgroundDays?20:0),hit=mobileHit(e.clientX-r.left,e.clientY-r.top,grid.scrollLeft,grid.scrollTop,zoom/100,header,p.dates.length,p.lanes.length);if(!hit)return;const lane=p.lanes[hit.lane],date=p.dates[hit.day];if(laneLocked(p.item,lane,hit.lane,0,date))return;p.onOpen(date,bookingOn(lane,date),lane.kind==='normal'||lane.kind==='reserve'?lane.number:null);};
+  const click=(e:MouseEvent)=>{if(Date.now()<suppressUntil||gesture)return;const p=live.current,r=grid.getBoundingClientRect(),header=56+(p.backgroundDays?20:0),hit=mobileHit(e.clientX-r.left,e.clientY-r.top,grid.scrollLeft,grid.scrollTop,zoom/100,header,p.dates.length,p.lanes.length);if(!hit)return;const lane=p.lanes[hit.lane],date=p.dates[hit.day];if(laneLocked(p.item,lane,hit.lane,0,date))return;p.onOpen(date,bookingOn(lane,date),lane.kind==='normal'||lane.kind==='reserve'?lane.number:null,lane.item?.id);};
   grid.addEventListener('touchstart',start,{passive:false});grid.addEventListener('touchmove',move,{passive:false});grid.addEventListener('touchend',end);grid.addEventListener('touchcancel',end);grid.addEventListener('click',click);
   return()=>{observer.disconnect();if(frame)cancelAnimationFrame(frame);sync.current=null;grid.removeEventListener('scroll',schedule);grid.removeEventListener('touchstart',start);grid.removeEventListener('touchmove',move);grid.removeEventListener('touchend',end);grid.removeEventListener('touchcancel',end);grid.removeEventListener('click',click);};
  },[props.scrollRef]);

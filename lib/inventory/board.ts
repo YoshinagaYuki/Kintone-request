@@ -3,7 +3,7 @@ const visibleTo=(b:BoardBooking)=>b.extensionPossible&&!b.unitSegment?[b.to,shif
 import{unitSegments}from'./unit-switches';
 import type { CapacityItem } from "./availability";
 export type BoardBooking = {warehouseClosures?:import('./warehouse-calendar').WarehouseClosure[]; extensionPossible?:boolean; monthlySourceKeys?:string[]; shippingBase?:{from:string;to:string}; transport?:import('./shipping-policy').TransportInput; sourceUnitSwitches?:import('./unit-switches').UnitSwitch[];bundleKey?:string; unitSwitches?:import('./unit-switches').UnitSwitch[];unitSegment?:boolean; deliveryRequired?:boolean;pickupRequired?:boolean;parentKey?:string;screenQuantity?:number; key?:string;unitNumber?:number|null; extension?:boolean; id:string; group:string; source?:string; kind:"request"|"hold"|"imported"; staff:string; store:string; managementNo:string; status:string; from:string; to:string; start:string; end:string; delivery:string; pickup:string; href:string };
-export type BoardLane = { key:string; number:number; kind:"normal"|"reserve"|"overflow"|"unconfigured"|"unassigned"; bookings:BoardBooking[] };
+export type BoardLane = { item?:CapacityItem;label?:string; key:string; number:number; kind:"normal"|"reserve"|"overflow"|"unconfigured"|"unassigned"; bookings:BoardBooking[] };
 export const unitStart=(item:CapacityItem)=>item.unit_number_start??1;
 export function stockOn(item:CapacityItem,date:string){
  const plan=item.schedule?.filter(p=>p.effective_date<=date).sort((a,b)=>b.effective_date.localeCompare(a.effective_date))[0];
