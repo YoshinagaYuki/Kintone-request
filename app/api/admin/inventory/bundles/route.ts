@@ -1,6 +1,5 @@
 import{editConflictSchedule}from'@/lib/inventory/edit-conflicts';
 import{withShippingRecord}from'@/lib/inventory/shipping-record';
-import{assertTransportReady,assertCopyTransportReady}from'@/lib/inventory/shipping-policy';
 import{turnaroundWarnings}from'@/lib/inventory/operations';
 import{rentalMetadata}from'@/lib/inventory/rental-items';
 import{linkedBookings,bookingEditBaseline,commonBookingPatch}from'@/lib/inventory/booking-bundles';
@@ -38,8 +37,7 @@ async function handler(req:NextRequest){const access=await inventoryAccess();if(
  }}
  const copyRequest=original.booking.kind==='request'?await db.from('inventory_copy_requests').select('id,state').eq('id',original.booking.id).maybeSingle():null;
  if(copyRequest?.error)throw Error('コピー申請の状態を確認できません');
- const checkTransport=copyRequest?.data&&copyRequest.data.state!=='cancelled'?assertCopyTransportReady:assertTransportReady;
- for(const r of [...affected,...added]){if(r.booking.transport)checkTransport(r.booking,model.items.find(i=>i.id===r.itemId)!.name);Object.assign(r,withShippingRecord(r,model.items.find(i=>i.id===r.itemId)!.name,model.warehouseClosures));}
+ for(const r of [...affected,...added]){Object.assign(r,withShippingRecord(r,model.items.find(i=>i.id===r.itemId)!.name,model.warehouseClosures));}
  const candidates=[...affected,...added];const warnings=turnaroundWarnings(candidates,existing);if(warnings.length&&body.shipping_ack!==JSON.stringify(warnings))return NextResponse.json({code:'shipping_warning',warningKey:JSON.stringify(warnings),error:warnings.join('\n')+'\n手動指定で保存しますか？'},{status:409});for(const r of candidates)validateNumber(model,r,r.booking.unitNumber??null);assertScreenCapacity(model,candidates,existing);
  if(request?.form_types?.kintone_app_id===49){const kitLines:any[]=[];for(const r of candidates.filter(r=>r.booking.id===request.id)){const found=kitLines.find(l=>l.item_id===r.itemId);if(found)found.quantity++;else kitLines.push({item_id:r.itemId,name:model.items.find(i=>i.id===r.itemId)!.name,quantity:1});}Object.assign(updated.data,rentalMetadata(kitLines));raw=rewriteInventoryFmt(raw??'',{'レンタル品一覧':updated.data['レンタル品一覧']});}
  const updates=request?await prepareInventoryKintoneChange(db,request,updated.data):[];const assignments=candidates.filter(r=>request&&r.booking.id===request.id).map(r=>({group_key:r.booking.group,item_id:r.itemId,unit_number:r.booking.unitNumber??null,screen_quantity:r.booking.screenQuantity??0}));

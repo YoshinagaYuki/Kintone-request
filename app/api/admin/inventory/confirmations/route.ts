@@ -1,5 +1,5 @@
 import{confirmationApplicant}from'@/lib/inventory/confirmation-applicant';
-import{assertTransportReady,shippingPlan}from'@/lib/inventory/shipping-policy';
+import{shippingPlan}from'@/lib/inventory/shipping-policy';
 import{withShippingRecord,transportFromParsed}from'@/lib/inventory/shipping-record';
 import{rentalMetadata}from'@/lib/inventory/rental-items';
 import{tezukuruKitNames}from'@/lib/inventory/business';
@@ -62,8 +62,6 @@ async function handler(req:NextRequest){const a=await inventoryAccess();if('erro
  const detected=transportFromParsed(data);if(detected)data._inventory_transport={...b.transport,...detected,confirmed:!!b.transport?.confirmed&&b.transport.address===detected.address&&(b.transport.returnAddress||b.transport.address)===(detected.returnAddress||detected.address)};
  const candidates:InventoryRecord[]=p.records.map((r,i)=>({itemId:r.itemId,booking:{...r.booking,...patch,shippingBase:{from:patch.from,to:patch.to},key:`request:${body.id}:${i}`,id:body.id,group:`${body.id}:${i}`,kind:'request' as const,transport:transportFromParsed(data),managementNo:'',status:'hold'}})).map(r=>withShippingRecord(r,model.items.find(i=>i.id===r.itemId)!.name,model.warehouseClosures));
  const plans=candidates.map(r=>({record:r,name:model.items.find(i=>i.id===r.itemId)!.name,plan:shippingPlan(r.booking,model.items.find(i=>i.id===r.itemId)!.name)}));
- for(const entry of plans)if(entry.plan.unresolved)assertTransportReady(entry.record.booking,entry.name);
- const warnings=[...new Set(plans.flatMap(entry=>entry.plan.warnings))];if(warnings.length&&body.shipping_ack!==JSON.stringify(warnings))return NextResponse.json({code:'shipping_warning',warningKey:JSON.stringify(warnings),error:warnings.join('\n')+'\n配送の注意事項を確認して本登録に進みますか？'},{status:409});
  if(data._inventory_transport)(data._inventory_transport as any).confirmed=true;
  const existing=model.records.filter(r=>!keys.includes(r.booking.key!));for(const r of candidates)validateNumber(model,r,r.booking.unitNumber??null);assertScreenCapacity(model,candidates,existing);
  const slots=candidates.map((r,i)=>({slot:i,source_key:keys[i],item_id:r.itemId,unit_number:r.booking.unitNumber??null,patch:{from:patch.from,to:patch.to,deliveryRequired,pickupRequired,screenQuantity:r.booking.screenQuantity??0}}));
