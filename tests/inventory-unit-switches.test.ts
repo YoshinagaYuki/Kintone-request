@@ -7,3 +7,31 @@ test('switches persist through booking overlays and can be fully cleared',()=>{c
 test('today no longer forces a split in one continuous gantt case',()=>{const dates=['2026-10-26','2026-10-27','2026-10-28'];const rows=layoutBoard(item,dates,[{...b,unitNumber:1,unitSwitches:[]}]);assert.equal(boardSegments(rows[0],dates,()=>false).length,1);});
 
 test('delivery and pickup markers occupy one day even when transit adds several days',()=>{const booking={...b,from:'2026-11-11',to:'2026-11-18',start:'2026-11-14',end:'2026-11-15',delivery:'2026-11-13',pickup:'2026-11-16',unitSwitches:[]};const days=Array.from({length:8},(_,i)=>addDays('2026-11-11',i));const segments=boardSegments({key:'normal:1',number:1,kind:'normal',bookings:[booking]},days,()=>false);assert.deepEqual(segments.map(s=>[s.date,s.span]),[['2026-11-11',2],['2026-11-13',1],['2026-11-14',2],['2026-11-16',1],['2026-11-17',2]]);assert.equal(segments[0].booking,undefined);assert.equal(segments.at(-1)?.booking,undefined);assert.equal(segments[1].booking?.id,booking.id);assert.equal(bookingOn({key:'normal:1',number:1,kind:'normal',bookings:[booking]},'2026-11-11')?.id,booking.id);});
+
+import {addedSlotSchedule} from '../lib/inventory/operations';
+const overlaps=(a:ReturnType<typeof slotSchedule>,b:ReturnType<typeof slotSchedule>)=>a.some(x=>b.some(y=>x.item_id===y.item_id&&x.unit_number===y.unit_number&&x.group_key!==y.group_key&&x.occupied_from<=y.occupied_to&&x.occupied_to>=y.occupied_from));
+test('1044: moving 13 to empty 23 on Nov 6 is allowed despite unchanged Nov 4–5 overlap with 1045',()=>{
+ const original={itemId:'item',booking:{...b,unitNumber:13,unitSwitches:[],from:'2026-11-04',to:'2026-11-10',start:'2026-11-05',end:'2026-11-09',delivery:'2026-11-04',pickup:'2026-11-10'}};
+ const target={...original,booking:{...original.booking,unitSwitches:[{date:'2026-11-06',number:23}]}};
+ const other={itemId:'item',booking:{...original.booking,group:'1045',from:'2026-10-26',to:'2026-12-01'}};
+ assert.equal(overlaps(slotSchedule([target]),slotSchedule([other])),true);
+ assert.deepEqual(addedSlotSchedule([original],[target]).map(s=>[s.unit_number,s.occupied_from,s.occupied_to]),[[23,'2026-11-06','2026-11-10']]);
+ assert.equal(overlaps(addedSlotSchedule([original],[target]),slotSchedule([other])),false);
+ assert.equal(overlaps(addedSlotSchedule([target],[original]),slotSchedule([other])),true,'clearing the switch must not reintroduce an occupied unit');
+});
+test('switch still rejects target conflicts including a return-transit day, and changes to existing switches',()=>{
+ const original={itemId:'item',booking:{...b,unitNumber:3,unitSwitches:[]}};
+ const target={...original,booking:b};
+ const other={itemId:'item',booking:{...b,group:'other',unitNumber:1,unitSwitches:[],from:'2026-10-31',to:'2026-11-02',start:'2026-11-01',end:'2026-11-01',delivery:'2026-10-31',pickup:'2026-11-02'}};
+ assert.equal(overlaps(addedSlotSchedule([original],[target]),slotSchedule([other])),true);
+ const moved={...target,booking:{...b,unitSwitches:[{date:'2026-10-27',number:1}]}};
+ assert.deepEqual(addedSlotSchedule([target],[moved]).map(s=>[s.unit_number,s.occupied_from,s.occupied_to]),[[1,'2026-10-27','2026-10-27']]);
+ assert.deepEqual(addedSlotSchedule([target],[target]),[]);
+});
+test('new occupancy subtracts several previous segments and never subtracts another item or group',()=>{
+ const original={itemId:'item',booking:b};
+ const target={...original,booking:{...b,unitSwitches:[{date:'2026-10-27',number:1},{date:'2026-10-29',number:3},{date:'2026-10-30',number:1}]}};
+ assert.deepEqual(addedSlotSchedule([original],[target]).map(s=>[s.unit_number,s.occupied_from,s.occupied_to]),[[1,'2026-10-27','2026-10-27'],[3,'2026-10-29','2026-10-29']]);
+ assert.equal(addedSlotSchedule([{...original,itemId:'another'}],[original]).length,2);
+ assert.equal(addedSlotSchedule([{...original,booking:{...b,group:'another'}}],[original]).length,2);
+});

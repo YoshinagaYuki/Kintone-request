@@ -28,6 +28,24 @@ export function resolveUnitNumber(model:InventoryModel,r:InventoryRecord,value:u
 }
 export function validateNumber(model:InventoryModel,r:InventoryRecord,n:number|null){const item=model.items.find(i=>i.id===r.itemId);if(!item)throw Error('有効な商品を選択してください');for(const segment of unitSegments({...r.booking,unitNumber:n})){const number=segment.unitNumber;if(number==null)continue;const cycle=occupiedCycle(segment);const checks=[cycle.from,...(item.schedule??[]).filter(s=>cycle.from<=s.effective_date&&s.effective_date<=cycle.to).map(s=>s.effective_date)];if(!Number.isInteger(number)||number<1||checks.some(d=>number>(stockOn(item,d)?.total??0)))throw Error('この機器番号は確保期間中の保有数を超えています');}}
 export function slotSchedule(records:InventoryRecord[]){return records.filter(r=>!r.deleted).flatMap(r=>unitSegments(r.booking).filter(b=>b.unitNumber!=null).map(b=>({item_id:r.itemId,unit_number:b.unitNumber,group_key:b.group,occupied_from:occupiedCycle(b).from,occupied_to:occupiedCycle(b).to})));}
+/** Check only newly occupied days when rerouting an existing booking.
+ * An unchanged historical overlap must not prevent moving away from it.
+ * Subtraction is per item, physical unit and booking group, including transit.
+ */
+export function addedSlotSchedule(before:InventoryRecord[],after:InventoryRecord[]){
+ const previous=slotSchedule(before);
+ return slotSchedule(after).flatMap(slot=>{
+  let ranges=[{from:slot.occupied_from,to:slot.occupied_to}];
+  for(const old of previous){
+   if(old.item_id!==slot.item_id||old.unit_number!==slot.unit_number||old.group_key!==slot.group_key)continue;
+   ranges=ranges.flatMap(r=>{
+    if(old.occupied_to<r.from||old.occupied_from>r.to)return[r];
+    return [...(r.from<old.occupied_from?[{from:r.from,to:addDays(old.occupied_from,-1)}]:[]),...(r.to>old.occupied_to?[{from:addDays(old.occupied_to,1),to:r.to}]:[])];
+   });
+  }
+  return ranges.map(r=>({...slot,occupied_from:r.from,occupied_to:r.to}));
+ });
+}
 export function holdBatchInput(body:Record<string,unknown>){
  if(!uuid(body.batch_id)||!uuid(body.staff_id))throw Error('担当者を選択してください');
  const patch=bookingPatch({item_id:(body.lines as any[])?.[0]?.item_id,staff:'担当者',store:body.store_name,start:body.start,end:body.end,from:body.from,to:body.to,delivery:body.delivery??'',pickup:body.pickup??'',transport:body.transport});
