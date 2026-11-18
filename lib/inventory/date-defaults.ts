@@ -39,3 +39,13 @@ export function chooseInventoryArrangement(previous:InventoryDates,kind:'deliver
 export function editInventoryDate(previous:InventoryDates,key:keyof InventoryDates,value:string):InventoryDates{return{...previous,[key]:value};}
 /** Changing the carrier type never overwrites a date already entered in the editor. */
 export function editInventoryShipping(previous:InventoryDates,kind:'delivery'|'pickup',required:boolean,charter=false):InventoryDates{return{...previous,[`${kind}Required`]:required,[kind]:required?(previous[kind]||offset(kind==='delivery'?previous.start:previous.end,charter?0:kind==='delivery'?-1:1)):''};}
+
+/** Usage drives default shipping dates; explicit shipping edits never move usage dates. */
+export function autoEditInventoryDate(previous:InventoryDates,key:keyof InventoryDates,value:string,manual:readonly string[]=[]):InventoryDates{
+ const next={...previous,[key]:value};
+ if(key==='start'&&previous.deliveryRequired!==false&&!manual.includes('delivery')&&(!previous.delivery||previous.delivery===offset(previous.start,-1)))next.delivery=offset(value,-1);
+ if(key==='end'&&previous.pickupRequired!==false&&!manual.includes('pickup')&&(!previous.pickup||previous.pickup===offset(previous.end,1)))next.pickup=offset(value,1);
+ if(key!=='from'&&!manual.includes('from')&&previous.from===min(previous.start,previous.delivery))next.from=min(next.start,next.delivery);
+ if(key!=='to'&&!manual.includes('to')&&previous.to===max(previous.end,previous.pickup))next.to=max(next.end,next.pickup);
+ return next;
+}
