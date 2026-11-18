@@ -2,7 +2,7 @@ import{parseTransport,shippingPlan}from'./shipping-policy';
 import{unitSegments}from'./unit-switches';
 import{occupiedCycle}from'./occupied-cycle';
 import {addDays,validDate} from './gantt';
-import {stockOn} from './board';
+import {stockOn,unitStart} from './board';
 import type {InventoryModel,InventoryRecord} from './model';
 const uuid=(v:unknown):v is string=>typeof v==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 export function manualConfirmation(body:Record<string,unknown>){
@@ -23,10 +23,10 @@ export function unitNumber(value:unknown){if(value===null||value==='')return nul
 export function resolveUnitNumber(model:InventoryModel,r:InventoryRecord,value:unknown,existing=model.records){
  if(value!=='auto')return unitNumber(value);
  const item=model.items.find(i=>i.id===r.itemId);if(!item)throw Error('有効な商品を選択してください');
- for(let n=1;n<=250;n++){const cycle=occupiedCycle(r.booking);if([cycle.from,...(item.schedule??[]).filter(s=>cycle.from<=s.effective_date&&s.effective_date<=cycle.to).map(s=>s.effective_date)].some(d=>n>(stockOn(item,d)?.usable??0)))break;try{validateNumber(model,r,n);}catch{continue;}if(automaticNumberAvailable(model,r,n,existing))return n;}
+ for(let n=unitStart(item);n<=250;n++){const cycle=occupiedCycle(r.booking);if([cycle.from,...(item.schedule??[]).filter(s=>cycle.from<=s.effective_date&&s.effective_date<=cycle.to).map(s=>s.effective_date)].some(d=>n>=unitStart(item)+(stockOn(item,d)?.usable??0)))break;try{validateNumber(model,r,n);}catch{continue;}if(automaticNumberAvailable(model,r,n,existing))return n;}
  throw Error('確保期間を通して空いている番号がありません。日程を調整するか未割当を選択してください');
 }
-export function validateNumber(model:InventoryModel,r:InventoryRecord,n:number|null){const item=model.items.find(i=>i.id===r.itemId);if(!item)throw Error('有効な商品を選択してください');for(const segment of unitSegments({...r.booking,unitNumber:n})){const number=segment.unitNumber;if(number==null)continue;const cycle=occupiedCycle(segment);const checks=[cycle.from,...(item.schedule??[]).filter(s=>cycle.from<=s.effective_date&&s.effective_date<=cycle.to).map(s=>s.effective_date)];if(!Number.isInteger(number)||number<1||checks.some(d=>number>(stockOn(item,d)?.total??0)))throw Error('この機器番号は確保期間中の保有数を超えています');}}
+export function validateNumber(model:InventoryModel,r:InventoryRecord,n:number|null){const item=model.items.find(i=>i.id===r.itemId);if(!item)throw Error('有効な商品を選択してください');for(const segment of unitSegments({...r.booking,unitNumber:n})){const number=segment.unitNumber;if(number==null)continue;const cycle=occupiedCycle(segment);const checks=[cycle.from,...(item.schedule??[]).filter(s=>cycle.from<=s.effective_date&&s.effective_date<=cycle.to).map(s=>s.effective_date)];if(!Number.isInteger(number)||number<unitStart(item)||number>250||checks.some(d=>number>=unitStart(item)+(stockOn(item,d)?.total??0)))throw Error('この機器番号は確保期間中の保有数を超えています');}}
 export function slotSchedule(records:InventoryRecord[]){return records.filter(r=>!r.deleted).flatMap(r=>unitSegments(r.booking).filter(b=>b.unitNumber!=null).map(b=>({item_id:r.itemId,unit_number:b.unitNumber,group_key:b.group,occupied_from:occupiedCycle(b).from,occupied_to:occupiedCycle(b).to})));}
 /** Check only newly occupied days when rerouting an existing booking.
  * An unchanged historical overlap must not prevent moving away from it.
@@ -64,7 +64,7 @@ export function automaticNumberAvailable(model:InventoryModel,record:InventoryRe
  for(const candidate of candidates){
   const cycle=occupiedCycle(candidate.booking);
   const checks=[cycle.from,...(item.schedule??[]).filter(s=>cycle.from<=s.effective_date&&s.effective_date<=cycle.to).map(s=>s.effective_date)];
-  if(checks.some(d=>number>(stockOn(item,d)?.usable??0)))return false;
+  if(checks.some(d=>number<unitStart(item)||number>=unitStart(item)+(stockOn(item,d)?.usable??0)))return false;
   try{validateNumber(model,candidate,number);}catch{return false;}
  }
  return !automaticSchedule(existing).some(other=>automaticSchedule(candidates).some(s=>s.item_id===other.item_id&&s.unit_number===other.unit_number&&s.group_key!==other.group_key&&s.occupied_from<=other.occupied_to&&s.occupied_to>=other.occupied_from));

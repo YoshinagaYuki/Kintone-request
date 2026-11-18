@@ -20,6 +20,7 @@ import type { KintoneRecord } from "./kintone/mapper";
 export type ItemMasterEntry = {
   name: string;
   aliases: string[];
+  kintone_name?: string | null;
 };
 
 /** 種別ごとの正規化対象(kintoneフィールドコード) */
@@ -234,12 +235,13 @@ export async function normalizeRecordItems(
   try {
     const { data, error } = await supabase
       .from("item_name_master")
-      .select("name, aliases").is("inventory_role",null)
+      .select("name, aliases, kintone_name").is("inventory_role",null)
       .eq("category", target.category)
       .eq("is_active", true);
     if (error) throw new Error(error.message);
     entries = (data ?? []).map((row) => ({
       name: row.name as string,
+      kintone_name: row.kintone_name,
       aliases: Array.isArray(row.aliases) ? (row.aliases as string[]) : [],
     }));
   } catch (err) {
@@ -262,9 +264,10 @@ export async function normalizeRecordItems(
       );
       continue;
     }
-    if (result.corrected) {
-      record[field] = { value: result.name };
-      corrections.push(`「${value}」→「${result.name}」に補正しました(${field})`);
+    const outputName=entries.find(e=>e.name===result.name)?.kintone_name||result.name;
+    if (result.corrected||outputName!==value) {
+      record[field] = { value: outputName };
+      corrections.push(`「${value}」→「${outputName}」に補正しました(${field})`);
     }
   }
 

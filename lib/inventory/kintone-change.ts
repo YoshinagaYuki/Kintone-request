@@ -1,3 +1,4 @@
+import{normalizeRecordItems}from'../item-normalizer';
 import{applyRentalUsageDates}from'./confirmation-shipping';
 import{rentalNote}from'./rental-items';
 import'server-only';
@@ -10,6 +11,7 @@ export async function prepareInventoryKintoneChange(db:SupabaseClient,request:an
  const selected=mapping.mappings.filter(m=>changed.has(m.fmt_label)).map(m=>((m.fmt_label===L.deliveryDate&&parsed['_inventory_delivery_required']===false)||(m.fmt_label===L.pickupDate&&parsed['_inventory_pickup_required']===false))?{...m,required:false}:m);const rentalChanged=request.form_types?.kintone_app_id===49&&changed.has('レンタル品一覧');const usageChanged=request.form_types?.kintone_app_id===49&&['_inventory_usage_start','_inventory_usage_end'].some(k=>changed.has(k));if(!selected.length&&!shippingChanges.length&&!rentalChanged&&!usageChanged)return[];
  const mapped=buildKintoneRecord(parsed as Record<string,string>,{mappings:selected});if(!mapped.ok)throw Error(mapped.errors.join(' / '));const app=request.form_types?.kintone_app_id===49?49:10;const source=await getRecord(app,String(request.kintone_record_id));const patch:KintoneRecord={...mapped.record};if(rentalChanged)patch['文字列__複数行_']={value:rentalNote(String(source.record['文字列__複数行_']?.value??''),String(parsed['レンタル品一覧']??''))};for(const[kind,key,code]of shippingChanges){patch[code]={value:parsed[key]===false?'手配不要':'通常配送'};if(parsed[key]===false)patch[kind==='delivery'?'納品_日付':'集荷_日付']={value:''};}
  for(const m of selected)if(!parsed[m.fmt_label])patch[m.kintone_code]={value:''};
+ if(app===10)await normalizeRecordItems(db,'オールマイト',patch);
  const pricingChanged=[L.usageStart,L.usageEnd,...Array.from({length:5},(_,i)=>equipmentLabel(i+1))].some(k=>changed.has(k));
  if(pricingChanged&&app===10){const current:KintoneRecord={};for(const[k,v]of Object.entries(source.record))if(typeof v.value==='string')current[k]={value:v.value};Object.assign(current,patch);const result=applyAllmightPricing(current);if(result.warnings.length)throw Error('料金を確定できません：'+result.warnings.join(' / '));for(const code of ['利用日数','利用金額','利用金額_0','利用金額_1','利用金額_2','利用金額_3'])if(current[code])patch[code]=current[code];}
  if(app===49)applyRentalUsageDates(patch,parsed);
