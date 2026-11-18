@@ -34,3 +34,8 @@ export function chooseInventoryArrangement(previous:InventoryDates,kind:'deliver
  next.from=previous.from===min(previous.start,previous.delivery)?min(next.start,next.delivery):min(previous.from,next.start,next.delivery);
  next.to=previous.to===max(previous.end,previous.pickup)?max(next.end,next.pickup):max(previous.to,next.end,next.pickup);return next;
 }
+
+/** The booking editor's six dates are manual, independent values. */
+export function editInventoryDate(previous:InventoryDates,key:keyof InventoryDates,value:string):InventoryDates{return{...previous,[key]:value};}
+/** Changing the carrier type never overwrites a date already entered in the editor. */
+export function editInventoryShipping(previous:InventoryDates,kind:'delivery'|'pickup',required:boolean,charter=false):InventoryDates{return{...previous,[`${kind}Required`]:required,[kind]:required?(previous[kind]||offset(kind==='delivery'?previous.start:previous.end,charter?0:kind==='delivery'?-1:1)):''};}
