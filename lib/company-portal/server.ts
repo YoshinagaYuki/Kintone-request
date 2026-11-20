@@ -15,7 +15,8 @@ export async function portalRequests(key:string){
  throw Error('対象件数が表示上限を超えています。管理者にお問い合わせください');
 }
 export async function resolvePortal(token:string){if(!validPortalToken(token))return null;const r=await createAdminClient().from('company_portals').select('id,company_key,display_name').eq('token_hash',portalTokenHash(token)).is('revoked_at',null).maybeSingle();if(r.error)throw Error('企業ページを確認できませんでした');return r.data;}
-export async function publicPortalReport(token:string,month:string){const portal=await resolvePortal(token);if(!portal)return null;const [local,remote]=await Promise.all([portalRequests(portal.company_key),kintonePortalRequests()]);const data=companyRows(mergeCompanyRequests(local,remote.requests),portal.company_key,month);return {name:portal.display_name,...data,sourceUpdatedAt:remote.updatedAt};}
+export async function companyPortalReport(key:string,month:string){const [local,remote]=await Promise.all([portalRequests(key),kintonePortalRequests()]);return{...companyRows(mergeCompanyRequests(local,remote.requests),key,month),sourceUpdatedAt:remote.updatedAt};}
+export async function publicPortalReport(token:string,month:string){const portal=await resolvePortal(token);if(!portal)return null;return{name:portal.display_name,...await companyPortalReport(portal.company_key,month)};}
 export async function portalManagement(){
  const db=createAdminClient();const portals=await db.from('company_portals').select('id,company_key,display_name,created_at,updated_at,revoked_at,token_ciphertext').order('created_at',{ascending:false}).limit(1001);if(portals.error||(portals.data?.length??0)>1000)throw Error('企業URLの一覧を取得できませんでした');
  const localCompanies:CompanyRequest[]=[];const companies=new Map<string,{key:string;name:string;variants:string[];registered:number}>();
