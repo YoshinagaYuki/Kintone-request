@@ -1,0 +1,5 @@
+import 'server-only';
+import{unstable_cache}from'next/cache';import{findRecords}from'../kintone/client';import{kintoneCompanyRequest,portalKintoneFields}from'./kintone-data';import type{CompanyRequest}from'./report';
+export async function readKintonePortalApp(app:10|49){const rows:CompanyRequest[]=[];let last=0;for(let n=0;n<40;n++){const records=await findRecords(app,`$id > ${last} order by $id asc limit 500`,portalKintoneFields(app));rows.push(...records.map(r=>kintoneCompanyRequest(app,r)));if(records.length<500)return{requests:rows,updatedAt:new Date().toISOString()};const next=Number(records.at(-1)?.$id?.value);if(!Number.isSafeInteger(next)||next<=last)throw Error('kintoneの取得を完了できませんでした');last=next;}throw Error('kintoneの件数上限を超えています');}
+const cachedApp=(app:10|49)=>unstable_cache(()=>readKintonePortalApp(app),['company-portal-kintone-v2',String(app)],{revalidate:60})();
+export async function kintonePortalRequests(){try{const apps=await Promise.all([cachedApp(10),cachedApp(49)]);return{requests:apps.flatMap(a=>a.requests),updatedAt:apps.map(a=>a.updatedAt).sort()[0]};}catch{throw Error('kintoneの情報を取得できませんでした。時間をおいて再度お試しください');}}
