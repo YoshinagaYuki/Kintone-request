@@ -161,7 +161,7 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
                 tabIndex={0}
                 role="link"
                 aria-label={`${row.form_type_name} の申請詳細を開く`}
-                className={`cursor-pointer transition-colors hover:bg-blue-50 focus:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${selected.has(row.id) ? "bg-red-50/50" : ""}`}
+                className={`${row.status === "pending" ? "request-pending" : ""} cursor-pointer transition-colors hover:bg-blue-50 focus:bg-blue-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${selected.has(row.id) ? "bg-red-50/50" : ""}`}
               >
                 <td className="px-4 py-3">
                   <input
@@ -217,7 +217,7 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
             tabIndex={0}
             role="link"
             aria-label={`${row.form_type_name} の申請詳細を開く`}
-            className={`request-card flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:bg-gray-50 ${selected.has(row.id) ? "border-red-300 bg-red-50/50" : ""}`}
+            className={`request-card ${row.status === "pending" ? "request-pending" : ""} flex cursor-pointer items-center gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 active:bg-gray-50 ${selected.has(row.id) ? "border-red-300 bg-red-50/50" : ""}`}
           >
             <label className="grid h-11 w-11 shrink-0 place-items-center rounded-lg hover:bg-slate-50">
             <input

@@ -261,3 +261,13 @@
 .inventory-case-card[data-delivered="true"] .inventory-delivery-progress { border-color:#d2eade; color:#287353; }
 .inventory-delivery-progress label:has(input:disabled) { cursor:wait; }
 .inventory-delivery-progress input:focus-visible { outline:2px solid #398264; outline-offset:3px; }
+
+/* 確認待ちは行全体を着色し、PC・スマホとも一覧で見つけやすくする。 */
+.requests-table tbody tr.request-pending,
+.request-card.request-pending { background-color:#fffbeb; }
+.requests-table tbody tr.request-pending:hover,
+.requests-table tbody tr.request-pending:focus,
+.request-card.request-pending:active,
+.request-card.request-pending:focus { background-color:#fef3c7; }
+.requests-table tbody tr.request-pending td:first-child { box-shadow:inset 4px 0 0 #f59e0b; }
+.request-card.request-pending { border-left:4px solid #f59e0b; }
