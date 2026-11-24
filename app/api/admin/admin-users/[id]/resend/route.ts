@@ -7,17 +7,17 @@ import {
   recordAdminAudit,
   type AdminUser,
 } from "@/lib/admin-users";
-import { getSetPasswordUrl } from "@/lib/site-url";
+import { generateAdminPasswordLink, deliverAdminPasswordLink } from "@/lib/auth/admin-password-mail";
 
 /**
  * 招待の再送(active管理者のみ)。招待中のユーザーが対象。
  * 既存の Auth ユーザー・管理者レコードを再利用し、重複作成しない。
  * 期限切れでも新しい有効なリンクを送る。
- * ・まず招待メール再送を試行。既に登録済みで再送不可の場合は、
- *   回復(パスワード設定)メールにフォールバックして本人がパスワードを設定できるようにする。
+ * ・招待用トークンを発行し、既存アカウントの場合は回復トークンで本人が設定する。
+ *   どちらもレンタル管理へ直接進む専用メールで送信する。
  */
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
@@ -43,23 +43,14 @@ export async function POST(
     );
   }
 
-  const redirectTo = getSetPasswordUrl();
-  let method = "invite";
-  const { error: inviteError } = await admin.auth.admin.inviteUserByEmail(target.email, {
-    redirectTo,
-  });
-  if (inviteError) {
-    // 既に登録済み等で再招待できない場合は回復メールにフォールバック
-    method = "recovery";
-    const { error: recoverError } = await admin.auth.resetPasswordForEmail(target.email, {
-      redirectTo,
-    });
-    if (recoverError) {
-      return NextResponse.json(
-        { error: `再送に失敗しました: ${recoverError.message}` },
-        { status: 502 }
-      );
-    }
+  let method: string;
+  try {
+    const link = await generateAdminPasswordLink(admin, target.email, req.nextUrl.origin, true, target.display_name ?? undefined);
+    if (link.userId !== target.auth_user_id) throw new Error("認証アカウントを照合できませんでした");
+    method = link.method;
+    await deliverAdminPasswordLink(target.email, link.url, true);
+  } catch (error) {
+    return NextResponse.json({error: error instanceof Error ? error.message : "再送に失敗しました"}, {status: 502});
   }
 
   await admin

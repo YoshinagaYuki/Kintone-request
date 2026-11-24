@@ -32,10 +32,14 @@ export async function POST() {
   }
 
   if (me.status !== "active") {
-    await admin
+    const {data: activated, error} = await admin
       .from("admin_users")
       .update({ status: "active", activated_at: new Date().toISOString() })
-      .eq("id", me.id);
+      .eq("id", me.id)
+      .eq("status", "invited")
+      .select("id")
+      .maybeSingle();
+    if (error || !activated) return NextResponse.json({error: "管理者の有効化に失敗しました。再度お試しください。"}, {status: 409});
     await recordAdminAudit(admin, {
       actorUserId: user.id,
       targetUserId: user.id,

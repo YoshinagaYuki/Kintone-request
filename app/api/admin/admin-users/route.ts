@@ -8,31 +8,9 @@ import {
   findInvalidFormTypeIds,
   setAdminBusinessAndNotify,
 } from "@/lib/admin-users";
-import { getSetPasswordUrl } from "@/lib/site-url";
+import { generateAdminPasswordLink, deliverAdminPasswordLink } from "@/lib/auth/admin-password-mail";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/**
- * 既存 auth ユーザーをメールで検索(service_role)。
- * 削除済み管理者(admin_users 行は無いが auth.users は残る)の再招待で、既存IDを得るために使う。
- * listUsers をページングして照合(上限ページで打ち切り)。見つからなければ null。
- */
-async function findAuthUserByEmail(
-  admin: ReturnType<typeof createAdminClient>,
-  email: string
-): Promise<{ id: string } | null> {
-  const target = email.trim().toLowerCase();
-  const perPage = 200;
-  for (let page = 1; page <= 20; page++) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
-    if (error) return null;
-    const users = data?.users ?? [];
-    const hit = users.find((u) => (u.email ?? "").toLowerCase() === target);
-    if (hit) return { id: hit.id };
-    if (users.length < perPage) break; // 最終ページ
-  }
-  return null;
-}
 
 /** 管理者一覧(active管理者のみ閲覧) */
 export async function GET() {
@@ -67,7 +45,7 @@ export async function GET() {
 }
 
 /**
- * 管理者の招待(active管理者のみ)。Supabase Auth の招待メールを送信し、
+ * 管理者の招待(active管理者のみ)。レンタル専用の招待メールを送信し、
  * 本人がリンク先(/auth/set-password)で自分でパスワードを設定する。
  * master 権限の付与は master のみ可能。
  */
@@ -150,38 +128,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Supabase Auth: 招待メール送信(アカウント作成 + メール送信)。
-  // 過去に削除された管理者(admin_users 行は削除済みだが auth.users は残存)の再招待にも対応する:
-  //   inviteUserByEmail が「既に登録済み」で失敗した場合は、既存 auth ユーザーを探し、
-  //   パスワード設定(回復)リンクを送って admin_users 行を作り直す。
-  let authUserId: string;
-  const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(
-    email,
-    { redirectTo: getSetPasswordUrl(), data: displayName ? { name: displayName } : undefined }
-  );
-  if (!inviteError && invited?.user) {
-    authUserId = invited.user.id;
-  } else {
-    // 既存 auth ユーザーを検索(ページング)
-    const existingAuthUser = await findAuthUserByEmail(admin, email);
-    if (!existingAuthUser) {
-      return NextResponse.json(
-        { error: `招待メールの送信に失敗しました: ${inviteError?.message ?? "不明なエラー"}` },
-        { status: 502 }
-      );
-    }
-    authUserId = existingAuthUser.id;
-    // 本人がパスワードを再設定して有効化できるよう、回復リンクを送る
-    const { error: recoverError } = await admin.auth.resetPasswordForEmail(email, {
-      redirectTo: getSetPasswordUrl(),
-    });
-    if (recoverError) {
-      return NextResponse.json(
-        { error: `再招待メールの送信に失敗しました: ${recoverError.message}` },
-        { status: 502 }
-      );
-    }
+  // Generate only; send after the invited administrator and business assignments are saved.
+  let link: Awaited<ReturnType<typeof generateAdminPasswordLink>>;
+  try {
+    link = await generateAdminPasswordLink(admin, email, req.nextUrl.origin, true, displayName);
+  } catch (error) {
+    return NextResponse.json({error: error instanceof Error ? error.message : "招待に失敗しました"}, {status: 502});
   }
+  const authUserId = link.userId;
 
   const { data: createdRow, error: upsertError } = await admin
     .from("admin_users")
@@ -252,5 +206,10 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  try {
+    await deliverAdminPasswordLink(email, link.url, true);
+  } catch (error) {
+    return NextResponse.json({error: error instanceof Error ? error.message : "招待メールの送信に失敗しました"}, {status: 502});
+  }
   return NextResponse.json({ ok: true });
 }

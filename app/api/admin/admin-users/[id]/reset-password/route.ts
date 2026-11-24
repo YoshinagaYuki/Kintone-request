@@ -7,15 +7,15 @@ import {
   recordAdminAudit,
   type AdminUser,
 } from "@/lib/admin-users";
-import { getSetPasswordUrl } from "@/lib/site-url";
+import { generateAdminPasswordLink, deliverAdminPasswordLink } from "@/lib/auth/admin-password-mail";
 
 /**
  * パスワード再設定メールの送信(active管理者のみ)。
  * 管理者は「再設定用URLを本人へ送る」だけ。管理者が他人のパスワードを直接設定はしない。
- * Supabase Auth の resetPasswordForEmail を使用(本人がリンク先で新パスワードを設定)。
+ * 専用メール内のワンタイムリンクで、本人がパスワードを設定。
  */
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
@@ -35,14 +35,13 @@ export async function POST(
     return NextResponse.json({ error: "対象の管理者が見つかりません" }, { status: 404 });
   }
 
-  const { error } = await admin.auth.resetPasswordForEmail(target.email, {
-    redirectTo: getSetPasswordUrl(),
-  });
-  if (error) {
-    return NextResponse.json(
-      { error: `再設定メールの送信に失敗しました: ${error.message}` },
-      { status: 502 }
-    );
+  if (target.status === "disabled") return NextResponse.json({error: "無効な管理者には送信できません"}, {status: 409});
+  try {
+    const link = await generateAdminPasswordLink(admin, target.email, req.nextUrl.origin, false);
+    if (link.userId !== target.auth_user_id) throw new Error("認証アカウントを照合できませんでした");
+    await deliverAdminPasswordLink(target.email, link.url, false);
+  } catch (error) {
+    return NextResponse.json({error: error instanceof Error ? error.message : "再設定メールの送信に失敗しました"}, {status: 502});
   }
 
   await recordAdminAudit(admin, {
