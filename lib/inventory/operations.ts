@@ -23,7 +23,8 @@ export function unitNumber(value:unknown){if(value===null||value==='')return nul
 export function resolveUnitNumber(model:InventoryModel,r:InventoryRecord,value:unknown,existing=model.records){
  if(value!=='auto')return unitNumber(value);
  const item=model.items.find(i=>i.id===r.itemId);if(!item)throw Error('有効な商品を選択してください');
- for(let n=unitStart(item);n<=250;n++){const cycle=occupiedCycle(r.booking);if([cycle.from,...(item.schedule??[]).filter(s=>cycle.from<=s.effective_date&&s.effective_date<=cycle.to).map(s=>s.effective_date)].some(d=>n>=unitStart(item)+(stockOn(item,d)?.usable??0)))break;try{validateNumber(model,r,n);}catch{continue;}if(automaticNumberAvailable(model,r,n,existing))return n;}
+ const available:number[]=[];for(let n=unitStart(item);n<=250;n++){const cycle=occupiedCycle(r.booking);if([cycle.from,...(item.schedule??[]).filter(s=>cycle.from<=s.effective_date&&s.effective_date<=cycle.to).map(s=>s.effective_date)].some(d=>n>=unitStart(item)+(stockOn(item,d)?.usable??0)))break;try{validateNumber(model,r,n);}catch{continue;}if(automaticNumberAvailable(model,r,n,existing))available.push(n);}
+ available.sort((a,b)=>automaticPackingScore(model,r,a,existing)-automaticPackingScore(model,r,b,existing)||a-b);if(available.length)return available[0];
  throw Error('確保期間を通して空いている番号がありません。日程を調整するか未割当を選択してください');
 }
 export function validateNumber(model:InventoryModel,r:InventoryRecord,n:number|null){const item=model.items.find(i=>i.id===r.itemId);if(!item)throw Error('有効な商品を選択してください');for(const segment of unitSegments({...r.booking,unitNumber:n})){const number=segment.unitNumber;if(number==null)continue;const cycle=occupiedCycle(segment);const checks=[cycle.from,...(item.schedule??[]).filter(s=>cycle.from<=s.effective_date&&s.effective_date<=cycle.to).map(s=>s.effective_date)];if(!Number.isInteger(number)||number<unitStart(item)||number>250||checks.some(d=>number>=unitStart(item)+(stockOn(item,d)?.total??0)))throw Error('この機器番号は確保期間中の保有数を超えています');}}
@@ -72,4 +73,18 @@ export function automaticNumberAvailable(model:InventoryModel,record:InventoryRe
 
 export function turnaroundWarnings(candidates:InventoryRecord[],existing:InventoryRecord[]){
  const warnings:string[]=[];for(const r of candidates){if(r.booking.unitNumber==null)continue;for(const other of existing){if(other.deleted||other.itemId!==r.itemId||other.booking.group===r.booking.group)continue;for(const a of slotSchedule([r]))for(const b of slotSchedule([other])){if(a.unit_number!==b.unit_number)continue;const [early,late]=a.occupied_from<=b.occupied_from?[r,other]:[other,r];const pickup=early.booking.pickupRequired===false?early.booking.end:early.booking.pickup||early.booking.to;const dispatch=occupiedCycle(late.booking).from;if(validDate(pickup)&&dispatch>pickup&&dispatch<addDays(pickup,4))warnings.push(`${a.unit_number}号：集荷 ${pickup} → 次の発送 ${dispatch} は丸3日空いていません`);}}}return[...new Set(warnings)];
+}
+
+/** Best fit within nearby occupied boundaries, retaining long unused lanes.
+ * Open/distant boundaries are capped at one year so ancient history cannot
+ * outweigh current scheduling. Uses the same protected transit/turnaround
+ * spans as availability, including extension groups and unit switches. */
+export function automaticPackingScore(model:InventoryModel,record:InventoryRecord,number:number,existing=model.records){
+ const related=model.records.filter(r=>r.itemId===record.itemId&&r.booking.group===record.booking.group&&r.booking.key!==record.booking.key);
+ const candidates=automaticSchedule([...related,record].map(r=>({...r,booking:{...r.booking,unitNumber:number}})));
+ const from=candidates.map(s=>s.occupied_from).sort()[0],to=candidates.map(s=>s.occupied_to).sort().at(-1)!;
+ const neighbors=automaticSchedule(existing).filter(s=>s.item_id===record.itemId&&s.unit_number===number&&s.group_key!==record.booking.group);
+ const before=neighbors.filter(s=>s.occupied_to<from).map(s=>s.occupied_to).sort().at(-1),after=neighbors.filter(s=>s.occupied_from>to).map(s=>s.occupied_from).sort()[0];
+ const gap=(a:string,b:string)=>Math.max(0,Math.min(365,(Date.parse(b+'T00:00:00Z')-Date.parse(a+'T00:00:00Z'))/86400000-1));
+ return(before?gap(before,from):365)+(after?gap(to,after):365);
 }
