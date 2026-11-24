@@ -1,3 +1,4 @@
+import{approvalMailContent,type ApprovalCorrection}from'./approval-corrections';
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -13,7 +14,7 @@ import { getManualDriveUrl } from "../system-settings";
  * ・{{manual_drive_url}} は system_settings の Google Drive 共有リンクを差込
  * ・二重送信防止: application_email_sent_at / approval_email_sent_at を確認し、送信成功時に記録
  * ・送信失敗は *_email_error に記録し、履歴にも残す(申請/承認処理自体は失敗させない)
- * ・本文はプレーンテキスト(HTML/スクリプトは埋め込まない)
+ * ・承認メールはエスケープ済みHTMLとプレーンテキストの両方を送る
  */
 
 type ApplicantContext = {
@@ -137,11 +138,12 @@ export async function sendApprovalMail(
 ): Promise<MailResult> {
   if (!ctx.applicant_email) return { sent: false, skipped: true };
 
-  const { data: current } = await supabase
+  const { data: current,error:correctionReadError } = await supabase
     .from("requests")
-    .select("approval_email_sent_at")
+    .select("approval_email_sent_at,approval_email_corrections")
     .eq("id", requestId)
     .maybeSingle();
+  if(correctionReadError||!current){const error="承認メールの訂正内容を確認できなかったため送信を中止しました";await supabase.from("requests").update({approval_email_error:error}).eq("id",requestId);await recordHistory(supabase,requestId,"email_failed",{kind:"approval",error});return{sent:false,error};}
   if (current?.approval_email_sent_at) return { sent: false, skipped: true };
 
   const isAllmight = ctx.kintoneAppId === 10;
@@ -151,14 +153,16 @@ export async function sendApprovalMail(
   const subject = renderTemplate(template.subject, vars);
   const text = renderTemplate(template.body, vars);
 
-  const result = await sendMail({ to: ctx.applicant_email, subject, text });
+  const correctionRows=(current?.approval_email_corrections??[]) as ApprovalCorrection[];
+  const content=approvalMailContent(subject,text,correctionRows);
+  const result = await sendMail({to:ctx.applicant_email,...content});
 
   if (result.sent) {
     await supabase
       .from("requests")
       .update({ approval_email_sent_at: new Date().toISOString(), approval_email_error: null })
       .eq("id", requestId);
-    await recordHistory(supabase, requestId, "email_sent", { kind: "approval" });
+    await recordHistory(supabase, requestId, "email_sent", { kind: "approval",corrections:correctionRows });
   } else if ("error" in result) {
     await supabase
       .from("requests")

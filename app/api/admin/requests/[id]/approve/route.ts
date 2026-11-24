@@ -1,3 +1,4 @@
+import{approvalCorrections,correctionsSignature,selectedApprovalCorrections}from'@/lib/mail/approval-corrections';
 import {approvedCompanyName} from '@/lib/company-portal/company-name';
 import {approvalFees} from '@/lib/approval-fees';
 import{applyCopyShipping}from'@/lib/inventory/copy-shipping';
@@ -38,6 +39,7 @@ async function POSTHandler(
   }
 
   let body: {
+    correction_keys?:unknown;corrections_signature?:unknown;
     company_name?:unknown;
     transport?:unknown;
     delivery_fee?:unknown;
@@ -61,7 +63,7 @@ async function POSTHandler(
   const { data: request } = await supabase
     .from("requests")
     .select(
-      "id, status, deleted_at, form_type_id, form_type_version, parsed_data, requested_rental_plan_id, approved_rental_plan_id, company_staff_name_input, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, allmight_arrangement_updated_at, form_types(field_mapping, parser_config, kintone_app_id)"
+      "id, status, deleted_at, applicant_name,applicant_phone,applicant_email,customer_requests,form_type_id, form_type_version, parsed_data, requested_rental_plan_id, approved_rental_plan_id, company_staff_name_input, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, allmight_arrangement_updated_at, form_types(field_mapping, parser_config, kintone_app_id)"
     )
     .eq("id", id)
     .maybeSingle();
@@ -104,6 +106,12 @@ async function POSTHandler(
     }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'配送日数を確認してください'},{status:400});}
   }
   try{shippingData=approvalFees(shippingData??request.parsed_data??{},body);if([10,49].includes(formType?.kintone_app_id??0))shippingData=approvedCompanyName(shippingData,body.company_name);}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'費用を確認してください'},{status:400});}
+  const correctionHistory=await supabase.from('request_histories').select('action,detail').eq('request_id',id).order('created_at',{ascending:true}).order('id',{ascending:true});
+  if(correctionHistory.error)return NextResponse.json({error:'訂正履歴を確認できませんでした。もう一度お試しください'},{status:503});
+  const correctionData={...request.parsed_data,'担当者':request.company_staff_name_input??request.parsed_data?.['担当者']??'','氏名':request.applicant_name??'','電話番号':request.applicant_phone??'','メールアドレス':request.applicant_email??'','お客様からの要望':request.customer_requests??''};
+  const correctionRows=approvalCorrections(correctionData,correctionHistory.data??[],{...shippingData,...body.contents,...(body.delivery_fee!==undefined?{'配送費':body.delivery_fee}:{}),...(typeof body.staff_name==='string'&&body.staff_name?{'担当者':body.staff_name}:{})});
+  if((correctionRows.length||body.corrections_signature!==undefined)&&body.corrections_signature!==correctionsSignature(correctionRows))return NextResponse.json({error:'訂正内容が変わっています。画面を再読み込みし、メールに記載する項目を確認してください'},{status:409});
+  let selectedCorrections;try{selectedCorrections=selectedApprovalCorrections(correctionRows,body.correction_keys??[]);}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'訂正箇所を確認してください'},{status:400});}
   if (isTezukuru) {
     const kits = await supabase.from('item_name_master').select('id,name,aliases,is_active').eq('category','tezukuru').eq('inventory_role','rental_kit');
     if (kits.error) return NextResponse.json({error:'レンタル品マスタを確認できません'},{status:503});
@@ -252,6 +260,7 @@ async function POSTHandler(
     .from("requests")
     .update({
       ...(shippingData?{parsed_data:shippingData}:{}),
+      approval_email_corrections:selectedCorrections,
       status: "approved",
       approved_by: user.id,
       approved_at: new Date().toISOString(),
@@ -260,6 +269,7 @@ async function POSTHandler(
     })
     .eq("id", id)
     .eq("status", "pending")
+    .filter("parsed_data",request.parsed_data===null?"is":"eq",request.parsed_data===null?"null":JSON.stringify(request.parsed_data))
     .is("deleted_at", null)
     .is("processing_at", null) // 既に処理中なら承認しない(二重処理防止)
     .select("id")
@@ -283,7 +293,7 @@ async function POSTHandler(
     request_id: id,
     action: "approved",
     actor: user.id,
-    detail:{...(isTezukuru?{billing_type:body.billing_type}:{}),...(body.company_name!==undefined?{company_name_before:request.parsed_data?.['企業名']??request.parsed_data?.['取次店名']??'',company_name_after:shippingData?.['企業名']??''}:{})},
+    detail:{email_corrections:selectedCorrections,...(isTezukuru?{billing_type:body.billing_type}:{}),...(body.company_name!==undefined?{company_name_before:request.parsed_data?.['企業名']??request.parsed_data?.['取次店名']??'',company_name_after:shippingData?.['企業名']??''}:{})},
   });
 
   // kintone登録(共通処理。成功時に承認完了メールも送信される)

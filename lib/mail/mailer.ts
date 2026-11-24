@@ -25,6 +25,8 @@ export type MailInput = {
   subject: string;
   /** プレーンテキスト本文(HTMLは埋め込まない) */
   text: string;
+  /** Server-generated, escaped HTML alternative. */
+  html?: string;
   /**
    * 呼び出し側が指定する既存CC(任意)。ここに常時CC(system_settings)を合流する。
    * 注意: これはサーバー側で組み立てた値のみを渡すこと(外部リクエスト値をそのまま渡さない)。
@@ -126,7 +128,7 @@ export async function sendMail(input: MailInput): Promise<MailResult> {
   const cc = await buildCcList(input.cc, to, input.skipAlwaysCc === true);
 
   try {
-    await transporter.sendMail({ from, to, subject, text, ...(cc.length ? { cc } : {}) });
+    await transporter.sendMail({ from, to, subject, text, ...(input.html?{html:input.html}:{}), ...(cc.length ? { cc } : {}) });
     return { sent: true, provider: "smtp" };
   } catch (err) {
     // エラーメッセージに宛先が含まれ得るためログには出さず、呼び出し元へ返す

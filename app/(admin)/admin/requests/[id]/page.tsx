@@ -196,7 +196,7 @@ export default async function RequestDetailPage({
     .from("request_histories")
     .select("id, action, actor, detail, created_at")
     .eq("request_id", id)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true }).order("id",{ascending:true});
 
   const histories = (historiesData ?? []) as History[];
   let rentalRows:{item_id:string;name:string;quantity:number;inactive?:boolean}[]=[];let rentalReadError=false;if(request.form_types?.kintone_app_id===49){try{const inventory=await loadInventoryModel(supabase,'','tezukuru');for(const r of inventory.allRecords.filter(r=>r.booking.kind==='request'&&r.booking.id===id)){const item=inventory.items.find(i=>i.id===r.itemId),line=rentalRows.find(l=>l.item_id===r.itemId);if(line)line.quantity++;else rentalRows.push({item_id:r.itemId,name:item?.name??'レンタル品',quantity:1,inactive:item?.is_active===false});}}catch{rentalReadError=true;}}
@@ -839,7 +839,7 @@ export default async function RequestDetailPage({
           </p>
         </div>
       ) : (
-        <ApproveActions defaultCompanyName={[10,49].includes(request.form_types?.kintone_app_id??0)?String(request.parsed_data?.['企業名']||request.parsed_data?.['取次店名']||''):undefined} defaultDeliveryFee={String(request.parsed_data?._approved_delivery_fee??request.parsed_data?.['配送料']??request.parsed_data?.['内）配送料']??'')} defaultRentalFee={String(request.parsed_data?._internal_rental_fee??'')} optionalShippingAddress={!!copyPreview.data}
+        <ApproveActions correctionData={{...request.parsed_data,'担当者':request.company_staff_name_input??request.parsed_data?.['担当者']??'','氏名':request.applicant_name??'','電話番号':request.applicant_phone??'','メールアドレス':request.applicant_email??'','お客様からの要望':request.customer_requests??''}} correctionHistories={histories} defaultCompanyName={[10,49].includes(request.form_types?.kintone_app_id??0)?String(request.parsed_data?.['企業名']||request.parsed_data?.['取次店名']||''):undefined} defaultDeliveryFee={String(request.parsed_data?._approved_delivery_fee??request.parsed_data?.['配送料']??request.parsed_data?.['内）配送料']??'')} defaultRentalFee={String(request.parsed_data?._internal_rental_fee??'')} optionalShippingAddress={!!copyPreview.data}
           shipping={approvalShipping}
           requestId={request.id}
           status={request.status}

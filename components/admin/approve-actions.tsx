@@ -1,4 +1,6 @@
 "use client";
+import{ApprovalCorrectionPicker}from'./approval-correction-picker';
+import{approvalCorrections,correctionsSignature,type CorrectionHistory}from'@/lib/mail/approval-corrections';
 import {ApprovalFeeFields} from "./approval-fee-fields";
 import{InventoryShippingPlan}from'./inventory-shipping-plan';
 import type{requestShipping}from'@/lib/inventory/request-shipping';
@@ -23,6 +25,7 @@ export type ApproveContentSlot = {
 
 export function ApproveActions({
   requestId,
+  correctionData={},correctionHistories=[],
   defaultCompanyName,
   shipping,
   defaultDeliveryFee="",defaultRentalFee="",
@@ -48,6 +51,7 @@ export function ApproveActions({
   billingTypeDefault = "",
   dspHandoverNoteDefault = "",
 }: {
+  correctionData?:Record<string,unknown>;correctionHistories?:CorrectionHistory[];
   optionalShippingAddress?:boolean;
   defaultDeliveryFee?:string;defaultRentalFee?:string;
   shipping?:ReturnType<typeof requestShipping>;
@@ -119,6 +123,9 @@ export function ApproveActions({
 
   /** DSP様共有事項(倉庫への引き継ぎ)。任意。改行保持。両事業共通 */
   const [dspNote, setDspNote] = useState(dspHandoverNoteDefault);
+  const [excludedCorrections,setExcludedCorrections]=useState<string[]>([]);
+  const correctionRows=approvalCorrections(correctionData,correctionHistories,{...contents,'配送費':deliveryFee,...(defaultCompanyName!==undefined?{'企業名':company}:{}),...(staffName?{'担当者':staffName}:{})});
+  const correctionKeys=correctionRows.filter(r=>!excludedCorrections.includes(r.key)).map(r=>r.key);
   /** textarea の高さを内容に合わせて自動拡張(2行分から拡張) */
   function autoGrow(el: HTMLTextAreaElement) {
     el.style.height = "auto";
@@ -136,7 +143,7 @@ export function ApproveActions({
       const res = await fetch(`/api/admin/requests/${requestId}/${action}`, {
         method: "POST",
         headers: payload ? { "Content-Type": "application/json" } : undefined,
-        body: payload ? JSON.stringify({...payload,...(action==='approve'?{delivery_fee:deliveryFee,rental_fee:rentalFee,...(defaultCompanyName!==undefined?{company_name:company}:{})}:{}),...(shipping?{transport}: {})}) : undefined,
+        body: payload ? JSON.stringify({...payload,...(action==='approve'?{correction_keys:correctionKeys,corrections_signature:correctionsSignature(correctionRows),delivery_fee:deliveryFee,rental_fee:rentalFee,...(defaultCompanyName!==undefined?{company_name:company}:{})}:{}),...(shipping?{transport}: {})}) : undefined,
       });
       const body = await res.json().catch(() => null);
       if (!res.ok) {
@@ -222,7 +229,7 @@ export function ApproveActions({
     <div id="request-approval" className="mt-8 scroll-mt-24">
       {optionalShippingAddress&&status==='pending'&&<p className="text-sm text-slate-600">延長コピーの住所・連絡先は任意です。空欄でも本登録できます。住所がない区間は輸送日数を自動計算せず、入力済みの確保期間で登録します。</p>}
       {status==='pending'&&defaultCompanyName!==undefined&&<section className="mb-4 rounded-xl border border-teal-100 bg-teal-50/50 p-4"><label className="text-sm font-semibold text-slate-800">企業名<input aria-label="承認する企業名" maxLength={200} value={company} onChange={e=>setCompany(e.target.value)} className="mt-2 block min-h-11 w-full rounded-lg border bg-white px-3 text-base font-normal"/></label><p className="mt-2 text-xs leading-6 text-slate-500">ここで修正した企業名で承認し、企業別のご利用一覧へ紐付けます。未入力の案件は企業ページに表示されません。</p></section>}
-      {status==='pending'&&<ApprovalFeeFields delivery={deliveryFee} rental={rentalFee} onDelivery={setDeliveryFee} onRental={setRentalFee}/>}
+      {status==='pending'&&<><ApprovalCorrectionPicker rows={correctionRows} excluded={excludedCorrections} onExclude={setExcludedCorrections}/><ApprovalFeeFields delivery={deliveryFee} rental={rentalFee} onDelivery={setDeliveryFee} onRental={setRentalFee}/></>}
       {shipping&&status==='pending'&&<InventoryShippingPlan value={transport} onChange={setTransport} dates={shipping.dates} names={shipping.names} required={!optionalShippingAddress}/>}
       {error && (
         <div className="mb-3 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
