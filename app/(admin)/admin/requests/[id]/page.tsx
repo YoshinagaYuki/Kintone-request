@@ -1,3 +1,4 @@
+import {InventoryNumberChanges} from '@/components/admin/inventory-number-changes';
 import {StaffReviewPanel} from '@/components/admin/staff-review-panel';
 import {reviewBlocksRegistration,type ReviewState} from '@/lib/staff-review/model';
 import{transportFromRequest}from'@/lib/inventory/shipping-record';
@@ -451,6 +452,7 @@ export default async function RequestDetailPage({
 
       </p>
 
+      <InventoryNumberChanges value={request.parsed_data?._inventory_confirmation_number_changes}/>
       {!isDeleted&&request.status==='pending'&&<StaffReviewPanel requestId={id} state={request.staff_review_state} revision={request.staff_review_revision} staffName={request.company_staff_name_input??undefined} reason={reviewRow.data?.reason} error={request.staff_review_state==='returned'?reviewRow.data?.requester_mail_error:reviewRow.data?.reviewer_mail_error}/>}
 
       {/* 登録完了の成功メッセージ(ページ再読み込み後も登録済みなら表示・自動消去しない) */}
