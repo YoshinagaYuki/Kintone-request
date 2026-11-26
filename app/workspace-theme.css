@@ -14,7 +14,6 @@
 .rental-header .rental-desktop>nav>a:hover,.rental-header .rental-desktop>nav>details>summary:hover {background:#ffffff0c;color:#fff;}
 .rental-header .rental-desktop>nav>[aria-current="page"],.rental-header .rental-desktop>nav>details>summary[aria-current="page"] {background:#ffffff12;color:#fff;border-color:#ffffff16;box-shadow:inset 0 -2px #9ba7ff;}
 .rental-header a[href="/apply"] {background:linear-gradient(135deg,#5a68d6,#4d5dc9);border:1px solid #8995ff66;box-shadow:0 4px 12px #050d2420;}
-.rental-header a[href="/admin/company-portals"] {background:#dff6ef;color:#186850;border-color:#b9e3d5;box-shadow:0 2px 8px #00000008;}
 .rental-header button.bg-amber-300 {background:linear-gradient(135deg,#ffdc89,#f5c867);border-color:#ffdfa0;box-shadow:0 3px 10px #00000010;color:#4f370b;}
 .rental-header .rental-mobile>div>details>summary {color:#d8e3f5;border-color:#ffffff25;background:#ffffff0a;}
 .rental-header nav[aria-label="スマホ管理メニュー"] {background:#fff;box-shadow:0 18px 50px #0f1c3240;border-color:#dbe4f2;}
@@ -82,3 +81,17 @@
  .inventory-list-header,.inventory-editor-header {padding-block:17px;}
 }
 @media(prefers-reduced-motion:reduce) { .admin-shell * {transition:none!important;scroll-behavior:auto!important;} }
+/* Navigation: daily work → administration; creation actions stay together on the right. */
+.rental-header .header-dropdown-panel [aria-current="page"] {color:#4356ae;background:#eef1ff;box-shadow:none;}
+.rental-header .header-dropdown-panel a:hover {background:#f0f3fc;color:#344b9c;}
+.rental-header .header-create-actions>a {white-space:nowrap;}
+@media(min-width:1280px) and (max-width:1399px) {
+ .rental-header .rental-desktop {gap:12px;padding-inline:18px;}
+ .rental-header .header-nav-link {padding-inline:8px;font-size:13px;}
+ .rental-header .header-create-actions {padding-left:12px;}
+}
+@media(max-width:379px) {
+ .rental-header .rental-mobile {padding-inline:10px;}
+ .rental-header .rental-mobile>div {gap:5px;}
+ .rental-header .rental-mobile>div>a,.rental-header .rental-mobile summary {padding-inline:9px;font-size:12px;}
+}

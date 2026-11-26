@@ -1,104 +1,42 @@
-"use client";
-
-import Link from "next/link";
-import { useEffect, useRef } from "react";
-import {InventoryQuickHold} from "./inventory-quick-hold";
-import {adminSection} from "@/lib/admin-navigation";
-import { usePathname } from "next/navigation";
-
-/**
- * 管理画面の共通ナビゲーションバー(全 /admin/* ページ。ログイン画面では非表示)。
- * ・現在開いているページは淡い青で強調(active)
- * ・画面幅に合わせてPCナビとコンパクトなメニューを切り替える
- * ・「➕ 新規申請」は /apply へ(種別が増えても申請画面側の選択で吸収)
- */
-
-// 「フォーム設定」(/admin/form-settings)は構造化申請フォーム導入により通常運用では不要になったため
-// ナビから非表示にしている。ルート・API・DB・データは当面残置(URL直開きは可能)。
-// 【削除候補】旧FMT申請との互換が不要になった段階で /admin/form-settings 一式を完全撤去する。
-const NAV_ITEMS = [
-  { href: "/admin/warehouse-closures", label: "倉庫休業日", shortLabel: "倉庫休業日" },
-  { href: "/admin/requests", label: "申請一覧", shortLabel: "申請" },
-  { href: "/admin/plans", label: "商品・プラン", shortLabel: "商品・プラン" },
-  { href: "/admin/staff", label: "担当者・確認設定", shortLabel: "担当者" },
-  { href: "/admin/settings", label: "設定", shortLabel: "設定" },
-  { href: "/admin/shipping-days", label: "配送日数", shortLabel: "配送日数" },
-] as const;
-function activeNav(path:string,href:string){return href==='/admin/plans'?adminSection(path)==='master':href==='/admin/settings'?adminSection(path)==='settings':path===href||path.startsWith(href+'/');}
-
-export function AdminHeader() {
-  const pathname = usePathname();
-  const mobileMenu = useRef<HTMLDetailsElement>(null);
-  useEffect(() => {
-    function closeOutside(event: Event) {
-      const menu = mobileMenu.current;
-      if (menu?.open && event.target instanceof Node && !menu.contains(event.target)) menu.open = false;
-    }
-    document.addEventListener("pointerdown", closeOutside);
-    document.addEventListener("click", closeOutside);
-    return () => {
-      document.removeEventListener("pointerdown", closeOutside);
-      document.removeEventListener("click", closeOutside);
-    };
-  }, []);
-  if (pathname === "/admin/login") return null;
-
-  return (
-    <header className="rental-header sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur">
-      <div className="rental-mobile relative flex h-[60px] items-center justify-between gap-2 px-3 xl:hidden">
-        <Link href="/admin/inventory/allmight" className="shrink-0 text-xs font-bold text-slate-900"><span className="min-[380px]:hidden">管理</span><span className="hidden min-[380px]:inline">レンタル管理</span></Link>
-        <div className="flex items-center gap-2"><InventoryQuickHold header model={{staff:[],version:0,business:pathname.includes('/tezukuru')?'tezukuru':'allmight'}}/><Link href="/admin/company-portals" className="inline-flex min-h-11 items-center rounded-lg border border-teal-200 bg-teal-50 px-2 text-[11px] font-semibold text-teal-800">企業URL</Link><Link aria-label="新規申請" href="/apply" className="flex min-h-11 items-center rounded-lg bg-indigo-600 px-2 text-sm font-medium text-white"><span className="sm:hidden">＋</span><span className="hidden sm:inline">＋ 新規申請</span></Link>
-        <details ref={mobileMenu} className="group" onKeyDown={e=>{if(e.key==="Escape"){e.currentTarget.open=false;e.currentTarget.querySelector("summary")?.focus();}}}><summary className="flex min-h-11 cursor-pointer list-none items-center rounded-lg border bg-white px-2 text-sm font-medium">メニュー ▾</summary><nav aria-label="スマホ管理メニュー" className="absolute left-3 right-3 top-[56px] z-50 grid max-h-[75dvh] grid-cols-2 gap-1 overflow-y-auto rounded-xl border bg-white p-2 shadow-xl">
-          {[{href:'/admin/inventory/allmight',label:'オールマイト在庫'},{href:'/admin/inventory/tezukuru',label:'てずくーる!!在庫'},...NAV_ITEMS].map(item=><Link key={item.href} href={item.href} aria-current={activeNav(pathname,item.href)?"page":undefined} onClick={e=>{const d=e.currentTarget.closest('details');if(d)d.open=false;}} className={`flex min-h-11 items-center rounded-lg px-3 text-sm ${activeNav(pathname,item.href)?'bg-indigo-50 font-semibold text-indigo-700':'text-slate-700 hover:bg-slate-50'}`}>{item.label}</Link>)}
-        </nav></details></div>
-      </div>
-      <div className="rental-desktop mx-auto hidden xl:flex min-h-[60px] max-w-[1900px] flex-wrap items-center justify-between gap-1.5 px-3 sm:gap-3 sm:px-6">
-        <Link href="/admin/requests" className="mr-2 flex items-center gap-2 text-sm font-bold tracking-tight text-slate-900"><span className="rental-brandmark flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-white"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span><span className="hidden xl:inline">レンタル管理</span></Link>
-        <nav className="flex min-w-0 flex-1 flex-wrap items-center gap-0.5" aria-label="管理メニュー">
-          <details className="group relative shrink-0" onMouseEnter={(e) => { e.currentTarget.open = true; }} onMouseLeave={(e) => { if (!e.currentTarget.contains(document.activeElement)) e.currentTarget.open = false; }} onKeyDown={(e) => { if (e.key === "Escape") { e.currentTarget.open = false; e.currentTarget.querySelector("summary")?.focus(); } }}>
-            <summary aria-current={pathname.startsWith("/admin/inventory/")?"page":undefined} className={`cursor-pointer list-none whitespace-nowrap rounded-lg p-2 text-sm font-medium ${pathname.startsWith("/admin/inventory/") ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}>在庫管理表 ▾</summary>
-            <div className="absolute left-0 top-[calc(100%+6px)] w-48 rounded-2xl border border-slate-200/80 bg-white p-2 shadow-xl shadow-slate-900/10 before:absolute before:inset-x-0 before:-top-2 before:h-2 before:content-['']">
-              <Link className="block rounded-xl px-3 py-3 text-sm text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-800" href="/admin/inventory/allmight">オールマイト</Link>
-              <Link className="block rounded-xl px-3 py-3 text-sm text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-800" href="/admin/inventory/tezukuru">てずくーる!!</Link>
-            </div>
-          </details>
-          {NAV_ITEMS.map((item) => {
-            const active =
-              activeNav(pathname,item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                title={item.label}
-                className={`inline-flex h-9 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-1.5 font-medium transition-colors sm:gap-1.5 sm:px-2.5 ${
-                  active
-                    ? "bg-slate-900 text-white"
-                    : "bg-white text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                }`}
-              >
-                
-                {/* PC: フルラベル / スマホ: 短縮ラベル(小さめ文字で1行維持) */}
-                <span className="hidden text-sm min-[480px]:inline">{item.label}</span>
-                <span className="text-xs min-[480px]:hidden">{item.shortLabel}</span>
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* 右: かんたん仮押さえ・新規申請 */}
-        <InventoryQuickHold header model={{staff:[],version:0,business:pathname.includes('/tezukuru')?'tezukuru':'allmight'}}/>
-        <Link href="/admin/company-portals" aria-current={pathname==='/admin/company-portals'?'page':undefined} className="inline-flex min-h-11 shrink-0 items-center rounded-lg border border-teal-200 bg-teal-50 px-3 text-sm font-semibold text-teal-800 hover:bg-teal-100">企業別URL</Link>
-        <Link
-          href="/apply"
-          title="新規申請"
-          className="inline-flex h-9 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg bg-blue-600 px-1.5 font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 sm:gap-1.5 sm:px-2.5"
-        >
-          <span aria-hidden="true" className="text-lg font-normal">＋</span>
-          <span className="hidden text-sm min-[480px]:inline">新規申請</span>
-          <span className="text-xs min-[480px]:hidden">新規</span>
-        </Link>
-      </div>
-    </header>
-  );
+'use client';
+import Link from 'next/link';
+import {useEffect,useRef} from 'react';
+import {usePathname} from 'next/navigation';
+import {InventoryQuickHold} from './inventory-quick-hold';
+import {adminSection} from '@/lib/admin-navigation';
+const inventory=[{href:'/admin/inventory/allmight',label:'オールマイト'},{href:'/admin/inventory/tezukuru',label:'てずくーる!!'}];
+const logistics=[{href:'/admin/warehouse-closures',label:'倉庫休業日'},{href:'/admin/shipping-days',label:'配送日数'}];
+const daily=[{href:'/admin/requests',label:'申請一覧'},{href:'/admin/company-portals',label:'企業別URL'}];
+const management=[{href:'/admin/plans',label:'商品・プラン'},{href:'/admin/staff',label:'担当者・確認設定'}];
+function active(path:string,href:string){return href==='/admin/plans'?adminSection(path)==='master':href==='/admin/settings'?adminSection(path)==='settings':path===href||path.startsWith(href+'/');}
+const linkClass='header-nav-link inline-flex h-10 shrink-0 items-center whitespace-nowrap rounded-lg px-3 text-sm font-medium';
+function HeaderDropdown({label,items,path}:{label:string;items:{href:string;label:string}[];path:string}){
+ const selected=items.some(i=>active(path,i.href));
+ return <details className="header-dropdown group relative shrink-0" onToggle={e=>{if(e.currentTarget.open)e.currentTarget.closest('header')?.querySelectorAll<HTMLDetailsElement>('details[open]').forEach(d=>{if(d!==e.currentTarget)d.open=false;});}} onKeyDown={e=>{if(e.key==='Escape'){e.currentTarget.open=false;e.currentTarget.querySelector('summary')?.focus();}}}>
+  <summary aria-current={selected?'page':undefined} className="header-nav-link flex h-10 cursor-pointer list-none items-center gap-1.5 whitespace-nowrap rounded-lg px-3 text-sm font-medium">{label}<span aria-hidden="true" className="text-[10px] opacity-60">▾</span></summary>
+  <nav aria-label={`${label}の切り替え`} className="header-dropdown-panel absolute left-0 top-[calc(100%+8px)] w-52 rounded-xl border border-slate-200 bg-white p-2 shadow-xl before:absolute before:inset-x-0 before:-top-3 before:h-3 before:content-['']">{items.map(i=><Link key={i.href} href={i.href} aria-current={active(path,i.href)?'page':undefined} onClick={e=>{const d=e.currentTarget.closest('details');if(d)d.open=false;}} className="block rounded-lg px-3 py-3 text-sm font-medium text-slate-600 hover:bg-indigo-50 hover:text-indigo-800">{i.label}</Link>)}</nav>
+ </details>;
+}
+export function AdminHeader(){
+ const path=usePathname(),root=useRef<HTMLElement>(null);
+ useEffect(()=>{function outside(e:Event){if(e.target instanceof Node&&!root.current?.contains(e.target))root.current?.querySelectorAll('details[open]').forEach(d=>d.removeAttribute('open'));}document.addEventListener('pointerdown',outside);return()=>document.removeEventListener('pointerdown',outside);},[]);
+ useEffect(()=>{root.current?.querySelectorAll('details[open]').forEach(d=>d.removeAttribute('open'));},[path]);
+ if(path==='/admin/login')return null;
+ const model={staff:[],version:0,business:path.includes('/tezukuru')?'tezukuru' as const:'allmight' as const};
+ const menuLink=(i:{href:string;label:string})=><Link key={i.href} href={i.href} aria-current={active(path,i.href)?'page':undefined} className="flex min-h-11 items-center rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-indigo-50" onClick={e=>{const d=e.currentTarget.closest('details');if(d)d.open=false;}}>{i.label}</Link>;
+ return <header ref={root} className="rental-header sticky top-0 z-50 border-b backdrop-blur">
+  <div className="rental-mobile relative flex h-[60px] items-center justify-between gap-2 px-3 xl:hidden">
+   <Link href="/admin/inventory/allmight" className="shrink-0 text-xs font-bold"><span className="min-[380px]:hidden">管理</span><span className="hidden min-[380px]:inline">レンタル管理</span></Link>
+   <div className="flex items-center gap-2"><InventoryQuickHold header model={model}/><Link href="/apply" aria-label="新規申請" className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-white">＋ 新規申請</Link>
+    <details onToggle={e=>{if(e.currentTarget.open)e.currentTarget.closest('header')?.querySelectorAll<HTMLDetailsElement>('details[open]').forEach(d=>{if(d!==e.currentTarget)d.open=false;});}} onKeyDown={e=>{if(e.key==='Escape'){e.currentTarget.open=false;e.currentTarget.querySelector('summary')?.focus();}}}><summary className="flex min-h-11 cursor-pointer list-none items-center rounded-lg border px-3 text-sm font-medium">メニュー ▾</summary>
+     <nav aria-label="スマホ管理メニュー" className="absolute left-3 right-3 top-[56px] z-50 max-h-[75dvh] overflow-y-auto rounded-xl border bg-white p-3 shadow-xl"><p className="px-3 pb-1 pt-1 text-[10px] font-bold tracking-wider text-slate-400">在庫・申請</p><div className="grid grid-cols-2 gap-1">{inventory.map(i=>menuLink({...i,label:`${i.label}在庫`}))}{daily.map(menuLink)}</div><div className="my-2 border-t border-slate-100"/><p className="px-3 pb-1 text-[10px] font-bold tracking-wider text-slate-400">管理・設定</p><div className="grid grid-cols-2 gap-1">{management.map(menuLink)}{logistics.map(menuLink)}{menuLink({href:'/admin/settings',label:'設定'})}</div></nav>
+    </details>
+   </div>
+  </div>
+  <div className="rental-desktop mx-auto hidden h-[60px] max-w-[1900px] items-center gap-5 px-6 xl:flex">
+   <Link href="/admin/inventory/allmight" className="mr-1 flex shrink-0 items-center gap-2.5 text-sm font-bold"><span className="rental-brandmark flex h-8 w-8 items-center justify-center rounded-lg text-white"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>レンタル管理</Link>
+   <nav aria-label="管理メニュー" className="flex min-w-0 flex-1 items-center gap-0.5"><HeaderDropdown label="在庫管理表" items={inventory} path={path}/>{daily.map(i=><Link key={i.href} href={i.href} aria-current={active(path,i.href)?'page':undefined} className={linkClass}>{i.label}</Link>)}<span aria-hidden="true" className="mx-2 h-5 border-l border-white/15"/>{management.map(i=><Link key={i.href} href={i.href} aria-current={active(path,i.href)?'page':undefined} className={linkClass}>{i.label}</Link>)}<HeaderDropdown label="配送・倉庫" items={logistics} path={path}/><Link href="/admin/settings" aria-current={active(path,'/admin/settings')?'page':undefined} className={linkClass}>設定</Link></nav>
+   <div className="header-create-actions flex shrink-0 items-center gap-2 border-l border-white/15 pl-4"><InventoryQuickHold header model={model}/><Link href="/apply" className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-white">＋ 新規申請</Link></div>
+  </div>
+ </header>;
 }
