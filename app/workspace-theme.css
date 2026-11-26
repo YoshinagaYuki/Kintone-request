@@ -1,0 +1,84 @@
+/* Slate / indigo workspace. Operational status colours remain unchanged. */
+.admin-shell {
+ --ui-ink:#172941; --ui-border:#e0e7f0; --ui-card-shadow:0 2px 5px #14233f03,0 12px 32px #14233f05;
+ background:radial-gradient(ellipse at 3% 0%,#eaf0fc 0,transparent 43%),linear-gradient(180deg,#f3f6fc,#f8fafc 65%); color:var(--ui-ink);
+ -webkit-font-smoothing:antialiased;
+}
+.admin-shell .rental-header {
+ background:linear-gradient(105deg,#0f1c32 0%,#192a46 65%,#213654 100%);border-bottom:1px solid #ffffff0f;
+ box-shadow:0 3px 18px #111e3520,inset 0 2px #7988ff;
+}
+.rental-header .rental-brandmark {background:linear-gradient(145deg,#7c88ff,#5261de);box-shadow:0 4px 15px #090e2533,inset 0 1px #ffffff40; border:1px solid #a6b1ff55;}
+.rental-header .rental-desktop> a:first-child,.rental-header .rental-mobile> a:first-child {color:#f4f7ff;letter-spacing:.025em;}
+.rental-header .rental-desktop>nav>a,.rental-header .rental-desktop>nav>details>summary {color:#bcc9df;background:transparent;box-shadow:none;border:1px solid transparent;}
+.rental-header .rental-desktop>nav>a:hover,.rental-header .rental-desktop>nav>details>summary:hover {background:#ffffff0c;color:#fff;}
+.rental-header .rental-desktop>nav>[aria-current="page"],.rental-header .rental-desktop>nav>details>summary[aria-current="page"] {background:#ffffff12;color:#fff;border-color:#ffffff16;box-shadow:inset 0 -2px #9ba7ff;}
+.rental-header a[href="/apply"] {background:linear-gradient(135deg,#7180ff,#5865dc);border:1px solid #8995ff66;box-shadow:0 4px 12px #050d2420;}
+.rental-header a[href="/admin/company-portals"] {background:#dff6ef;color:#186850;border-color:#b9e3d5;box-shadow:0 2px 8px #00000008;}
+.rental-header button.bg-amber-300 {background:linear-gradient(135deg,#ffdc89,#f5c867);border-color:#ffdfa0;box-shadow:0 3px 10px #00000010;color:#4f370b;}
+.rental-header .rental-mobile>div>details>summary {color:#d8e3f5;border-color:#ffffff25;background:#ffffff0a;}
+.rental-header nav[aria-label="スマホ管理メニュー"] {background:#fff;box-shadow:0 18px 50px #0f1c3240;border-color:#dbe4f2;}
+.rental-header nav[aria-label="スマホ管理メニュー"] a[aria-current="page"] {background:#eef1ff;color:#4654b6;}
+.admin-shell :is(.inventory-workspace,.requests-workspace,.management-workspace,.request-detail) {padding-top:24px;}
+.workspace-kicker {display:flex;align-items:center;gap:7px;margin:0 0 7px;color:#67799a;font-size:10px;font-weight:700;letter-spacing:.13em;line-height:1.5;}
+.workspace-kicker>span {height:6px;width:6px;border-radius:50%;background:#6879de;box-shadow:0 0 0 4px #e9edfb;}
+.inventory-page-heading {gap:18px;padding:4px 0 18px;margin-bottom:0;}
+.inventory-page-heading h1 {font-size:clamp(21px,1.8vw,28px);line-height:1.45;letter-spacing:-.025em;font-weight:750;color:#172941;}
+.inventory-page-heading>div:first-child>p:last-child {margin-top:6px;color:#71819a;line-height:1.7;}
+.inventory-toolbar {border:1px solid #dee5f0;background:#ffffffdf;box-shadow:0 2px 4px #14233f02,0 8px 24px #14233f03;border-radius:14px;}
+.inventory-toolbar input,.inventory-toolbar select {background:#f8faff;border-color:#e0e6f0;}
+.inventory-action {border-radius:10px;box-shadow:none;font-weight:600;}
+.inventory-action-holds {background:#fff9ec;border-color:#f0dfbc;color:#906522;}
+.inventory-product-tabs {border:1px solid #e0e6f0;border-radius:14px;background:#ffffffed;box-shadow:0 3px 14px #1c315408;padding:6px;gap:4px;}
+.inventory-product-tabs a {border-radius:10px;min-height:38px;display:inline-flex;align-items:center;padding-inline:15px;transition:background .15s,color .15s,box-shadow .15s;}
+.inventory-product-tabs a[aria-selected="true"] {background:linear-gradient(120deg,#6170de,#4d5cc7);color:#fff;box-shadow:0 3px 8px #4d5cc730;}
+.inventory-product-tabs a:not([aria-selected="true"]):hover {background:#f0f3fa;color:#3c4b73;}
+.inventory-product-heading h2 {font-weight:700;color:#263b59;letter-spacing:-.01em;}
+.inventory-stock-summary>span {box-shadow:0 1px 3px #162c4503;border-radius:9px;}
+.inventory-stock-summary>span.bg-white {border-color:#e3e8f1;}
+.inventory-grid {border-color:#dce4ef;border-radius:14px;box-shadow:0 4px 20px #18335406;background:#fff;}
+.inventory-grid thead th {border-bottom-color:#d5dfee;}
+.inventory-grid td,.inventory-grid th {border-right-color:#e6ebf3;}
+.inventory-grid tbody>tr:hover>th {color:#4e5cc4;}
+.inventory-board-controls {padding-block:4px 7px;}
+.inventory-board-controls button.bg-indigo-600 {background:#5263d0;box-shadow:0 3px 8px #5263d022;min-height:34px;border-radius:9px;}
+.inventory-zoom {border-color:#e0e6ef;box-shadow:none;}
+.inventory-screen-summary {background:#f0f3fc;border-color:#e0e6f5;color:#5d6c91;}
+.requests-page-header {position:relative;overflow:hidden;background:linear-gradient(120deg,#fff,#f3f6ff);border:1px solid #dee5f1;border-radius:18px;box-shadow:var(--ui-card-shadow);padding:25px 28px;}
+.requests-page-header::before {content:"";position:absolute;inset:22px auto 22px 0;width:4px;border-radius:0 4px 4px 0;background:linear-gradient(#7e8ae4,#5a6ad1);}
+.requests-page-header .ui-eyebrow {display:block;color:#7886a8;font-size:10px;letter-spacing:.12em;margin-bottom:7px;}
+.requests-page-header h1 {color:#1c3151;letter-spacing:-.025em;}
+.requests-table {border-radius:16px;border-color:#e1e7f0;box-shadow:var(--ui-card-shadow);}
+.requests-table thead th {padding-block:15px;color:#6b7b94;letter-spacing:.03em;}
+.requests-table tbody td {padding-block:17px;}
+.requests-table tbody td:first-child {padding-left:18px;}
+.requests-table tbody td:last-child a {display:inline-flex;align-items:center;justify-content:center;min-height:34px;min-width:48px;border:1px solid #dce3f3;background:#fff;border-radius:8px;color:#5164bd;}
+.request-status-filter {border-color:#e1e7f1;background:#ffffffbb;border-radius:12px;box-shadow:0 2px 8px #15264302;}
+.request-status-filter a.bg-blue-600 {background:#5668cf;box-shadow:0 2px 6px #5668cf22;}
+.management-workspace>h1,.request-detail h1 {font-size:clamp(22px,2vw,28px);color:#1c3151;font-weight:750;letter-spacing:-.025em;}
+.management-form,.management-settings>div,.management-editor,.management-table,.request-detail-section {border-color:#e0e7f0;box-shadow:var(--ui-card-shadow);}
+.management-editor {border-radius:18px;padding:26px;}
+.management-editor>div:first-child {border-radius:12px;background:#f7f9fd;border-color:#e5eaf3;}
+.admin-section-group .admin-section-nav {padding:6px;border-radius:13px;background:#edf1f8;border-color:#e0e6f0;}
+.admin-section-group .admin-section-nav a {border-radius:9px;}
+.admin-section-group .admin-section-nav [aria-current="page"] {color:#495db5;background:#fff;box-shadow:0 2px 6px #2636550c;}
+.request-detail-section>h2 {padding:14px 18px;background:#f7f9fd;font-size:13px;color:#4e6280;}
+.inventory-editor,.inventory-list-dialog {border:1px solid #dbe4f0;border-radius:20px;box-shadow:0 30px 100px #13243d38,0 2px 8px #12243b12;}
+.inventory-list-dialog::backdrop,.inventory-editor::backdrop {background:#12223d64;backdrop-filter:blur(5px);}
+.inventory-editor-header,.inventory-list-header {background:linear-gradient(115deg,#fff,#f5f7fd);padding-block:20px;}
+.inventory-close {border-color:#dde4ef;background:#fff;color:#61718a;border-radius:10px;}
+.admin-shell input:not([type="checkbox"]):not([type="radio"]):focus-visible,.admin-shell textarea:focus-visible,.admin-shell select:focus-visible {border-color:#8b98e1;box-shadow:0 0 0 3px #edf0ff;}
+.admin-shell ::selection {background:#dfe5ff;color:#263b6d;}
+@media(max-width:639px) {
+ .admin-shell :is(.inventory-workspace,.requests-workspace,.management-workspace,.request-detail) {padding-top:18px;}
+ .inventory-page-heading {padding-bottom:14px;gap:12px;}
+ .workspace-kicker {font-size:9px;margin-bottom:6px;}
+ .inventory-product-tabs {border-radius:12px;padding:5px;}
+ .inventory-product-tabs a {min-height:40px;padding-inline:13px;}
+ .requests-page-header {padding:20px;}
+ .requests-table tbody td {padding-block:13px;}
+ .management-editor {padding:16px;border-radius:16px;}
+ .inventory-editor,.inventory-list-dialog {border-radius:18px;}
+ .inventory-list-header,.inventory-editor-header {padding-block:17px;}
+}
+@media(prefers-reduced-motion:reduce) { .admin-shell * {transition:none!important;scroll-behavior:auto!important;} }

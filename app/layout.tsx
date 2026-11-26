@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "./ui-polish.css";
+import "./workspace-theme.css";
 
 export const metadata: Metadata = {
   title: "案件申請受付",
