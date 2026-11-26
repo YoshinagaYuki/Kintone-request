@@ -116,3 +116,12 @@ export async function getAlwaysCcEmails(
     return [];
   }
 }
+
+/** Stable per-business named links; legacy links remain available until settings are saved. */
+export async function getDriveLinks(supabase:SupabaseClient,business:'allmight'|'tezukuru'){
+ const {driveSettingKey,driveLibrary}=await import('./mail/drive-links');
+ const {data,error}=await supabase.from('system_settings').select('key,value').in('key',[driveSettingKey(business),business==='allmight'?SETTING_KEYS.manualDriveUrlAllmight:SETTING_KEYS.manualDriveUrl]);
+ if(error)throw Error('資料リンクの設定を取得できません');
+ const values=Object.fromEntries((data??[]).map(r=>[r.key,r.value]));
+ return driveLibrary(values[driveSettingKey(business)],values[business==='allmight'?SETTING_KEYS.manualDriveUrlAllmight:SETTING_KEYS.manualDriveUrl]??'');
+}

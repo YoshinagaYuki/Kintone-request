@@ -51,12 +51,4 @@ export async function getEmailTemplate(
  * {{key}} を vars[key] で置換する。未定義キーは空文字。
  * 値内に {{...}} が含まれても再帰置換しない(単純一括置換)。
  */
-export function renderTemplate(
-  template: string,
-  vars: Record<string, string>
-): string {
-  return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_m, key: string) => {
-    const v = vars[key];
-    return v === undefined || v === null ? "" : String(v);
-  });
-}
+export {renderTemplate} from './render-template';

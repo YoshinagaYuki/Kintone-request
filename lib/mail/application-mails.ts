@@ -1,3 +1,4 @@
+import {driveVariables} from './drive-links';
 import{approvalMailContent,type ApprovalCorrection}from'./approval-corrections';
 import "server-only";
 
@@ -5,7 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendMail, type MailResult } from "./mailer";
 import { getEmailTemplate, renderTemplate } from "./templates";
 import { buildOrderDetails } from "./order-details";
-import { getManualDriveUrl } from "../system-settings";
+import { getManualDriveUrl,getDriveLinks } from "../system-settings";
 
 /**
  * 申請完了メール / 承認完了メール。
@@ -150,6 +151,7 @@ export async function sendApprovalMail(
   const template = await getEmailTemplate(supabase, "approval", { allmight: isAllmight });
   const vars = baseVars(ctx, "approved_at", approvedAt);
   vars.manual_drive_url = await getManualDriveUrl(supabase, { allmight: isAllmight });
+  Object.assign(vars,driveVariables(await getDriveLinks(supabase,isAllmight?'allmight':'tezukuru')));
   const subject = renderTemplate(template.subject, vars);
   const text = renderTemplate(template.body, vars);
 

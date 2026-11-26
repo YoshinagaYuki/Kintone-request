@@ -1,0 +1,11 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {driveLibrary,driveVariables,validateDriveLinks} from '../lib/mail/drive-links';
+import {readableTemplate,storedTemplate,previewTemplate} from '../lib/mail/template-fields';
+import {renderTemplate} from '../lib/mail/render-template';
+const links=[{id:'legacy',name:'取扱説明書',url:'https://drive.google.com/manual'},{id:'setup',name:'設営写真',url:'https://drive.google.com/setup'}];
+test('multiple selected drive documents resolve independently in the actual mail renderer',()=>{const template='{{manual_drive_url}}\n{{drive_setup}}';assert.equal(renderTemplate(template,driveVariables(links)),links.map(l=>l.url).join('\n'));assert.equal(storedTemplate(readableTemplate(template,links),links),template);assert.equal(previewTemplate(template,'allmight',links[0].url,links),links.map(l=>l.url).join('\n'));});
+test('legacy links are retained and an explicitly empty library does not restore removed links',()=>{assert.equal(driveLibrary(undefined,'https://drive.google.com/old')[0].id,'legacy');assert.deepEqual(driveLibrary('[]','https://drive.google.com/old'),[]);assert.deepEqual(driveLibrary(undefined,''),[]);});
+test('renaming or updating a document keeps its stable email reference',()=>{const changed=links.map(l=>({...l,name:l.name+'最新版',url:l.url+'/new'}));assert.equal(renderTemplate('{{drive_setup}}',driveVariables(changed)),changed[1].url);assert.equal(storedTemplate(readableTemplate('{{drive_setup}}',changed),changed),'{{drive_setup}}');});
+test('libraries reject duplicate names, duplicate ids, unsafe URLs and malformed saved JSON',()=>{for(const bad of [[links[0],links[0]],[links[0],{...links[1],name:links[0].name}],[{...links[0],url:'javascript:alert(1)'}],[{...links[0],url:'https://name:password@example.com'}],[{...links[0],id:'../other'}],[{...links[0],name:'【資料】'}]])assert.throws(()=>validateDriveLinks(bad));assert.throws(()=>driveLibrary('not json',''));});
+test('business-specific document variables never fall back to another business',()=>{const allmight=driveVariables(links),tezukuru=driveVariables([{id:'tezu',name:'教材資料',url:'https://drive.google.com/tezu'}]);assert.equal(renderTemplate('{{drive_setup}}',tezukuru),'');assert.equal(renderTemplate('{{drive_tezu}}',allmight),'');});

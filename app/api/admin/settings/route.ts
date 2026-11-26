@@ -1,3 +1,4 @@
+import {validateDriveLinks,driveSettingKey,driveToken} from '@/lib/mail/drive-links';
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, isActiveAdmin } from "@/lib/admin-users";
@@ -25,6 +26,8 @@ export async function PATCH(req: NextRequest) {
   }
 
   let body: {
+    mail_drive_links_allmight?: unknown;
+    mail_drive_links_tezukuru?: unknown;
     minimum_order_quantity?: number | string;
     manual_drive_url?: string;
     manual_drive_url_allmight?: string;
@@ -87,6 +90,24 @@ export async function PATCH(req: NextRequest) {
       key: SETTING_KEYS.alwaysCcEmails,
       value: dedupeEmails(list).join("\n"),
     });
+  }
+
+  for(const business of ['allmight','tezukuru'] as const){
+    const key=driveSettingKey(business),value=body[key as keyof typeof body];
+    if(value===undefined)continue;
+    try{
+      const links=validateDriveLinks(value);
+      const {data:templates,error:templateError}=await supabase.from('email_templates').select('subject,body').in('key',business==='allmight'?['application_allmight','approval_allmight']:['application','approval']);
+      if(templateError)throw Error('メール本文の使用状況を確認できません');
+      const used=(templates??[]).map(t=>`${t.subject}\n${t.body}`).join('\n');
+      const old=await supabase.from('system_settings').select('value').eq('key',key).maybeSingle();
+      if(old.error)throw Error('資料リンクの設定を確認できません');
+      const oldLinks=old.data?validateDriveLinks(JSON.parse(old.data.value)):[];
+      for(const link of oldLinks){if(!links.some(l=>l.id===link.id)&&new RegExp('\\{\\{\\s*'+driveToken(link.id)+'\\s*\\}\\}').test(used))throw Error(`「${link.name}」はメール本文で使用中です。先に本文から外してください`);}
+      if(!links.some(l=>l.id==='legacy')&&/\{\{\s*manual_drive_url\s*\}\}/.test(used))throw Error('既存の資料リンクはメール本文で使用中です。先に本文から外してください');
+      rows.push({key,value:JSON.stringify(links)});
+      rows.push({key:business==='allmight'?SETTING_KEYS.manualDriveUrlAllmight:SETTING_KEYS.manualDriveUrl,value:links.find(l=>l.id==='legacy')?.url??''});
+    }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'資料リンクを確認してください'},{status:400});}
   }
 
   if (rows.length === 0) {

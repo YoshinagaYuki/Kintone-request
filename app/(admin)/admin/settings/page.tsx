@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SettingsEditor } from "@/components/admin/settings-editor";
 import {
   getMinimumOrderQuantity,
-  getManualDriveUrl,
+  getDriveLinks,
   getAlwaysCcEmails,
 } from "@/lib/system-settings";
 
@@ -16,11 +16,11 @@ export const dynamic = "force-dynamic";
  */
 export default async function SettingsPage() {
   const supabase = await createClient();
-  const [minimumOrderQuantity, manualDriveUrl, manualDriveUrlAllmight, alwaysCcEmails] =
+  const [minimumOrderQuantity, tezukuruLinks, allmightLinks, alwaysCcEmails] =
     await Promise.all([
       getMinimumOrderQuantity(supabase),
-      getManualDriveUrl(supabase),
-      getManualDriveUrl(supabase, { allmight: true }),
+      getDriveLinks(supabase,'tezukuru'),
+      getDriveLinks(supabase,'allmight'),
       getAlwaysCcEmails(supabase),
     ]);
 
@@ -33,8 +33,7 @@ export default async function SettingsPage() {
       <p className="mt-1 text-sm text-gray-600">基本設定(最低注文数量・Google Drive共有リンク)。</p>
       <SettingsEditor
         minimumOrderQuantity={minimumOrderQuantity}
-        manualDriveUrl={manualDriveUrl}
-        manualDriveUrlAllmight={manualDriveUrlAllmight}
+        driveLinks={{tezukuru:tezukuruLinks,allmight:allmightLinks}}
         alwaysCcEmails={alwaysCcEmails}
       />
     </main>

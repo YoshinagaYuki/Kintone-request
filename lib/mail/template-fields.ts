@@ -1,3 +1,4 @@
+import {driveToken,type DriveLink} from './drive-links';
 export const emailFields=[
  {key:'applicant_name',label:'申請者名',example:'山田 太郎'},
  {key:'management_no',label:'管理番号',example:'1234'},
@@ -9,6 +10,7 @@ export const emailFields=[
  {key:'order_details',label:'申請内容の一覧',example:'利用期間：12/5〜12/6\nレンタル内容・数量・配送先・集荷先などが入ります。'},
  {key:'manual_drive_url',label:'ドライブの資料リンク',example:'（選択した事業のドライブURL）'},
 ] as const;
-export function readableTemplate(value:string){return emailFields.reduce((text,f)=>text.replace(new RegExp('\\{\\{\\s*'+f.key+'\\s*\\}\\}','g'),`【${f.label}】`),value);}
-export function storedTemplate(value:string){return emailFields.reduce((text,f)=>text.split(`【${f.label}】`).join(`{{${f.key}}}`),value);}
-export function previewTemplate(value:string,business:'allmight'|'tezukuru',drive:string){const vars=Object.fromEntries(emailFields.map(f=>[f.key,f.key==='form_type_name'?business==='allmight'?'オールマイト':'てずくーる':f.key==='manual_drive_url'?drive||'（ドライブURLが未設定です）':f.example]));return value.replace(/\{\{\s*([\w.]+)\s*\}\}/g,(_,key:string)=>vars[key]??'');}
+const fields=(links:DriveLink[])=>[...emailFields.filter(f=>f.key!=='manual_drive_url'||!links.some(l=>l.id==='legacy')),...links.map(l=>({key:driveToken(l.id),label:`資料：${l.name}`,example:l.url}))];
+export function readableTemplate(value:string,links:DriveLink[]=[]){return fields(links).reduce((text,f)=>text.replace(new RegExp('\\{\\{\\s*'+f.key+'\\s*\\}\\}','g'),`【${f.label}】`),value);}
+export function storedTemplate(value:string,links:DriveLink[]=[]){return fields(links).reduce((text,f)=>text.split(`【${f.label}】`).join(`{{${f.key}}}`),value);}
+export function previewTemplate(value:string,business:'allmight'|'tezukuru',drive:string,links:DriveLink[]=[]){const vars=Object.fromEntries(fields(links).map(f=>[f.key,f.key==='form_type_name'?business==='allmight'?'オールマイト':'てずくーる':f.key==='manual_drive_url'?drive||'（ドライブURLが未設定です）':f.example]));return value.replace(/\{\{\s*([\w.]+)\s*\}\}/g,(_,key:string)=>vars[key]??'');}

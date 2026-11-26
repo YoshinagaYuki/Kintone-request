@@ -1,4 +1,7 @@
 "use client";
+import {DriveLibraryEditor} from './drive-library-editor';
+import {type DriveLibraries,validateDriveLinks,driveSettingKey} from '@/lib/mail/drive-links';
+
 
 import Link from "next/link";
 import { useState } from "react";
@@ -10,19 +13,16 @@ import { useRouter } from "next/navigation";
  */
 export function SettingsEditor({
   minimumOrderQuantity,
-  manualDriveUrl,
-  manualDriveUrlAllmight = "",
+  driveLinks,
   alwaysCcEmails = [],
 }: {
   minimumOrderQuantity: number;
-  manualDriveUrl: string;
-  manualDriveUrlAllmight?: string;
+  driveLinks: DriveLibraries;
   alwaysCcEmails?: string[];
 }) {
   const router = useRouter();
   const [minQty, setMinQty] = useState(String(minimumOrderQuantity));
-  const [driveUrl, setDriveUrl] = useState(manualDriveUrl);
-  const [driveUrlAllmight, setDriveUrlAllmight] = useState(manualDriveUrlAllmight);
+  const [libraries,setLibraries]=useState(driveLinks);
   // 常時CC(1アドレス1行の管理UI)。最低1行の空欄を表示
   const [ccEmails, setCcEmails] = useState<string[]>(
     alwaysCcEmails.length > 0 ? alwaysCcEmails : [""]
@@ -50,13 +50,14 @@ export function SettingsEditor({
     setError(null);
     setSaved(false);
     try {
+      validateDriveLinks(libraries.allmight);validateDriveLinks(libraries.tezukuru);
       const res = await fetch("/api/admin/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           minimum_order_quantity: minQty,
-          manual_drive_url: driveUrl,
-          manual_drive_url_allmight: driveUrlAllmight,
+          [driveSettingKey('allmight')]: libraries.allmight,
+          [driveSettingKey('tezukuru')]: libraries.tezukuru,
           always_cc_emails: ccEmails.map((e) => e.trim()).filter((e) => e.length > 0),
         }),
       });
@@ -67,8 +68,8 @@ export function SettingsEditor({
       }
       setSaved(true);
       router.refresh();
-    } catch {
-      setError("通信エラーが発生しました");
+    } catch(e) {
+      setError(e instanceof Error?e.message:"通信エラーが発生しました");
     } finally {
       setBusy(false);
     }
@@ -78,7 +79,7 @@ export function SettingsEditor({
     "mt-1 w-full max-w-md rounded-md border border-gray-300 bg-white p-2.5 text-sm focus:border-blue-500 focus:outline-none";
 
   return (
-    <form onSubmit={save} className="management-settings mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2"><Link href="/admin/email-templates" className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm font-semibold text-indigo-800 sm:col-span-2">メール本文・事業別のドライブリンクを設定する →</Link>
+    <form onSubmit={save} className="management-settings mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2"><Link href="/admin/email-templates" className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm font-semibold text-indigo-800 sm:col-span-2">メール本文に入れる資料を選択する →</Link>
       {error && (
         <p className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">{error}</p>
       )}
@@ -103,37 +104,7 @@ export function SettingsEditor({
         </p>
       </div>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <label className="block text-sm font-medium text-gray-700">
-          Google Drive 共有リンク(てずくーる)
-        </label>
-        <input
-          type="url"
-          value={driveUrl}
-          onChange={(e) => setDriveUrl(e.target.value)}
-          placeholder="https://drive.google.com/..."
-          className={inputClass}
-        />
-        <p className="mt-1 text-xs text-gray-500">
-          てずくーるの承認完了メールの {"{{manual_drive_url}}"} に差し込まれます。空欄も可。
-        </p>
-      </div>
-
-      <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-        <label className="block text-sm font-medium text-gray-700">
-          Google Drive 共有リンク(オールマイト)
-        </label>
-        <input
-          type="url"
-          value={driveUrlAllmight}
-          onChange={(e) => setDriveUrlAllmight(e.target.value)}
-          placeholder="https://drive.google.com/..."
-          className={inputClass}
-        />
-        <p className="mt-1 text-xs text-gray-500">
-          オールマイトの承認完了メールの {"{{manual_drive_url}}"} に差し込まれます。空欄の場合、てずくーるのリンクは使われません(未設定として扱われます)。
-        </p>
-      </div>
+      <DriveLibraryEditor libraries={libraries} onChange={value=>{setLibraries(value);setSaved(false);}}/>
 
       <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
         <label className="block text-sm font-medium text-gray-700">常時CCメールアドレス</label>

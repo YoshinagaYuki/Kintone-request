@@ -1,5 +1,7 @@
 "use client";
 
+import {driveToken,type DriveLibraries} from '@/lib/mail/drive-links';
+import Link from 'next/link';
 import { useState, useId, useRef } from "react";
 import {emailFields,readableTemplate,storedTemplate,previewTemplate} from '@/lib/mail/template-fields';
 import { useRouter } from "next/navigation";
@@ -22,10 +24,10 @@ const TABS: { key: EmailTemplateRow["key"]; label: string }[] = [
 
 
 /** メールテンプレート編集(事業切替: てずくーる/オールマイト × 申請完了/承認完了)。本文はDB保存 */
-export function EmailTemplateEditor({ templates,driveUrls }: { templates: EmailTemplatesByBusiness;driveUrls:Record<BusinessKey,string> }) {
+export function EmailTemplateEditor({ templates,driveLinks }: { templates: EmailTemplatesByBusiness;driveLinks:DriveLibraries }) {
   const router = useRouter();
   const bodyRef=useRef<HTMLTextAreaElement>(null);
-  const[drives,setDrives]=useState(driveUrls);
+
   const fieldPrefix = useId();
   const [business, setBusiness] = useState<BusinessKey>("tezukuru");
   const [active, setActive] = useState<EmailTemplateRow["key"]>("application");
@@ -59,8 +61,6 @@ export function EmailTemplateEditor({ templates,driveUrls }: { templates: EmailT
     setError(null);
     setSaved(false);
     try {
-      if(active==='approval'&&drives[business]!==driveUrls[business]){const settings=await fetch('/api/admin/settings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({[business==='allmight'?'manual_drive_url_allmight':'manual_drive_url']:drives[business]})});
-      if(!settings.ok){const d=await settings.json();throw Error(d.error||'ドライブURLを保存できません');}}
       const res = await fetch("/api/admin/email-templates", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -145,8 +145,8 @@ export function EmailTemplateEditor({ templates,driveUrls }: { templates: EmailT
           <input
             type="text"
             id={`${fieldPrefix}-subject`}
-            value={readableTemplate(current.subject)}
-            onChange={(e) => update({ subject: storedTemplate(e.target.value) })}
+            value={readableTemplate(current.subject,driveLinks[business])}
+            onChange={(e) => update({ subject: storedTemplate(e.target.value,driveLinks[business]) })}
             className="mt-1 w-full rounded-md border border-gray-300 bg-white p-2.5 text-sm focus:border-blue-500 focus:outline-none"
           />
         </div>
@@ -154,16 +154,26 @@ export function EmailTemplateEditor({ templates,driveUrls }: { templates: EmailT
           <label htmlFor={`${fieldPrefix}-body`} className="block text-sm font-medium text-gray-700">本文</label>
           <textarea
             ref={bodyRef} id={`${fieldPrefix}-body`}
-            value={readableTemplate(current.body)}
-            onChange={(e) => update({ body: storedTemplate(e.target.value) })}
+            value={readableTemplate(current.body,driveLinks[business])}
+            onChange={(e) => update({ body: storedTemplate(e.target.value,driveLinks[business]) })}
             rows={20}
             className="mt-1 w-full rounded-md border border-gray-300 bg-white p-3 text-sm leading-relaxed focus:border-blue-500 focus:outline-none"
           />
         </div>
 
-        <section className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4"><h3 className="text-sm font-semibold">本文に入れる項目</h3><p className="mt-1 text-xs leading-6 text-slate-500">項目を選ぶと本文のカーソル位置に追加します。送信時に実際の内容へ置き換わります。</p><div className="mt-3 flex flex-wrap gap-2">{emailFields.filter(f=>active==='approval'||!['manual_drive_url','approved_at','management_no'].includes(f.key)).map(f=><button type="button" key={f.key} className="rounded-lg border bg-white px-3 py-2 text-xs font-medium text-indigo-800" onClick={()=>{const el=bodyRef.current,text=readableTemplate(current.body),start=el?.selectionStart??text.length,end=el?.selectionEnd??text.length,marker=`【${f.label}】`;update({body:storedTemplate(text.slice(0,start)+marker+text.slice(end))});bodyRef.current?.focus();}}>{f.label}を追加</button>)}</div></section>
-        {active==='approval'&&<section className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4"><h3 className="text-sm font-semibold">{business==='allmight'?'オールマイト':'てずくーる'}のドライブ資料</h3><label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={/\{\{\s*manual_drive_url\s*\}\}/.test(current.body)} onChange={e=>update({body:e.target.checked?`${current.body}\n\n資料・マニュアル\n{{manual_drive_url}}`:current.body.replace(/\{\{\s*manual_drive_url\s*\}\}/g,'')})}/>本登録メールの本文にドライブリンクを入れる</label><label className="mt-3 block text-xs text-slate-600">共有リンク<input type="url" aria-label="この事業のドライブ共有リンク" value={drives[business]} onChange={e=>{setDrives(v=>({...v,[business]:e.target.value}));setSaved(false);}} placeholder="https://drive.google.com/..." className="mt-1 block w-full rounded-lg border bg-white p-3 text-sm"/></label><p className="mt-2 text-xs leading-6 text-slate-500">選択している事業だけに保存します。もう一方の事業のリンクは変わりません。</p></section>}
-        <section className="rounded-xl border bg-white p-4"><h3 className="text-sm font-semibold">送信イメージ（サンプル）</h3><p className="mt-3 border-b pb-3 text-sm font-semibold">{previewTemplate(current.subject,business,drives[business])}</p><p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">{previewTemplate(current.body,business,drives[business])}</p></section>
+        <section className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4"><h3 className="text-sm font-semibold">本文に入れる項目</h3><p className="mt-1 text-xs leading-6 text-slate-500">項目を選ぶと本文のカーソル位置に追加します。送信時に実際の内容へ置き換わります。</p><div className="mt-3 flex flex-wrap gap-2">{emailFields.filter(f=>f.key!=='manual_drive_url'&&(active==='approval'||!['approved_at','management_no'].includes(f.key))).map(f=><button type="button" key={f.key} className="rounded-lg border bg-white px-3 py-2 text-xs font-medium text-indigo-800" onClick={()=>{const el=bodyRef.current,text=readableTemplate(current.body,driveLinks[business]),start=el?.selectionStart??text.length,end=el?.selectionEnd??text.length,marker=`【${f.label}】`;update({body:storedTemplate(text.slice(0,start)+marker+text.slice(end),driveLinks[business])});bodyRef.current?.focus();}}>{f.label}を追加</button>)}</div></section>
+        {active==='approval'&&<section className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold">{business==='allmight'?'オールマイト':'てずくーる'}のドライブ資料</h3><Link href="/admin/settings#drive-links" className="text-xs font-medium text-emerald-800 underline">システム設定で資料を追加・編集 →</Link></div>
+          <p className="mt-2 text-xs leading-6 text-slate-600">資料名を選ぶと本文のカーソル位置に追加します。複数選べます。送信時には最新の共有URLが入ります。</p>
+          <div className="mt-3 space-y-2">{driveLinks[business].map(link=>{
+            const inserted=new RegExp('\\{\\{\\s*'+driveToken(link.id)+'\\s*\\}\\}').test(current.body);
+            return <div key={link.id} className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-lg border bg-white p-3"><div className="min-w-0 flex-1"><p className="text-sm font-semibold">{link.name}</p><p className="mt-1 break-all text-xs text-slate-500">{link.url}</p></div><button type="button" disabled={inserted} className="rounded-lg border border-emerald-200 px-3 py-2 text-xs font-medium text-emerald-800 disabled:bg-emerald-50" onClick={()=>{
+              const el=bodyRef.current,text=readableTemplate(current.body,driveLinks[business]),start=el?.selectionStart??text.length,end=el?.selectionEnd??text.length;
+              update({body:storedTemplate(text.slice(0,start)+`【資料：${link.name}】`+text.slice(end),driveLinks[business])});el?.focus();
+            }}>{inserted?'追加済み':`${link.name}を本文に追加`}</button></div>;
+          })}{!driveLinks[business].length&&<p className="rounded-lg border border-dashed p-4 text-sm text-slate-600">登録済みの資料がありません。システム設定から追加してください。</p>}</div>
+        </section>}
+        <section className="rounded-xl border bg-white p-4"><h3 className="text-sm font-semibold">送信イメージ（サンプル）</h3><p className="mt-3 border-b pb-3 text-sm font-semibold">{previewTemplate(current.subject,business,driveLinks[business].find(l=>l.id==='legacy')?.url??'',driveLinks[business])}</p><p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">{previewTemplate(current.body,business,driveLinks[business].find(l=>l.id==='legacy')?.url??'',driveLinks[business])}</p></section>
 
         <button
           onClick={save}
