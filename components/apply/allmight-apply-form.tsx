@@ -1,4 +1,5 @@
 "use client";
+import {useFormDraft,DraftNotice} from "@/components/drafts/form-draft";
 import {automaticShippingDay,SHIPPING_DATE_REQUEST_NOTE} from '@/lib/application-shipping';
 import {EmailRecipientFields} from "./email-recipient-fields";
 
@@ -7,7 +8,7 @@ import { FormErrorSummary } from "./form-error-summary";
 import{parseEmailRecipients}from'@/lib/email-recipients';
 
 import { useState, useRef, useEffect, useId } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   buildAllmightFmt,
   validEquipments,
@@ -63,6 +64,7 @@ export function AllmightApplyForm({
   productOptions,
   mode = "create",
   requestId,
+  draftKey, draftBaseline,
   initialValues,
   baseUpdatedAt,
   shippingRequirements,
@@ -79,12 +81,15 @@ export function AllmightApplyForm({
   initialValues?: AllmightInitialValues;
   /** 編集開始時の updated_at(楽観ロック用。mode="edit" で渡す) */
   baseUpdatedAt?: string;
+  draftKey?: string;
+  draftBaseline?: string;
   shippingRequirements?:{deliveryRequired:boolean;pickupRequired:boolean};
   inventory?: {equipments:string[];deliveryRequired:boolean;pickupRequired:boolean;staff:{id:string;name:string}[];onBack:()=>void;onSubmit:(payload:Record<string,unknown>)=>Promise<void>};
 }) {
   const deliveryRequired=inventory?.deliveryRequired??shippingRequirements?.deliveryRequired??true;
   const pickupRequired=inventory?.pickupRequired??shippingRequirements?.pickupRequired??true;
   const router = useRouter();
+  const pathname=usePathname();
   const iv = initialValues ?? {};
   const [skipApplicantContact,setSkipApplicantContact]=useState(!!iv.skipApplicantContact);
   const canSkipApplicantContact=!!inventory || (mode === "edit" && !!iv.skipApplicantContact);
@@ -318,7 +323,7 @@ export function AllmightApplyForm({
     };
 
     try {
-      if(inventory){await inventory.onSubmit(payload);return;}
+      if(inventory){await inventory.onSubmit(payload);draft.clear();return;}
       // 編集モード: 管理者編集API(PATCH)。成功時は申請詳細へ戻る(メール再送なし)。
       if (mode === "edit" && requestId) {
         const res = await fetch(`/api/admin/requests/${requestId}/edit`, {
@@ -328,6 +333,7 @@ export function AllmightApplyForm({
         });
         const body = await res.json().catch(() => null);
         if (res.ok) {
+          draft.clear();
           router.push(`/admin/requests/${requestId}`);
           router.refresh();
           return;
@@ -344,6 +350,7 @@ export function AllmightApplyForm({
       });
       const body = await res.json().catch(() => null);
       if (res.ok) {
+          draft.clear();
         const mail = body?.mail ?? "pending";
         router.push(`/apply/complete?rid=${body?.rid ?? ""}&mail=${mail}`);
         return;
@@ -365,8 +372,9 @@ export function AllmightApplyForm({
   const req = <span className="text-red-600">*</span>;
   const filledCount = validEquipments(effectiveEquipments).length;
 
+  const draft=useFormDraft(draftKey??`application:allmight-apply-form:${pathname}:${requestId??(formTypeId)}`,{skipApplicantContact,applicantName,applicantPhone,applicantEmail,companyStaffName,agencyName,eventBooth,billingMonth,shippingFee,usageStart,usageEnd,equipments,manualDeliveryDate,deliveryPostal,deliveryAddress,deliveryReceiver,deliveryContact,manualPickupDate,pickupPostal,pickupAddress,pickupReceiver,pickupContact,sameAsDelivery,slipTo,slipCc,emergencyName,emergencyPhone,customerRequests},{skipApplicantContact:setSkipApplicantContact,applicantName:setApplicantName,applicantPhone:setApplicantPhone,applicantEmail:setApplicantEmail,companyStaffName:setCompanyStaffName,agencyName:setAgencyName,eventBooth:setEventBooth,billingMonth:setBillingMonth,shippingFee:setShippingFee,usageStart:setUsageStart,usageEnd:setUsageEnd,equipments:setEquipments,manualDeliveryDate:setDeliveryDate,deliveryPostal:setDeliveryPostal,deliveryAddress:setDeliveryAddress,deliveryReceiver:setDeliveryReceiver,deliveryContact:setDeliveryContact,manualPickupDate:setPickupDate,pickupPostal:setPickupPostal,pickupAddress:setPickupAddress,pickupReceiver:setPickupReceiver,pickupContact:setPickupContact,sameAsDelivery:setSameAsDelivery,slipTo:setSlipTo,slipCc:setSlipCc,emergencyName:setEmergencyName,emergencyPhone:setEmergencyPhone,customerRequests:setCustomerRequests},true,draftBaseline??baseUpdatedAt??'');
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="application-form mt-6 space-y-6"><fieldset disabled={submitting} className="space-y-6">
+    <form ref={formRef} onSubmit={handleSubmit} className="application-form mt-6 space-y-6"><DraftNotice draft={draft}/><fieldset disabled={submitting} className="space-y-6">
       <button
         type="button"
         onClick={handleBack}

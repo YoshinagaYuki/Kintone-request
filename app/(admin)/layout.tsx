@@ -1,3 +1,4 @@
+import {DraftOwnerProvider} from "@/components/drafts/form-draft";
 import {WarehouseCalendarProvider} from '@/components/admin/warehouse-calendar-context';
 import {loadWarehouseClosures} from '@/lib/inventory/warehouse-calendar-server';
 import type {WarehouseClosure} from '@/lib/inventory/warehouse-calendar';
@@ -14,11 +15,13 @@ export default async function AdminLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   let closures:WarehouseClosure[]=[];
+  let draftOwner="anonymous";
   let preferred="/admin/requests";
   // 最終ログイン時刻の更新(10分間引き)。未ログイン(/admin/login)では admin=null で skip。
   try {
     const supabase = await createClient();
     const {data:{user}}=await supabase.auth.getUser();
+    draftOwner=user?.id??"anonymous";
     preferred=homePage(user?.user_metadata?.home_start_path);
     const admin = await getCurrentAdmin(supabase);
     if (admin){await touchLastLogin(createAdminClient(), admin);closures=await loadWarehouseClosures(supabase);}
@@ -27,11 +30,11 @@ export default async function AdminLayout({
   }
 
   return (
-    <WarehouseCalendarProvider closures={closures}><div className="admin-shell min-h-screen">
+    <DraftOwnerProvider value={draftOwner}><WarehouseCalendarProvider closures={closures}><div className="admin-shell min-h-screen">
       <HomeScreenStart preferred={preferred}/>
       <AdminHeader />
       <AdminSectionNav/>
       {children}
-    </div></WarehouseCalendarProvider>
+    </div></WarehouseCalendarProvider></DraftOwnerProvider>
   );
 }

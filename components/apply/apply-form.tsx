@@ -1,4 +1,5 @@
 "use client";
+import {useFormDraft,DraftNotice} from "@/components/drafts/form-draft";
 import {EmailRecipientFields} from "./email-recipient-fields";
 
 import {SHIPPING_DATE_REQUEST_NOTE} from '@/lib/application-shipping';
@@ -11,7 +12,7 @@ import{parseEmailRecipients}from'@/lib/email-recipients';
 import{RentalItemFields,type RentalDraft}from'./rental-item-fields';
 import{validateRentalItems}from'@/lib/inventory/rental-items';
 import { useState, useId } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   type RentalPlan,
   type RentalStatus,
@@ -115,6 +116,7 @@ export function ApplyForm({
   backHref = "/apply",
   mode = "create",
   requestId,
+  draftKey, draftBaseline,
   initialValues,
   baseUpdatedAt,inventory,rentalItemsOptions,
 }: {
@@ -134,10 +136,13 @@ export function ApplyForm({
   initialValues?: TezukuruInitialValues;
   /** 編集開始時の updated_at(楽観ロック用。mode="edit" で渡す) */
   baseUpdatedAt?: string;
+  draftKey?: string;
+  draftBaseline?: string;
   rentalItemsOptions?:(KitProductRule&{name:string})[];
   inventory?:{deliveryRequired:boolean;pickupRequired:boolean;onBack:()=>void;onSubmit:(payload:Record<string,unknown>)=>Promise<void>};
 }) {
   const router = useRouter();
+  const pathname=usePathname();
   const iv = initialValues ?? {};
   const [skipApplicantContact,setSkipApplicantContact]=useState(!!iv.skipApplicantContact);
   const canSkipApplicantContact=!!inventory || (mode === "edit" && !!iv.skipApplicantContact);
@@ -381,7 +386,7 @@ export function ApplyForm({
     };
 
     try {
-      if(inventory){await inventory.onSubmit(payload);return;}
+      if(inventory){await inventory.onSubmit(payload);draft.clear();return;}
       // 編集モード: 管理者編集API(PATCH)。成功時は申請詳細へ戻る(メール再送なし)。
       if (mode === "edit" && requestId) {
         const res = await fetch(`/api/admin/requests/${requestId}/edit`, {
@@ -391,6 +396,7 @@ export function ApplyForm({
         });
         const body = await res.json().catch(() => null);
         if (res.ok) {
+          draft.clear();
           router.push(`/admin/requests/${requestId}`);
           router.refresh();
           return;
@@ -407,6 +413,7 @@ export function ApplyForm({
       });
       const body = await res.json().catch(() => null);
       if (res.ok) {
+          draft.clear();
         const mail = body?.mail ?? "pending";
         router.push(`/apply/complete?rid=${body?.rid ?? ""}&mail=${mail}`);
         return;
@@ -455,8 +462,9 @@ export function ApplyForm({
   const req = <span className="text-red-600">*</span>;
   const filledProductCount = validProducts(products).length;
 
+  const draft=useFormDraft(draftKey??`application:apply-form:${pathname}:${requestId??(formTypes.map(f=>f.id).join(","))}`,{skipApplicantContact,rentalItems,selectedId,applicantName,applicantPhone,applicantEmail,companyStaffName,rentalStatus,rentalPlanId,agencyName,boothName,billingMonth,shippingFee,products,manualDeliveryDate,deliveryPostal,deliveryAddress,deliveryReceiver,deliveryContact,manualPickupDate,pickupPostal,pickupAddress,pickupHandover,pickupContact,sameAsDelivery,slipTo,slipCc,emergencyName,emergencyPhone,snsPromotion,customerRequests,eventStart,eventEnd},{skipApplicantContact:setSkipApplicantContact,rentalItems:setRentalItems,selectedId:setSelectedId,applicantName:setApplicantName,applicantPhone:setApplicantPhone,applicantEmail:setApplicantEmail,companyStaffName:setCompanyStaffName,rentalStatus:setRentalStatus,rentalPlanId:setRentalPlanId,agencyName:setAgencyName,boothName:setBoothName,billingMonth:setBillingMonth,shippingFee:setShippingFee,products:setProducts,manualDeliveryDate:setDeliveryDate,deliveryPostal:setDeliveryPostal,deliveryAddress:setDeliveryAddress,deliveryReceiver:setDeliveryReceiver,deliveryContact:setDeliveryContact,manualPickupDate:setPickupDate,pickupPostal:setPickupPostal,pickupAddress:setPickupAddress,pickupHandover:setPickupHandover,pickupContact:setPickupContact,sameAsDelivery:setSameAsDelivery,slipTo:setSlipTo,slipCc:setSlipCc,emergencyName:setEmergencyName,emergencyPhone:setEmergencyPhone,snsPromotion:setSnsPromotion,customerRequests:setCustomerRequests,eventStart:setEventStart,eventEnd:setEventEnd},true,draftBaseline??baseUpdatedAt??'');
   return (
-    <form onSubmit={handleSubmit} className="application-form mt-6 space-y-6">
+    <form onSubmit={handleSubmit} className="application-form mt-6 space-y-6"><DraftNotice draft={draft}/>
       <button
         type="button"
         onClick={inventory?inventory.onBack:handleBack}

@@ -1,0 +1,10 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFormDraft,DRAFT_MAX_AGE} from '../lib/form-draft-storage';
+const now=1800000000000;
+const values={pickup:'2026-12-09',internal:true,lines:[{id:'unit',quantity:12}],address:'test'};
+const raw=(patch:Record<string,unknown>={})=>JSON.stringify({version:1,at:now,baseline:'revision-a',value:values,...patch});
+test('draft preserves manual dates, flags and dynamic equipment quantities',()=>assert.deepEqual(readFormDraft(raw(),'revision-a',now),values));
+test('a changed source revision cannot silently restore stale edits',()=>assert.equal(readFormDraft(raw(),'revision-b',now),null));
+test('draft expires after seven days, while a recent draft remains available',()=>{assert.deepEqual(readFormDraft(raw(),'revision-a',now+DRAFT_MAX_AGE-1),values);assert.equal(readFormDraft(raw(),'revision-a',now+DRAFT_MAX_AGE),null);});
+test('corrupt, incompatible and invalid draft records fail safely',()=>{for(const input of ['broken','null',raw({version:2}),raw({at:'bad'}),raw({at:now+120000}),raw({value:[]}),raw({value:null})])assert.equal(readFormDraft(input,'revision-a',now),null);});
