@@ -1,4 +1,5 @@
 import {test} from 'node:test';
+import {boardColor,boardStroke,BOARD_COLORS} from '../lib/inventory/presentation';
 import assert from 'node:assert/strict';
 import {holdWorkflow,withHoldWorkflows,isHoldPhase,shippingInformationEntered,holdWorkflowKeys} from '../lib/inventory/hold-workflow';
 import {holdCases,filterHoldCases} from '../lib/inventory/hold-list';
@@ -36,3 +37,15 @@ test('generated dates do not count as shipping information; both needed legs req
 });
 
 test('case cancellation includes every monthly source piece so a later month cannot revive',()=>{const r=record();r.booking.monthlySourceKeys=['one','month-two','month-three'];assert.deepEqual(holdWorkflowKeys([r,record('two')]),['one','month-two','month-three','two']);});
+
+test('unified registration saves use the latest case phase for every item, overriding initialization metadata',()=>{
+ const a=record(),b=record('two');const result=withHoldWorkflows([a,b],[{booking_key:'one',deleted:false,patch:{holdPhase:'waiting_shipping'}},{booking_key:'two',deleted:false,patch:{holdPhase:'shipping_entered',holdPhaseVersion:100,bundleCommon:{holdPhase:'shipping_entered',holdPhaseVersion:100}}}]);
+ assert.deepEqual(result.map(r=>r.booking.holdPhase),['shipping_entered','shipping_entered']);assert.equal(result[0].booking.holdCreatedAt,a.booking.holdCreatedAt);
+ const reverted=withHoldWorkflows([a,b],[{booking_key:'one',deleted:false,patch:{holdPhase:'hold',holdPhaseVersion:101}},{booking_key:'two',deleted:false,patch:{holdPhase:'shipping_entered',holdPhaseVersion:100}}]);assert.deepEqual(reverted.map(r=>r.booking.holdPhase),['hold','hold']);
+});
+
+test('board colors distinguish provisional, waiting and entered while preserving delivery and confirmed colors',()=>{
+ const a=record().booking;a.start='2026-12-02';a.end='2026-12-03';a.delivery='2026-12-01';a.pickup='2026-12-04';a.from=a.delivery;a.to=a.pickup;
+ const waiting={...a,holdPhase:'waiting_shipping' as const},entered={...a,holdPhase:'shipping_entered' as const};
+ assert.equal(new Set([boardColor(a,a.start),boardColor(waiting,a.start),boardColor(entered,a.start)]).size,3);assert.notEqual(boardStroke(waiting,a.start),boardStroke(entered,a.start));assert.equal(boardColor(entered,a.delivery),BOARD_COLORS.transit);assert.equal(boardColor({...entered,status:'registered'},a.start),BOARD_COLORS.registered);
+});

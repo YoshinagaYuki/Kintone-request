@@ -6,7 +6,11 @@ export function isHoldPhase(value:unknown):value is HoldPhase{return typeof valu
 /** Registration age is immutable: editing a schedule or memo never restarts the clock. */
 export function withHoldWorkflows(records:InventoryRecord[],edits:BookingEdit[]):InventoryRecord[]{
  const patches=new Map(edits.map(e=>[e.booking_key,e.patch]));
- return records.map(r=>{const p=patches.get(r.booking.key??'');return {...r,booking:{...r.booking,holdPhase:isHoldPhase(p?.holdPhase)?p.holdPhase:undefined}};});
+ const phases=new Map<string,{phase:HoldPhase;version:number}>();
+ for(const r of records){const patch=patches.get(r.booking.key??'');if(!patch)continue;const shared=patch.bundleCommon as Record<string,unknown>|undefined;
+  for(const p of [patch,shared]){if(!p||!isHoldPhase(p.holdPhase))continue;const version=typeof p.holdPhaseVersion==='number'?p.holdPhaseVersion:0,key=r.booking.bundleKey??r.booking.key!;const prior=phases.get(key);if(!prior||version>prior.version)phases.set(key,{phase:p.holdPhase,version});}
+ }
+ return records.map(r=>({...r,booking:{...r.booking,holdPhase:phases.get(r.booking.bundleKey??r.booking.key!)?.phase}}));
 }
 export function holdWorkflow(bookings:BoardBooking[],now=Date.now()){
  const phase=bookings.map(b=>b.holdPhase).find(isHoldPhase)??'hold';
