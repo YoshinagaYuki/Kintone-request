@@ -13,7 +13,7 @@
 .rental-header .rental-desktop>nav>a,.rental-header .rental-desktop>nav>details>summary {color:#bcc9df;background:transparent;box-shadow:none;border:1px solid transparent;}
 .rental-header .rental-desktop>nav>a:hover,.rental-header .rental-desktop>nav>details>summary:hover {background:#ffffff0c;color:#fff;}
 .rental-header .rental-desktop>nav>[aria-current="page"],.rental-header .rental-desktop>nav>details>summary[aria-current="page"] {background:#ffffff12;color:#fff;border-color:#ffffff16;box-shadow:inset 0 -2px #9ba7ff;}
-.rental-header a[href="/apply"] {background:linear-gradient(135deg,#7180ff,#5865dc);border:1px solid #8995ff66;box-shadow:0 4px 12px #050d2420;}
+.rental-header a[href="/apply"] {background:linear-gradient(135deg,#5a68d6,#4d5dc9);border:1px solid #8995ff66;box-shadow:0 4px 12px #050d2420;}
 .rental-header a[href="/admin/company-portals"] {background:#dff6ef;color:#186850;border-color:#b9e3d5;box-shadow:0 2px 8px #00000008;}
 .rental-header button.bg-amber-300 {background:linear-gradient(135deg,#ffdc89,#f5c867);border-color:#ffdfa0;box-shadow:0 3px 10px #00000010;color:#4f370b;}
 .rental-header .rental-mobile>div>details>summary {color:#d8e3f5;border-color:#ffffff25;background:#ffffff0a;}
@@ -31,7 +31,7 @@
 .inventory-action-holds {background:#fff9ec;border-color:#f0dfbc;color:#906522;}
 .inventory-product-tabs {border:1px solid #e0e6f0;border-radius:14px;background:#ffffffed;box-shadow:0 3px 14px #1c315408;padding:6px;gap:4px;}
 .inventory-product-tabs a {border-radius:10px;min-height:38px;display:inline-flex;align-items:center;padding-inline:15px;transition:background .15s,color .15s,box-shadow .15s;}
-.inventory-product-tabs a[aria-selected="true"] {background:linear-gradient(120deg,#6170de,#4d5cc7);color:#fff;box-shadow:0 3px 8px #4d5cc730;}
+.inventory-product-tabs a[aria-selected="true"] {background:linear-gradient(120deg,#5968d4,#4d5cc7);color:#fff;box-shadow:0 3px 8px #4d5cc730;}
 .inventory-product-tabs a:not([aria-selected="true"]):hover {background:#f0f3fa;color:#3c4b73;}
 .inventory-product-heading h2 {font-weight:700;color:#263b59;letter-spacing:-.01em;}
 .inventory-stock-summary>span {box-shadow:0 1px 3px #162c4503;border-radius:9px;}
