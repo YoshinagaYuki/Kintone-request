@@ -1,4 +1,5 @@
 import type{InventoryRecord}from'./model';
+import{holdWorkflow}from'./hold-workflow';
 export type HoldCase={key:string;store:string;staff:string[];start:string;end:string;records:InventoryRecord[];equipment:{itemId:string;name:string;quantity:number}[]};
 /** Only explicit batch/request linkage groups reservations. Similar store names never merge cases. */
 export function holdCases(records:InventoryRecord[],items:{id:string;name:string}[]):HoldCase[]{
@@ -11,4 +12,4 @@ export function holdCases(records:InventoryRecord[],items:{id:string;name:string
  }
  return [...groups.values()].sort((a,b)=>a.start.localeCompare(b.start)||a.store.localeCompare(b.store,'ja')||a.key.localeCompare(b.key));
 }
-export function filterHoldCases(rows:HoldCase[],query:string,today:string,includePast=false){const q=query.normalize('NFKC').toLowerCase().trim();return rows.filter(r=>(includePast||r.end>=today)&&(!q||[r.store,...r.staff,...r.equipment.map(e=>e.name)].some(v=>v.normalize('NFKC').toLowerCase().includes(q))));}
+export function filterHoldCases(rows:HoldCase[],query:string,today:string,includePast=false,now=Date.now()){const q=query.normalize('NFKC').toLowerCase().trim();return rows.filter(r=>(includePast||r.end>=today||holdWorkflow(r.records.map(r=>r.booking),now).overdue)&&(!q||[r.store,...r.staff,...r.equipment.map(e=>e.name)].some(v=>v.normalize('NFKC').toLowerCase().includes(q))));}
