@@ -11,7 +11,7 @@ export const POST=withInventorySheetPush(async(req:NextRequest)=>{
  const access=await inventoryAccess();if('error'in access)return NextResponse.json({error:access.error},{status:access.status});
  try{
   const raw=await req.text();if(raw.length>4000)throw Error('入力内容を確認してください');
-  const body=JSON.parse(raw);if(typeof body.key!=='string'||!Number.isSafeInteger(body.version)||!isHoldPhase(body.phase)||typeof body.cancel!=='boolean')throw Error('入力内容を確認してください');
+  const body=JSON.parse(raw);if(typeof body.key!=='string'||!Number.isSafeInteger(body.version)||(!isHoldPhase(body.phase)||body.phase==='shipping_entered'&&!body.cancel)||typeof body.cancel!=='boolean')throw Error('入力内容を確認してください');
   const model=await loadInventoryModel(access.db,'','all');if(model.version!==body.version)return NextResponse.json({error:'在庫が更新されています。画面を再読み込みしてください'},{status:409});
   const selected=model.records.find(r=>r.booking.key===body.key);if(!selected)throw Error('仮押さえが見つかりません');
   const records=[selected,...linkedBookings(model.records,selected)];if(records.some(r=>r.booking.status!=='hold'||!!r.booking.managementNo))throw Error('本登録済みの予定は変更・キャンセルできません');

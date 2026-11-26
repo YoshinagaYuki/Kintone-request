@@ -1,6 +1,6 @@
 import type {InventoryRecord, BookingEdit} from './model';
 import type {BoardBooking} from './board';
-export const holdPhases = {hold:'仮押さえ', waiting_shipping:'配送情報待ち', shipping_entered:'配送情報入力済み'} as const;
+export const holdPhases = {hold:'仮押さえ', waiting_shipping:'配送情報待ち', shipping_entered:'本登録'} as const;
 export type HoldPhase = keyof typeof holdPhases;
 export function isHoldPhase(value:unknown):value is HoldPhase{return typeof value==='string' && Object.hasOwn(holdPhases,value);}
 /** Registration age is immutable: editing a schedule or memo never restarts the clock. */

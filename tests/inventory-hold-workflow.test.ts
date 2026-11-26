@@ -16,7 +16,7 @@ test('waiting shipping, entered shipping and formally registered are all exclude
 test('memo/date/status saves preserve original registration time and all equipment shares oldest case age',()=>{
  const a=record(),b=record('two');b.booking.holdCreatedAt='2026-11-14T00:00:00Z';
  const saved=withHoldWorkflows([a,b],[{booking_key:'one',deleted:false,patch:{memo:'追記',start:'2026-12-01',holdPhase:'shipping_entered',holdWorkflowUpdatedAt:'2026-11-14T00:00:00Z'}}]);
- assert.equal(saved[0].booking.holdCreatedAt,a.booking.holdCreatedAt);assert.equal(holdWorkflow(saved.map(r=>r.booking)).opened,Date.parse(a.booking.holdCreatedAt!));assert.equal(holdWorkflow(saved.map(r=>r.booking)).label,'配送情報入力済み');
+ assert.equal(saved[0].booking.holdCreatedAt,a.booking.holdCreatedAt);assert.equal(holdWorkflow(saved.map(r=>r.booking)).opened,Date.parse(a.booking.holdCreatedAt!));assert.equal(holdWorkflow(saved.map(r=>r.booking)).label,'本登録');
 });
 test('unknown legacy registration dates never invent overdue alerts; malformed phases cannot hide a valid alert',()=>{
  const r=record();delete r.booking.holdCreatedAt;assert.equal(holdWorkflow([r.booking]).overdue,false);assert.equal(holdWorkflow([r.booking]).due,null);
