@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {reviewLabels,type ReviewState} from '@/lib/staff-review/model';
-import { StatusBadge } from "./status-badge";
+import {type ReviewState} from '@/lib/staff-review/model';
+import {RequestProgressBadge} from "./request-progress-badge";
 import type { RequestStatus } from "@/types/request";
 
 export type RequestListRow = {
@@ -142,7 +142,7 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
               <th className="px-4 py-3">申請日時</th>
               <th className="px-4 py-3">種別</th>
               <th className="px-4 py-3">入力者</th>
-              <th className="px-4 py-3">管理番号</th>
+              <th className="whitespace-nowrap px-4 py-3">管理番号</th>
               <th className="px-4 py-3">ステータス</th>
               <th className="px-4 py-3"><span className="sr-only">操作</span></th>
             </tr>
@@ -185,10 +185,10 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
                   )}
                 </td>
                 <td className="px-4 py-3 font-mono text-xs text-gray-600">
-                  {row.management_no ?? "-"}
+                  <span className="whitespace-nowrap font-mono">{row.management_no ?? "-"}</span>
                 </td>
                 <td className="px-4 py-3">
-                  <StatusBadge status={row.status} />{row.status==='pending'&&row.staff_review_state&&row.staff_review_state!=='not_required'&&<span className="mt-1 block text-xs font-medium text-indigo-700">{reviewLabels[row.staff_review_state]}</span>}
+                  <RequestProgressBadge status={row.status} review={row.staff_review_state}/>
                 </td>
                 <td className="px-4 py-3 text-right">
                   <Link
@@ -233,7 +233,7 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
             <Link href={`/admin/requests/${row.id}`} className="min-w-0 flex-1 active:opacity-70">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-semibold">{row.form_type_name}</span>
-                <StatusBadge status={row.status} />{row.status==='pending'&&row.staff_review_state&&row.staff_review_state!=='not_required'&&<span className="mt-1 block text-xs font-medium text-indigo-700">{reviewLabels[row.staff_review_state]}</span>}
+                <RequestProgressBadge status={row.status} review={row.staff_review_state}/>
               </div>
               {row.applicant_name && (
                 <div className="mt-1 text-xs text-gray-600">入力者: {row.applicant_name}</div>

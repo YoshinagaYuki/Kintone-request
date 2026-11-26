@@ -19,8 +19,8 @@ import { usePathname } from "next/navigation";
 const NAV_ITEMS = [
   { href: "/admin/warehouse-closures", label: "倉庫休業日", shortLabel: "倉庫休業日" },
   { href: "/admin/requests", label: "申請一覧", shortLabel: "申請" },
-  { href: "/admin/plans", label: "マスタ", shortLabel: "マスタ" },
-  { href: "/admin/staff", label: "担当者", shortLabel: "担当者" },
+  { href: "/admin/plans", label: "商品・プラン", shortLabel: "商品・プラン" },
+  { href: "/admin/staff", label: "担当者・確認設定", shortLabel: "担当者" },
   { href: "/admin/settings", label: "設定", shortLabel: "設定" },
   { href: "/admin/shipping-days", label: "配送日数", shortLabel: "配送日数" },
 ] as const;

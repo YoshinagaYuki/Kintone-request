@@ -80,6 +80,7 @@ export function SettingsEditor({
 
   return (
     <form onSubmit={save} className="management-settings mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2"><Link href="/admin/email-templates" className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm font-semibold text-indigo-800 sm:col-span-2">メール本文に入れる資料を選択する →</Link>
+      <Link href="/admin/staff" className="rounded-xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-700 sm:col-span-2">担当者ごとの確認・承認フローを設定する →</Link>
       {error && (
         <p className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">{error}</p>
       )}

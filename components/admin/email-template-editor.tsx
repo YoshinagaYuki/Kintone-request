@@ -82,6 +82,7 @@ export function EmailTemplateEditor({ templates,driveLinks }: { templates: Email
 
   return (
     <div className="management-editor mt-6">
+      <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-4"><p className="text-sm font-semibold text-slate-800">メールを編集する3ステップ</p><ol className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-600"><li>① 事業を選ぶ</li><li>② メールの種類を選ぶ</li><li>③ 本文と資料を確認して保存</li></ol></div>
       {/* 事業切替 */}
       <div className="flex flex-wrap gap-2">
         {BUSINESS_TABS.map((b) => (
@@ -156,7 +157,7 @@ export function EmailTemplateEditor({ templates,driveLinks }: { templates: Email
             ref={bodyRef} id={`${fieldPrefix}-body`}
             value={readableTemplate(current.body,driveLinks[business])}
             onChange={(e) => update({ body: storedTemplate(e.target.value,driveLinks[business]) })}
-            rows={20}
+            rows={12}
             className="mt-1 w-full rounded-md border border-gray-300 bg-white p-3 text-sm leading-relaxed focus:border-blue-500 focus:outline-none"
           />
         </div>
@@ -173,7 +174,7 @@ export function EmailTemplateEditor({ templates,driveLinks }: { templates: Email
             }}>{inserted?'追加済み':`${link.name}を本文に追加`}</button></div>;
           })}{!driveLinks[business].length&&<p className="rounded-lg border border-dashed p-4 text-sm text-slate-600">登録済みの資料がありません。システム設定から追加してください。</p>}</div>
         </section>}
-        <section className="rounded-xl border bg-white p-4"><h3 className="text-sm font-semibold">送信イメージ（サンプル）</h3><p className="mt-3 border-b pb-3 text-sm font-semibold">{previewTemplate(current.subject,business,driveLinks[business].find(l=>l.id==='legacy')?.url??'',driveLinks[business])}</p><p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">{previewTemplate(current.body,business,driveLinks[business].find(l=>l.id==='legacy')?.url??'',driveLinks[business])}</p></section>
+        <details className="rounded-xl border bg-white p-4"><summary className="cursor-pointer text-sm font-semibold text-indigo-800">送信イメージを確認する（サンプル）</summary><p className="mt-3 border-b pb-3 text-sm font-semibold">{previewTemplate(current.subject,business,driveLinks[business].find(l=>l.id==='legacy')?.url??'',driveLinks[business])}</p><p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">{previewTemplate(current.body,business,driveLinks[business].find(l=>l.id==='legacy')?.url??'',driveLinks[business])}</p></details>
 
         <button
           onClick={save}

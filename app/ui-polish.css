@@ -271,3 +271,30 @@
 .request-card.request-pending:focus { background-color:#fef3c7; }
 .requests-table tbody tr.request-pending td:first-child { box-shadow:inset 4px 0 0 #f59e0b; }
 .request-card.request-pending { border-left:4px solid #f59e0b; }
+
+/* Shared action hierarchy: indigo for next steps, amber for waiting, green for completion. */
+.admin-shell :is(button,a,input,select,textarea):focus-visible { outline:2px solid #6366f1; outline-offset:3px; }
+.admin-shell button:not(:disabled),.admin-shell a { touch-action:manipulation; }
+.admin-shell button:disabled { cursor:not-allowed; }
+.admin-section-group .admin-section-nav { box-shadow:none; border-color:#e2e8f0; background:#f8fafc; }
+.admin-section-group .admin-section-nav [aria-current="page"] { background:#fff; color:#4338ca; box-shadow:0 1px 5px #0f172a12,inset 0 0 0 1px #c7d2fe; }
+.review-workflow ol { list-style:none; padding:0; }
+.review-workflow button { min-height:42px; }
+.requests-table th,.requests-table td:nth-child(5),.requests-table td:last-child { white-space:nowrap; }
+.requests-table td:nth-child(4) { min-width:200px; }
+.requests-table td:nth-child(4)>div:last-child { overflow-wrap:anywhere; }
+.management-workspace>h1,.request-detail h1 { text-wrap:balance; }
+.management-settings #drive-links { background:#f8fcfa; box-shadow:none; }
+.management-settings #drive-links>div>div { box-shadow:none; }
+.management-editor section { box-shadow:none; }
+.management-editor section h3 { color:#263752; }
+.inventory-editor-header,.inventory-list-header { border-bottom:1px solid #e2e8f0; }
+.inventory-editor :is(input,select,textarea) { border-color:#d8e0ec; }
+@media(max-width:639px) {
+ .admin-section-group .admin-section-nav a { min-height:48px; white-space:normal; text-align:center; line-height:1.5; }
+ .review-workflow ol { gap:5px; }
+ .review-workflow ol li { padding:8px 6px; font-size:10px; line-height:1.7; }
+ .review-workflow button { min-height:44px; }
+ .review-workflow :is(input,textarea) { min-width:0; font-size:16px; }
+ .request-card> a>div:first-child { flex-wrap:wrap; gap:8px; }
+}

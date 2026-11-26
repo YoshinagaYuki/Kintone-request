@@ -42,6 +42,7 @@ export const dynamic = "force-dynamic";
 
 type Detail = {
   staff_review_state:ReviewState;
+  staff_review_revision:number;
   inventory_parent_request_id: string | null;
   id: string;
   raw_text: string;
@@ -148,7 +149,7 @@ export default async function RequestDetailPage({
   const { data } = await supabase
     .from("requests")
     .select(
-      "id, staff_review_state, inventory_parent_request_id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, approved_contents, is_structured, sns_promotion_requested, billing_type, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, allmight_arrangement_updated_at, allmight_arrangement_sync_failed, deleted_at, deleted_by, processing_at, company_staff_name_input, approved_staff_name, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
+      "id, staff_review_state, staff_review_revision, inventory_parent_request_id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, approved_contents, is_structured, sns_promotion_requested, billing_type, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, allmight_arrangement_updated_at, allmight_arrangement_sync_failed, deleted_at, deleted_by, processing_at, company_staff_name_input, approved_staff_name, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
     )
     .eq("id", id)
     .maybeSingle();
@@ -447,8 +448,10 @@ export default async function RequestDetailPage({
       )}
       <p className="mt-1 text-sm text-gray-500">
         申請日時: {formatDateTime(request.created_at)}
-        <span className="ml-3">定義Version: {request.form_type_version}</span>
+
       </p>
+
+      {!isDeleted&&request.status==='pending'&&<StaffReviewPanel requestId={id} state={request.staff_review_state} revision={request.staff_review_revision} staffName={request.company_staff_name_input??undefined} reason={reviewRow.data?.reason} error={request.staff_review_state==='returned'?reviewRow.data?.requester_mail_error:reviewRow.data?.reviewer_mail_error}/>}
 
       {/* 登録完了の成功メッセージ(ページ再読み込み後も登録済みなら表示・自動消去しない) */}
       {request.status === "registered" && (
@@ -791,7 +794,7 @@ export default async function RequestDetailPage({
 
       {/* kintone登録予定データ */}
       {preview && (
-        <SectionCard
+        <details className="mt-5 rounded-xl border border-slate-200 bg-white p-4" open={!preview.ok}><summary className="cursor-pointer text-sm font-semibold text-slate-700">Kintoneへ転記される内容を確認する</summary><SectionCard
           title={`kintone登録予定データ(AppID: ${request.form_types?.kintone_app_id})`}
         >
           {request.status==='pending'&&!request.kintone_record_id&&!isDeleted&&!hasExtension&&<div className="flex items-center justify-between gap-3 border-b bg-slate-50 px-4 py-3"><p className="text-xs text-slate-600">修正内容は保存後、この登録予定データに反映されます。</p><Link href={`/admin/requests/${request.id}/edit`} className="shrink-0 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">入力内容を編集</Link></div>}
@@ -828,10 +831,10 @@ export default async function RequestDetailPage({
               </ul>
             </div>
           )}
-        </SectionCard>
+        </SectionCard></details>
       )}
 
-      <StaffReviewPanel requestId={id} state={request.staff_review_state} reason={reviewRow.data?.reason} error={request.staff_review_state==='returned'?reviewRow.data?.requester_mail_error:reviewRow.data?.reviewer_mail_error}/>
+      <div id="request-approval" className="scroll-mt-24"/>
       {/* 削除済みは承認・再実行などの操作を一切表示しない(復元後に操作) */}
       {isDeleted||reviewBlocksRegistration(request.staff_review_state) ? null : !kintoneReady &&
       (request.status === "pending" || request.status === "register_failed") ? (
@@ -911,9 +914,9 @@ export default async function RequestDetailPage({
                   </span>
                 </div>
                 {h.detail && (
-                  <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words rounded bg-gray-50 p-2 text-xs text-gray-600">
-                    {JSON.stringify(h.detail, null, 2)}
-                  </pre>
+                  <details className="mt-2"><summary className="cursor-pointer text-xs font-medium text-slate-600">操作の詳細を見る</summary><pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-words rounded bg-gray-50 p-2 text-xs text-gray-600">
+                    {h.detail.kind==='staff_review_admin_override'?`管理者が担当者に代わって承認しました。\n理由：${String(h.detail.reason??'')}`:h.detail.kind==='staff_review_link_reissued'?`確認URLを再発行しました（${h.detail.role==='requester'?'申請者の修正用':'担当者の確認用'}）。以前のURLは無効です。`:JSON.stringify(h.detail, null, 2)}
+                  </pre></details>
                 )}
               </div>
             </li>
