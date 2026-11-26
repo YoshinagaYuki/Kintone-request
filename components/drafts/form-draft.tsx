@@ -2,7 +2,7 @@
 import {createContext,useContext,useEffect,useRef,useState,type Dispatch,type SetStateAction} from 'react';
 import {readFormDraft} from "@/lib/form-draft-storage";
 const Owner=createContext('public');
-export const DraftOwnerProvider=Owner.Provider;
+export function DraftOwnerProvider({value,children}:{value:string;children:React.ReactNode}){return <Owner.Provider value={value}>{children}</Owner.Provider>;}
 type Setters<T>={[K in keyof T]:Dispatch<SetStateAction<T[K]>>};
 export function useFormDraft<T extends Record<string,unknown>>(key:string,value:T,setters:Setters<T>,enabled=true,baseline=''){
  const owner=useContext(Owner),storageKey=`rental-draft:v1:${owner}:${key}`;
