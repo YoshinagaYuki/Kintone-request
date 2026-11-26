@@ -1,3 +1,4 @@
+import {assertTransferredDates, recordDateSnapshot, SHIPPING_DATE_FIELDS} from "../../kintone/request-dates";
 import{applyInventoryArrangements,type InventoryArrangement}from'../charter';
 import type { KintoneRecord } from "@/lib/kintone/mapper";
 import type { KintoneRawRecord } from "@/lib/kintone/client";
@@ -48,6 +49,7 @@ export async function executeExtension(plan: ExtensionPlan, ports: ExtensionPort
   }
   const recordId = progress.recordId!;
   const childRecord = await ports.get(10, recordId);
+  assertTransferredDates(Object.fromEntries(Object.keys(plan.draft).filter(k=>["日付_0","日付_1","納品_日付","集荷_日付"].includes(k)).map(k=>[k,String(plan.draft[k].value)])), childRecord, "延長・コピーの手配管理");
   if (value(childRecord, "external_project_id") !== marker) throw new Error("延長レコードの連携キーが一致しません");
   const remoteNumber = value(childRecord, "管理番号");
   if (remoteNumber && progress.managementNo && remoteNumber !== progress.managementNo) throw new Error("延長の管理番号が変更されています");
@@ -86,5 +88,7 @@ export async function executeExtension(plan: ExtensionPlan, ports: ExtensionPort
   applyInventoryArrangements(pickup,{_inventory_transport:plan,_inventory_delivery_required:!!plan.deliveryRequired,_inventory_pickup_required:plan.pickupRequired!==false});
   await checkedUpdate(10, recordId, "external_project_id", marker, pickup);
   await checkedUpdate(11, progress.shippingId!, "管理番号", managementNo, { ...pickup, "ドロップダウン_1": { value: "入力完了" } });
+  const verifiedChild=await ports.get(10,recordId),verifiedShipping=await ports.get(11,progress.shippingId!);
+  assertTransferredDates(recordDateSnapshot(verifiedChild,SHIPPING_DATE_FIELDS),verifiedShipping,"延長・コピーの配送管理");
   return { recordId, managementNo, shippingId: progress.shippingId!, carrierCancellationRequired:progress.carrierCancellationRequired??false };
 }

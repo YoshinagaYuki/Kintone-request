@@ -1,3 +1,4 @@
+import {requestDateSnapshot, applyRequestDates, assertTransferredDates, recordDateSnapshot} from "./request-dates";
 import{transportFromRequest}from'../inventory/shipping-record';
 import {applyApprovalFees} from '../approval-fees';
 import{rentalNote}from'../inventory/rental-items';
@@ -134,6 +135,7 @@ async function registerRequestInternal(
   // kintone AppID は form_types(現行)から取得
   const appId = formType.kintone_app_id;
 
+
   // 料金区分 → kintone「イベント種類」(ドロップダウン)。てずくーる(App49)のみ。
   // ・承認画面で管理者が選択した billing_type(paid/free)を正として送信する。
   // ・paid → 有償イベント / free → 無償イベント。それ以外の値は送信しない。
@@ -190,6 +192,10 @@ async function registerRequestInternal(
 
   const message = (err: unknown) =>
     err instanceof Error ? err.message : "不明なエラー";
+
+  let expectedDates: ReturnType<typeof requestDateSnapshot>;
+  try { expectedDates = requestDateSnapshot(parsedData,appId); }
+  catch(err) { const msg=message(err); await markFailed("date_validation",msg); return {ok:false,error:msg}; }
 
   // ---- [1] App10へレコード登録(未登録の場合のみ) ----
   let recordId = request.kintone_record_id as string | null;
@@ -261,6 +267,8 @@ async function registerRequestInternal(
     if(appId===49&&typeof parsedData['レンタル品一覧']==='string')mapped.record['文字列__複数行_']={value:rentalNote(String(mapped.record['文字列__複数行_']?.value??''),parsedData['レンタル品一覧'])};
     if([10,49].includes(appId))applyConfirmationShipping(mapped.record,{...parsedData,_inventory_transport:transportFromRequest({...request,parsed_data:parsedData})},fieldMapping);
 
+    applyRequestDates(mapped.record,expectedDates);
+
     // オールマイトのみ: API登録ではkintone JSが発火しないため、
     // 利用日数・利用金額①〜⑤をサーバー側で計算して補完(計算/配送費/調整額には触れない)
     let pricingWarnings: string[] = [];
@@ -286,6 +294,7 @@ async function registerRequestInternal(
       .eq("id", requestId);
     await addHistory("kintone_registered", {
       kintone_record_id: recordId,
+      ...(appId===10?{date_snapshot:expectedDates}:{}),
       ...(pricingWarnings.length > 0 ? { pricing_warnings: pricingWarnings } : {}),
       ...(normalized.warnings.length > 0 ? { name_warnings: normalized.warnings } : {}),
       ...(normalized.corrections.length > 0
@@ -298,6 +307,7 @@ async function registerRequestInternal(
   let managementNo = "";
   try {
     const { record: app10Record } = await getRecord(appId, recordId);
+    assertTransferredDates(expectedDates, app10Record, `手配管理(App${appId})`);
     managementNo = String(app10Record[MANAGEMENT_NO_FIELD_APP10]?.value ?? "");
 
     if (!managementNo) {
@@ -314,11 +324,12 @@ async function registerRequestInternal(
       .eq("id", requestId);
 
     // ---- [4] 配送管理(App11)へ upsert ----
-    const shipping = await upsertShippingRecord(managementNo, app10Record);
+    const shipping = await upsertShippingRecord(managementNo, app10Record, {verifyDates:appId===10});
     await addHistory("shipping_synced", {
       management_no: managementNo,
       shipping_record_id: shipping.recordId,
       created: shipping.created,
+      ...(appId===10?{date_snapshot:recordDateSnapshot(app10Record),dates_verified:true}:{}),
     });
   } catch (err) {
     const msg = message(err);

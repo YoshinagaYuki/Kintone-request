@@ -1,3 +1,4 @@
+import {SHIPPING_DATE_FIELDS, recordDateSnapshot, assertTransferredDates} from "./request-dates";
 /**
  * 配送管理(App11)への転記(新規作成/更新)。
  *
@@ -8,6 +9,7 @@
  */
 
 import {
+  getRecord,
   findRecords,
   registerRecord,
   updateRecord,
@@ -44,7 +46,8 @@ function applyDropdownCodeRule(record: KintoneRecord): void {
  */
 export async function upsertShippingRecord(
   managementNo: string,
-  sourceRecord: KintoneRawRecord
+  sourceRecord: KintoneRawRecord,
+  options: {verifyDates?:boolean} = {}
 ): Promise<{ created: boolean; recordId: string }> {
   // 転記レコードを組み立て(App10に値がある項目のみ)
   const record: KintoneRecord = {
@@ -52,7 +55,10 @@ export async function upsertShippingRecord(
   };
   for (const { from, to } of SHIPPING_FIELD_MAPPING) {
     const value = sourceRecord[from]?.value;
-    if (value === undefined || value === null || value === "") continue;
+    if (value === undefined || value === null || value === "") {
+      if (options.verifyDates && [...SHIPPING_DATE_FIELDS,"納品_時間","集荷_時刻"].includes(from)) record[to] = {value: ""};
+      continue;
+    }
     record[to] = { value: Array.isArray(value) ? value.map(String) : String(value) };
   }
 
@@ -66,14 +72,22 @@ export async function upsertShippingRecord(
     ["$id"]
   );
 
+  if (options.verifyDates && existing.length > 1) throw new Error("配送管理に同じ管理番号が複数あります。日程を確認してください");
+  const verify = async (id:string) => {
+    const saved = await getRecord(SHIPPING_APP_ID,id);
+    if (String(saved.record[SHIPPING_MANAGEMENT_NO_FIELD]?.value ?? "") !== managementNo) throw new Error("配送管理の管理番号が一致しません");
+    assertTransferredDates(recordDateSnapshot(sourceRecord,SHIPPING_DATE_FIELDS), saved.record, "配送管理(App11)");
+  };
   if (existing.length > 0) {
     const recordId = String(existing[0].$id?.value ?? "");
     // 管理番号自体は検索キーのため更新対象から外す
     const { [SHIPPING_MANAGEMENT_NO_FIELD]: _omit, ...rest } = record;
     await updateRecord(SHIPPING_APP_ID, recordId, rest);
+    if(options.verifyDates)await verify(recordId);
     return { created: false, recordId };
   }
 
   const { recordId } = await registerRecord(SHIPPING_APP_ID, record);
+  if(options.verifyDates)await verify(recordId);
   return { created: true, recordId };
 }

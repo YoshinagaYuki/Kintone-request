@@ -86,7 +86,7 @@ function currentYearJST(): number {
  *   年なし: 7/1, 07-01, 7.1, 7月1日 → 現在年(JST)を補完
  * 全角数字は半角へ変換。実在しない日付(2/30等)は null(登録前エラー)。
  */
-function normalizeDate(raw: string): string | null {
+export function normalizeDate(raw: string): string | null {
   const s = toHalfWidthDigits(raw).trim();
 
   let y: number;

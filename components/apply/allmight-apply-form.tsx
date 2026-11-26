@@ -129,6 +129,21 @@ export function AllmightApplyForm({
   const [pickupReceiver, setPickupReceiver] = useState(iv.pickupReceiver ?? "");
   const [pickupContact, setPickupContact] = useState(iv.pickupContact ?? "");
 
+  const manuallyChangedShipping = useRef({delivery:false,pickup:false});
+  function changeUsageDate(kind:'start'|'end',value:string) {
+    const before=kind==='start'?usageStart:usageEnd;
+    const oldShipping=kind==='start'?manualDeliveryDate:manualPickupDate;
+    const offset=kind==='start'?-1:1;
+    const manuallyChanged=manuallyChangedShipping.current[kind==='start'?'delivery':'pickup'];
+    if(!manuallyChanged&&(!oldShipping||oldShipping===automaticShippingDay(before,offset))) {
+      (kind==='start'?setDeliveryDate:setPickupDate)(automaticShippingDay(value,offset));
+    }
+    (kind==='start'?setUsageStart:setUsageEnd)(value);
+  }
+  function changeShippingDate(kind:'delivery'|'pickup',value:string) {
+    manuallyChangedShipping.current[kind]=true;
+    (kind==='delivery'?setDeliveryDate:setPickupDate)(value);
+  }
   const lockShippingDates=!inventory&&mode!=='edit';
   const deliveryDate=lockShippingDates?automaticShippingDay(usageStart,-1):manualDeliveryDate;
   const pickupDate=lockShippingDates?automaticShippingDay(usageEnd,1):manualPickupDate;
@@ -465,11 +480,11 @@ export function AllmightApplyForm({
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label htmlFor={fieldId("usageStart")} className={labelClass}>利用開始日 {req}</label>
-            <input type="date" id={fieldId("usageStart")} min="2000-01-02" max="2100-12-30" value={usageStart} onChange={(e) => setUsageStart(e.target.value)} className={inputClass} />
+            <input type="date" id={fieldId("usageStart")} min="2000-01-02" max="2100-12-30" value={usageStart} onInput={(e) => changeUsageDate("start",e.currentTarget.value)} onChange={(e) => changeUsageDate("start",e.target.value)} className={inputClass} />
           </div>
           <div>
             <label htmlFor={fieldId("usageEnd")} className={labelClass}>利用最終日 {req}</label>
-            <input type="date" id={fieldId("usageEnd")} min={usageStart||"2000-01-02"} max="2100-12-30" value={usageEnd} onChange={(e) => setUsageEnd(e.target.value)} className={inputClass} />
+            <input type="date" id={fieldId("usageEnd")} min={usageStart||"2000-01-02"} max="2100-12-30" value={usageEnd} onInput={(e) => changeUsageDate("end",e.currentTarget.value)} onChange={(e) => changeUsageDate("end",e.target.value)} className={inputClass} />
           </div>
         </div>
         {lockShippingDates&&<p className="mt-3 rounded-xl bg-blue-50 p-3 text-xs leading-6 text-slate-600">{SHIPPING_DATE_REQUEST_NOTE}</p>}
@@ -527,7 +542,7 @@ export function AllmightApplyForm({
         <div className="mt-3 space-y-3">
           <div>
             <label htmlFor={fieldId("deliveryDate")} className={labelClass}>配送日付 {req}</label>
-            <input type="date" id={fieldId("deliveryDate")} readOnly={lockShippingDates} aria-readonly={lockShippingDates} value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} className={inputClass} />
+            <input type="date" id={fieldId("deliveryDate")} readOnly={lockShippingDates} aria-readonly={lockShippingDates} value={deliveryDate} onInput={(e) => changeShippingDate("delivery",e.currentTarget.value)} onChange={(e) => changeShippingDate("delivery",e.target.value)} className={inputClass} />
           </div>
           <div>
             <label htmlFor={fieldId("deliveryPostal")} className={labelClass}>郵便番号 {req}</label>
@@ -567,7 +582,7 @@ export function AllmightApplyForm({
           <div>
             <label htmlFor={fieldId("pickupDate")} className={labelClass}>集荷日付 {req}</label>
             {/* 集荷日付は「配送情報と同じ」の対象外(独立入力) */}
-            <input type="date" id={fieldId("pickupDate")} readOnly={lockShippingDates} aria-readonly={lockShippingDates} value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} className={inputClass} />
+            <input type="date" id={fieldId("pickupDate")} readOnly={lockShippingDates} aria-readonly={lockShippingDates} value={pickupDate} onInput={(e) => changeShippingDate("pickup",e.currentTarget.value)} onChange={(e) => changeShippingDate("pickup",e.target.value)} className={inputClass} />
           </div>
           <div>
             <label htmlFor={fieldId("effPickupPostal")} className={labelClass}>郵便番号 {req}</label>
