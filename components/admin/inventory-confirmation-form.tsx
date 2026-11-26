@@ -18,6 +18,7 @@ export function InventoryConfirmationForm({bookingKey,onBack}:{bookingKey:string
   payload={...payload,...(data?.business==='tezukuru'?{billing_type:billing}:{})};
   const {response,data:result}=await postInventorySave('/api/admin/inventory/confirmations',{id,key:bookingKey,baseline:data!.baseline,payload});
   if(!response.ok){if(result.code==='target_changed')setConflict(result);throw Error(result.error);}setSaved(result.requestId);
+  if(result.staffReviewPending){router.refresh();return;}
   if(result.status!=='registered'){
    if(!['pending','register_failed'].includes(result.status))throw Error('申請は保存済みです。処理状況を下のリンクから確認してください');
    const approval=await fetch(`/api/admin/requests/${result.requestId}/${result.status==='pending'?'approve':'retry'}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({delivery_fee:deliveryFee,rental_fee:rentalFee,staff_name:payload.company_staff_name,billing_type:payload.billing_type,rental_plan_id:payload.rental_plan_id})});const a=await approval.json();

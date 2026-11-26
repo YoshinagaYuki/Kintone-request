@@ -10,6 +10,7 @@ export type StaffRow = {
   sort_order: number;
   is_active: boolean;
   email: string;
+  review_required: boolean;
   email_notify_enabled: boolean;
 };
 
@@ -25,6 +26,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
   const [newCompany, setNewCompany] = useState("");
   const [newOrder, setNewOrder] = useState(0);
   const [newEmail, setNewEmail] = useState("");
+  const [newReview,setNewReview]=useState(false);
   const [newEmailNotify, setNewEmailNotify] = useState(false);
 
   // 行編集(1行ずつ)
@@ -34,12 +36,14 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
     company: string;
     sort_order: number;
     email: string;
+    review_required: boolean;
     email_notify_enabled: boolean;
   }>({
     name: "",
     company: "",
     sort_order: 0,
     email: "",
+    review_required:false,
     email_notify_enabled: false,
   });
 
@@ -74,6 +78,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
       company: newCompany,
       sort_order: newOrder,
       email: newEmail,
+      review_required:newReview,
       email_notify_enabled: newEmailNotify,
     });
     if (ok) {
@@ -81,7 +86,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
       setNewCompany("");
       setNewOrder(0);
       setNewEmail("");
-      setNewEmailNotify(false);
+      setNewEmailNotify(false);setNewReview(false);
     }
   }
 
@@ -109,6 +114,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
         </p>
       )}
 
+<p className="mb-4 rounded-xl bg-indigo-50 p-4 text-xs leading-6 text-indigo-900">「担当者確認」をONにすると、新しい申請は担当者のメール確認・承認後にユニティ管理者が本登録します。確認用のメールアドレスが必要です。OFFにしても、確認中の申請は引き続き確認が必要です。</p>
       {/* 新規追加 */}
       <form
         onSubmit={create}
@@ -152,6 +158,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
           />
           メール通知
         </label>
+<label className="flex items-center gap-2 pb-2 text-xs"><input type="checkbox" checked={newReview} onChange={e=>setNewReview(e.target.checked)}/>担当者確認を必須にする</label>
         <div>
           <label htmlFor={`${createPrefix}-newOrder`} className="block text-xs font-medium text-gray-600">表示順</label>
           <input
@@ -178,7 +185,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
               <th className="px-4 py-2">氏名</th>
               <th className="px-4 py-2">所属会社</th>
               <th className="px-4 py-2">メール</th>
-              <th className="px-4 py-2">メール通知</th>
+              <th className="px-4 py-2">メール通知</th><th className="px-4 py-2">担当者確認</th>
               <th className="px-4 py-2">表示順</th>
               <th className="px-4 py-2">公開</th>
               <th className="px-4 py-2"><span className="sr-only">操作</span></th>
@@ -187,7 +194,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
           <tbody role="rowgroup" className="divide-y divide-gray-100">
             {staff.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
                   担当者が登録されていません
                 </td>
               </tr>
@@ -228,6 +235,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
                       className="h-4 w-4 accent-blue-600"
                     /></label>
                   </td>
+<td role="cell" data-label="担当者確認" className="px-4 py-2"><input aria-label="担当者確認を必須にする" type="checkbox" checked={edit.review_required} onChange={e=>setEdit({...edit,review_required:e.target.checked})}/></td>
                   <td role="cell" data-label="表示順" className="px-4 py-2">
                     <input aria-label="表示順"
                       type="number"
@@ -271,7 +279,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
                       {row.email_notify_enabled ? "ON" : "OFF"}
                     </span>
                   </td>
-                  <td role="cell" data-label="表示順" className="px-4 py-2">{row.sort_order}</td>
+                  <td role="cell" data-label="担当者確認" className="px-4 py-2"><span className={`rounded-full px-2 py-1 text-xs ${row.review_required?'bg-indigo-100 text-indigo-900':'bg-slate-100 text-slate-500'}`}>{row.review_required?'確認が必要':'確認なし'}</span></td><td role="cell" data-label="表示順" className="px-4 py-2">{row.sort_order}</td>
                   <td role="cell" data-label="公開" className="px-4 py-2">
                     <button
                       onClick={() => toggleActive(row)}
@@ -294,6 +302,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
                           company: row.company,
                           sort_order: row.sort_order,
                           email: row.email,
+                          review_required:row.review_required,
                           email_notify_enabled: row.email_notify_enabled,
                         });
                       }}

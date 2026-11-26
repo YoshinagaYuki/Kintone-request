@@ -1,3 +1,5 @@
+import {StaffReviewPanel} from '@/components/admin/staff-review-panel';
+import {reviewBlocksRegistration,type ReviewState} from '@/lib/staff-review/model';
 import{transportFromRequest}from'@/lib/inventory/shipping-record';
 import {applyApprovalFees} from '@/lib/approval-fees';
 import{shippingAddressIssues}from'@/lib/inventory/shipping-policy';
@@ -39,6 +41,7 @@ import {
 export const dynamic = "force-dynamic";
 
 type Detail = {
+  staff_review_state:ReviewState;
   inventory_parent_request_id: string | null;
   id: string;
   raw_text: string;
@@ -145,12 +148,13 @@ export default async function RequestDetailPage({
   const { data } = await supabase
     .from("requests")
     .select(
-      "id, inventory_parent_request_id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, approved_contents, is_structured, sns_promotion_requested, billing_type, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, allmight_arrangement_updated_at, allmight_arrangement_sync_failed, deleted_at, deleted_by, processing_at, company_staff_name_input, approved_staff_name, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
+      "id, staff_review_state, inventory_parent_request_id, raw_text, parsed_data, status, reject_reason, kintone_record_id, management_no, form_type_id, form_type_version, created_at, applicant_name, applicant_phone, applicant_email, rental_status, requested_rental_plan_id, approved_rental_plan_id, customer_requests, approved_contents, is_structured, sns_promotion_requested, billing_type, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, allmight_arrangement_updated_at, allmight_arrangement_sync_failed, deleted_at, deleted_by, processing_at, company_staff_name_input, approved_staff_name, application_email_sent_at, approval_email_sent_at, application_email_error, approval_email_error, form_types(name, kintone_app_id, field_mapping, parser_config)"
     )
     .eq("id", id)
     .maybeSingle();
 
   if (!data) notFound();
+  const reviewRow=await createAdminClient().from('request_staff_reviews').select('reason,reviewer_mail_error,requester_mail_error').eq('request_id',id).maybeSingle();
   const request = data as unknown as Detail;
   const extensionCheck = await supabase.from("inventory_extensions").select("id").or(`parent_request_id.eq.${id},child_request_id.eq.${id}`).limit(1);
   const hasExtension = Boolean(extensionCheck.error || extensionCheck.data?.length || request.inventory_parent_request_id);
@@ -827,8 +831,9 @@ export default async function RequestDetailPage({
         </SectionCard>
       )}
 
+      <StaffReviewPanel requestId={id} state={request.staff_review_state} reason={reviewRow.data?.reason} error={request.staff_review_state==='returned'?reviewRow.data?.requester_mail_error:reviewRow.data?.reviewer_mail_error}/>
       {/* 削除済みは承認・再実行などの操作を一切表示しない(復元後に操作) */}
-      {isDeleted ? null : !kintoneReady &&
+      {isDeleted||reviewBlocksRegistration(request.staff_review_state) ? null : !kintoneReady &&
       (request.status === "pending" || request.status === "register_failed") ? (
         <div className="mt-6 rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-800">
           <p className="font-semibold">kintone登録は未設定</p>

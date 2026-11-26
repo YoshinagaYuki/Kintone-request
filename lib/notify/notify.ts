@@ -18,6 +18,8 @@ import { sendStaffNewRequestMail } from "./staff-mail";
 /** 新規申請通知の内容 */
 export type NewRequestNotification = {
   /** 申請事業(form_types.id)。通知振り分けのキー */
+  staffReviewPending?:boolean;
+  skipStaffNotification?:boolean;
   formTypeId: string;
   /** 申請種別名(例: てずくーる) */
   formTypeName: string;
@@ -61,6 +63,7 @@ function pushUrl(adminUrl: string): string {
  * 新規申請を事業別に通知する。失敗しても throw しない(ログのみ)。
  */
 export async function notifyNewRequest(n: NewRequestNotification): Promise<void> {
+  if(n.staffReviewPending)return;
   // 1) 事業別Push
   try {
     await sendPushToBusiness(n.formTypeId, {
@@ -89,7 +92,7 @@ export async function notifyNewRequest(n: NewRequestNotification): Promise<void>
 
   // 3) 担当者メール(完全一致1件)
   try {
-    await sendStaffNewRequestMail(n);
+    if(!n.skipStaffNotification)await sendStaffNewRequestMail(n);
   } catch (err) {
     console.error("[notify] 担当者メールに失敗しました:", err instanceof Error ? err.message : err);
   }

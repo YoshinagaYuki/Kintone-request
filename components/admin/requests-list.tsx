@@ -3,11 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {reviewLabels,type ReviewState} from '@/lib/staff-review/model';
 import { StatusBadge } from "./status-badge";
 import type { RequestStatus } from "@/types/request";
 
 export type RequestListRow = {
   id: string;
+  staff_review_state?:ReviewState;
   status: RequestStatus;
   management_no: string | null;
   created_at: string;
@@ -186,7 +188,7 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
                   {row.management_no ?? "-"}
                 </td>
                 <td className="px-4 py-3">
-                  <StatusBadge status={row.status} />
+                  <StatusBadge status={row.status} />{row.status==='pending'&&row.staff_review_state&&row.staff_review_state!=='not_required'&&<span className="mt-1 block text-xs font-medium text-indigo-700">{reviewLabels[row.staff_review_state]}</span>}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <Link
@@ -231,7 +233,7 @@ export function RequestsList({ rows }: { rows: RequestListRow[] }) {
             <Link href={`/admin/requests/${row.id}`} className="min-w-0 flex-1 active:opacity-70">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-sm font-semibold">{row.form_type_name}</span>
-                <StatusBadge status={row.status} />
+                <StatusBadge status={row.status} />{row.status==='pending'&&row.staff_review_state&&row.staff_review_state!=='not_required'&&<span className="mt-1 block text-xs font-medium text-indigo-700">{reviewLabels[row.staff_review_state]}</span>}
               </div>
               {row.applicant_name && (
                 <div className="mt-1 text-xs text-gray-600">入力者: {row.applicant_name}</div>

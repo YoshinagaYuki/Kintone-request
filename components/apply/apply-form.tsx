@@ -548,7 +548,7 @@ export function ApplyForm({
                   className={inputClass}
                 />
               </div>
-              {canSkipApplicantContact && <label className="flex min-h-11 items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm"><input type="checkbox" checked={omitApplicantContact} onChange={e=>setSkipApplicantContact(e.target.checked)} className="mt-0.5 h-5 !min-h-0 w-5 shrink-0"/><span>社内で本登録するため、電話番号・メールアドレスの入力を省略する<span className="mt-1 block text-xs text-slate-600">申請・承認完了メールは送信されません。配送先の連絡先・伝票番号連絡先は別途入力してください。</span></span></label>}
+              {canSkipApplicantContact && <label className="flex min-h-11 items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm"><input type="checkbox" checked={omitApplicantContact} onChange={e=>setSkipApplicantContact(e.target.checked)} className="mt-0.5 h-5 !min-h-0 w-5 shrink-0"/><span>社内で本登録するため、電話番号・メールアドレスの入力を省略する<span className="mt-1 block text-xs text-slate-600">担当者への確認・追加承認を省略し、入力後そのまま本登録します。申請・承認完了メールは送信されません。配送先の連絡先・伝票番号連絡先は別途入力してください。</span></span></label>}
               {!omitApplicantContact && <>
               <div>
                 <label htmlFor={fieldId("applicantPhone")} className={labelClass}>電話番号 {req}</label>

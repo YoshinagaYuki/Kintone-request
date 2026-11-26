@@ -16,6 +16,7 @@ export const dynamic = "force-dynamic";
 
 type Row = {
   id: string;
+  staff_review_state?:import('@/lib/staff-review/model').ReviewState;
   status: RequestStatus;
   management_no: string | null;
   created_at: string;
@@ -39,7 +40,7 @@ export default async function RequestsPage({
   let query = supabase
     .from("requests")
     .select(
-      "id, status, management_no, created_at, applicant_name, applicant_phone, applicant_email, form_types(name)"
+      "id, staff_review_state, status, management_no, created_at, applicant_name, applicant_phone, applicant_email, form_types(name)"
     )
     .is("deleted_at", null) // 削除済み(ゴミ箱)は通常一覧に表示しない
     .order("created_at", { ascending: false })
@@ -50,6 +51,7 @@ export default async function RequestsPage({
   const { data, error } = await query;
   const rows: RequestListRow[] = ((data ?? []) as unknown as Row[]).map((row) => ({
     id: row.id,
+    staff_review_state:row.staff_review_state,
     status: row.status,
     management_no: row.management_no,
     created_at: row.created_at,

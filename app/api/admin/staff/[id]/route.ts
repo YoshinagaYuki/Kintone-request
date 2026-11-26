@@ -24,6 +24,7 @@ export async function PATCH(
     sort_order?: number;
     is_active?: boolean;
     email?: string;
+    review_required?: boolean;
     email_notify_enabled?: boolean;
   };
   try {
@@ -52,6 +53,8 @@ export async function PATCH(
     update.email_notify_enabled = body.email_notify_enabled;
   }
 
+  if(typeof body.review_required==='boolean')update.review_required=body.review_required;
+  if(update.review_required===true||update.email!==undefined){const old=await supabase.from('staff_members').select('email,review_required').eq('id',id).single();if(old.error)return NextResponse.json({error:'担当者を取得できません'},{status:400});if((update.review_required??old.data.review_required)&&!EMAIL_RE.test(String(update.email??old.data.email)))return NextResponse.json({error:'担当者確認をONにするにはメールアドレスを登録してください'},{status:400});}
   if (Object.keys(update).length === 0) {
     return NextResponse.json({ error: "更新項目がありません" }, { status: 400 });
   }

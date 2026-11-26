@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -77,7 +78,7 @@ export function SettingsEditor({
     "mt-1 w-full max-w-md rounded-md border border-gray-300 bg-white p-2.5 text-sm focus:border-blue-500 focus:outline-none";
 
   return (
-    <form onSubmit={save} className="management-settings mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <form onSubmit={save} className="management-settings mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2"><Link href="/admin/email-templates" className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm font-semibold text-indigo-800 sm:col-span-2">メール本文・事業別のドライブリンクを設定する →</Link>
       {error && (
         <p className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">{error}</p>
       )}

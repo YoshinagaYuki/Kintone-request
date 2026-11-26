@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
     company?: string;
     sort_order?: number;
     email?: string;
+    review_required?: boolean;
     email_notify_enabled?: boolean;
   };
   try {
@@ -37,7 +38,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "メールアドレスの形式が正しくありません" }, { status: 400 });
   }
 
+  if(body.review_required===true&&!EMAIL_RE.test(email))return NextResponse.json({error:"担当者確認をONにするにはメールアドレスを登録してください"},{status:400});
   const { error } = await supabase.from("staff_members").insert({
+    review_required:body.review_required===true,
     name,
     company: (body.company ?? "").trim(),
     sort_order: Number.isInteger(body.sort_order) ? body.sort_order : 0,

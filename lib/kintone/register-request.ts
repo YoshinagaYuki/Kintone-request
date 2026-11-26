@@ -1,3 +1,4 @@
+import {ensureStaffReview} from '@/lib/staff-review/server';
 import {requestDateSnapshot, applyRequestDates, assertTransferredDates, recordDateSnapshot} from "./request-dates";
 import{transportFromRequest}from'../inventory/shipping-record';
 import {applyApprovalFees} from '../approval-fees';
@@ -54,6 +55,7 @@ async function registerRequestInternal(
   requestId: string,
   actor: string
 ): Promise<RegisterResult> {
+  if(await ensureStaffReview(requestId))return {ok:false,error:'担当者の確認・承認が完了していません'};
   const { data: request, error: fetchError } = await supabase
     .from("requests")
     .select(

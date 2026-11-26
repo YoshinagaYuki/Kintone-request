@@ -1,3 +1,4 @@
+import {getManualDriveUrl} from '@/lib/system-settings';
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -19,6 +20,7 @@ export default async function EmailTemplatesPage() {
     subject: (byKey.get(k)?.subject as string) ?? "",
     body: (byKey.get(k)?.body as string) ?? "",
   });
+  const driveUrls={allmight:await getManualDriveUrl(supabase,{allmight:true}),tezukuru:await getManualDriveUrl(supabase)};
   const templates: EmailTemplatesByBusiness = {
     tezukuru: [
       { key: "application", ...row("application") },
@@ -37,9 +39,9 @@ export default async function EmailTemplatesPage() {
       </Link>
       <h1 className="mt-4 text-xl font-bold sm:text-2xl">メールテンプレート</h1>
       <p className="mt-1 text-sm text-gray-600">
-        申請完了メール・承認完了メールの件名と本文を編集できます。保存した内容は、選択した事業のメールに反映されます。
+        申請完了メール・本登録完了メールの件名と本文を編集できます。保存した内容は、選択した事業のメールに反映されます。
       </p>
-      <EmailTemplateEditor templates={templates} />
+      <EmailTemplateEditor templates={templates} driveUrls={driveUrls} />
     </main>
   );
 }

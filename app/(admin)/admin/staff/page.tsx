@@ -10,7 +10,7 @@ export default async function StaffPage() {
 
   const { data } = await supabase
     .from("staff_members")
-    .select("id, name, company, sort_order, is_active, email, email_notify_enabled")
+    .select("id, name, company, sort_order, is_active, email, email_notify_enabled, review_required")
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
 

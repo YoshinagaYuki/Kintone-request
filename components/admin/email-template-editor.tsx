@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useId } from "react";
+import { useState, useId, useRef } from "react";
+import {emailFields,readableTemplate,storedTemplate,previewTemplate} from '@/lib/mail/template-fields';
 import { useRouter } from "next/navigation";
 
 export type EmailTemplateRow = { key: "application" | "approval"; subject: string; body: string };
@@ -15,24 +16,16 @@ const BUSINESS_TABS: { key: BusinessKey; label: string }[] = [
 
 const TABS: { key: EmailTemplateRow["key"]; label: string }[] = [
   { key: "application", label: "申請完了メール" },
-  { key: "approval", label: "承認完了メール" },
+  { key: "approval", label: "本登録完了メール" },
 ];
 
-const PLACEHOLDERS = [
-  "{{applicant_name}}",
-  "{{management_no}}",
-  "{{form_type_name}}",
-  "{{booth_name}}",
-  "{{agency_name}}",
-  "{{submitted_at}}",
-  "{{approved_at}}",
-  "{{order_details}}",
-  "{{manual_drive_url}}",
-];
+
 
 /** メールテンプレート編集(事業切替: てずくーる/オールマイト × 申請完了/承認完了)。本文はDB保存 */
-export function EmailTemplateEditor({ templates }: { templates: EmailTemplatesByBusiness }) {
+export function EmailTemplateEditor({ templates,driveUrls }: { templates: EmailTemplatesByBusiness;driveUrls:Record<BusinessKey,string> }) {
   const router = useRouter();
+  const bodyRef=useRef<HTMLTextAreaElement>(null);
+  const[drives,setDrives]=useState(driveUrls);
   const fieldPrefix = useId();
   const [business, setBusiness] = useState<BusinessKey>("tezukuru");
   const [active, setActive] = useState<EmailTemplateRow["key"]>("application");
@@ -66,6 +59,8 @@ export function EmailTemplateEditor({ templates }: { templates: EmailTemplatesBy
     setError(null);
     setSaved(false);
     try {
+      if(active==='approval'&&drives[business]!==driveUrls[business]){const settings=await fetch('/api/admin/settings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({[business==='allmight'?'manual_drive_url_allmight':'manual_drive_url']:drives[business]})});
+      if(!settings.ok){const d=await settings.json();throw Error(d.error||'ドライブURLを保存できません');}}
       const res = await fetch("/api/admin/email-templates", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -78,8 +73,8 @@ export function EmailTemplateEditor({ templates }: { templates: EmailTemplatesBy
       }
       setSaved(true);
       router.refresh();
-    } catch {
-      setError("通信エラーが発生しました");
+    } catch(e) {
+      setError(e instanceof Error?e.message:"通信エラーが発生しました");
     } finally {
       setBusy(false);
     }
@@ -150,36 +145,25 @@ export function EmailTemplateEditor({ templates }: { templates: EmailTemplatesBy
           <input
             type="text"
             id={`${fieldPrefix}-subject`}
-            value={current.subject}
-            onChange={(e) => update({ subject: e.target.value })}
+            value={readableTemplate(current.subject)}
+            onChange={(e) => update({ subject: storedTemplate(e.target.value) })}
             className="mt-1 w-full rounded-md border border-gray-300 bg-white p-2.5 text-sm focus:border-blue-500 focus:outline-none"
           />
         </div>
         <div>
           <label htmlFor={`${fieldPrefix}-body`} className="block text-sm font-medium text-gray-700">本文</label>
           <textarea
-            id={`${fieldPrefix}-body`}
-            value={current.body}
-            onChange={(e) => update({ body: e.target.value })}
+            ref={bodyRef} id={`${fieldPrefix}-body`}
+            value={readableTemplate(current.body)}
+            onChange={(e) => update({ body: storedTemplate(e.target.value) })}
             rows={20}
-            className="mt-1 w-full rounded-md border border-gray-300 bg-white p-3 font-mono text-xs leading-relaxed focus:border-blue-500 focus:outline-none"
+            className="mt-1 w-full rounded-md border border-gray-300 bg-white p-3 text-sm leading-relaxed focus:border-blue-500 focus:outline-none"
           />
         </div>
 
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-          <p className="text-xs font-semibold text-gray-600">差込プレースホルダ</p>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {PLACEHOLDERS.map((p) => (
-              <code key={p} className="rounded bg-white px-1.5 py-0.5 text-xs text-gray-700 ring-1 ring-gray-200">
-                {p}
-              </code>
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-gray-500">
-            {"{{order_details}}"} は商品・数量・配送先・配送日・担当者・電話番号・住所を自動展開します(事業別)。
-            {"{{manual_drive_url}}"} は承認完了メールで有効です(事業別のシステム設定リンク)。
-          </p>
-        </div>
+        <section className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4"><h3 className="text-sm font-semibold">本文に入れる項目</h3><p className="mt-1 text-xs leading-6 text-slate-500">項目を選ぶと本文のカーソル位置に追加します。送信時に実際の内容へ置き換わります。</p><div className="mt-3 flex flex-wrap gap-2">{emailFields.filter(f=>active==='approval'||!['manual_drive_url','approved_at','management_no'].includes(f.key)).map(f=><button type="button" key={f.key} className="rounded-lg border bg-white px-3 py-2 text-xs font-medium text-indigo-800" onClick={()=>{const el=bodyRef.current,text=readableTemplate(current.body),start=el?.selectionStart??text.length,end=el?.selectionEnd??text.length,marker=`【${f.label}】`;update({body:storedTemplate(text.slice(0,start)+marker+text.slice(end))});bodyRef.current?.focus();}}>{f.label}を追加</button>)}</div></section>
+        {active==='approval'&&<section className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4"><h3 className="text-sm font-semibold">{business==='allmight'?'オールマイト':'てずくーる'}のドライブ資料</h3><label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={/\{\{\s*manual_drive_url\s*\}\}/.test(current.body)} onChange={e=>update({body:e.target.checked?`${current.body}\n\n資料・マニュアル\n{{manual_drive_url}}`:current.body.replace(/\{\{\s*manual_drive_url\s*\}\}/g,'')})}/>本登録メールの本文にドライブリンクを入れる</label><label className="mt-3 block text-xs text-slate-600">共有リンク<input type="url" aria-label="この事業のドライブ共有リンク" value={drives[business]} onChange={e=>{setDrives(v=>({...v,[business]:e.target.value}));setSaved(false);}} placeholder="https://drive.google.com/..." className="mt-1 block w-full rounded-lg border bg-white p-3 text-sm"/></label><p className="mt-2 text-xs leading-6 text-slate-500">選択している事業だけに保存します。もう一方の事業のリンクは変わりません。</p></section>}
+        <section className="rounded-xl border bg-white p-4"><h3 className="text-sm font-semibold">送信イメージ（サンプル）</h3><p className="mt-3 border-b pb-3 text-sm font-semibold">{previewTemplate(current.subject,business,drives[business])}</p><p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">{previewTemplate(current.body,business,drives[business])}</p></section>
 
         <button
           onClick={save}

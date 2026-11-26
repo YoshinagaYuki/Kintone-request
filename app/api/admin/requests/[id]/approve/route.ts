@@ -1,3 +1,4 @@
+import {ensureStaffReview} from '@/lib/staff-review/server';
 import{approvalCorrections,correctionsSignature,selectedApprovalCorrections}from'@/lib/mail/approval-corrections';
 import {approvedCompanyName} from '@/lib/company-portal/company-name';
 import {approvalFees} from '@/lib/approval-fees';
@@ -71,6 +72,7 @@ async function POSTHandler(
   if (!request) {
     return NextResponse.json({ error: "申請が見つかりません" }, { status: 404 });
   }
+  if(await ensureStaffReview(id))return NextResponse.json({error:'担当者の確認・承認が完了していません'},{status:409});
   // 削除済み(ゴミ箱)は承認不可
   if (request.deleted_at) {
     return NextResponse.json(

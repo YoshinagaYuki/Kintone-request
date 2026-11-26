@@ -1,3 +1,4 @@
+import {ensureStaffReview} from '@/lib/staff-review/server';
 import {applyUsageShippingDates} from '@/lib/application-shipping';
 import {eventShippingDates} from '@/lib/tezukuru-application';
 import {assertKitProducts} from '@/lib/tezukuru-application-server';
@@ -301,7 +302,9 @@ async function POSTHandler(req: NextRequest) {
   // イベントブース名のラベルは事業で異なる(てずくーる=「イベントブース名」/ オールマイト=「イベントブース」)
   const boothName = result.data["イベントブース名"] ?? result.data["イベントブース"] ?? "";
   const baseUrl = (process.env.APP_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  const staffReviewPending=await ensureStaffReview(request.id,true).catch(()=>true);
   await notifyNewRequest({
+    staffReviewPending,
     formTypeId: formType.id,
     formTypeName: formType.name,
     applicantName: applicant_name,
