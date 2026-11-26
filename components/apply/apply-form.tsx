@@ -116,7 +116,7 @@ export function ApplyForm({
   backHref = "/apply",
   mode = "create",
   requestId,
-  draftKey, draftBaseline,
+  draftKey, draftBaseline, onDraftDiscard,
   initialValues,
   baseUpdatedAt,inventory,rentalItemsOptions,
 }: {
@@ -138,6 +138,7 @@ export function ApplyForm({
   baseUpdatedAt?: string;
   draftKey?: string;
   draftBaseline?: string;
+  onDraftDiscard?:()=>void;
   rentalItemsOptions?:(KitProductRule&{name:string})[];
   inventory?:{deliveryRequired:boolean;pickupRequired:boolean;onBack:()=>void;onSubmit:(payload:Record<string,unknown>)=>Promise<void>};
 }) {
@@ -464,7 +465,7 @@ export function ApplyForm({
 
   const draft=useFormDraft(draftKey??`application:apply-form:${pathname}:${requestId??(formTypes.map(f=>f.id).join(","))}`,{skipApplicantContact,rentalItems,selectedId,applicantName,applicantPhone,applicantEmail,companyStaffName,rentalStatus,rentalPlanId,agencyName,boothName,billingMonth,shippingFee,products,manualDeliveryDate,deliveryPostal,deliveryAddress,deliveryReceiver,deliveryContact,manualPickupDate,pickupPostal,pickupAddress,pickupHandover,pickupContact,sameAsDelivery,slipTo,slipCc,emergencyName,emergencyPhone,snsPromotion,customerRequests,eventStart,eventEnd},{skipApplicantContact:setSkipApplicantContact,rentalItems:setRentalItems,selectedId:setSelectedId,applicantName:setApplicantName,applicantPhone:setApplicantPhone,applicantEmail:setApplicantEmail,companyStaffName:setCompanyStaffName,rentalStatus:setRentalStatus,rentalPlanId:setRentalPlanId,agencyName:setAgencyName,boothName:setBoothName,billingMonth:setBillingMonth,shippingFee:setShippingFee,products:setProducts,manualDeliveryDate:setDeliveryDate,deliveryPostal:setDeliveryPostal,deliveryAddress:setDeliveryAddress,deliveryReceiver:setDeliveryReceiver,deliveryContact:setDeliveryContact,manualPickupDate:setPickupDate,pickupPostal:setPickupPostal,pickupAddress:setPickupAddress,pickupHandover:setPickupHandover,pickupContact:setPickupContact,sameAsDelivery:setSameAsDelivery,slipTo:setSlipTo,slipCc:setSlipCc,emergencyName:setEmergencyName,emergencyPhone:setEmergencyPhone,snsPromotion:setSnsPromotion,customerRequests:setCustomerRequests,eventStart:setEventStart,eventEnd:setEventEnd},true,draftBaseline??baseUpdatedAt??'');
   return (
-    <form onSubmit={handleSubmit} className="application-form mt-6 space-y-6"><DraftNotice draft={draft}/>
+    <form onSubmit={handleSubmit} className="application-form mt-6 space-y-6"><DraftNotice draft={{...draft,discard:()=>{if(draft.discard())onDraftDiscard?.();}}}/>
       <button
         type="button"
         onClick={inventory?inventory.onBack:handleBack}

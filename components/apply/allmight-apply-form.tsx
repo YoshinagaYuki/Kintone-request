@@ -64,7 +64,7 @@ export function AllmightApplyForm({
   productOptions,
   mode = "create",
   requestId,
-  draftKey, draftBaseline,
+  draftKey, draftBaseline, onDraftDiscard,
   initialValues,
   baseUpdatedAt,
   shippingRequirements,
@@ -83,6 +83,7 @@ export function AllmightApplyForm({
   baseUpdatedAt?: string;
   draftKey?: string;
   draftBaseline?: string;
+  onDraftDiscard?:()=>void;
   shippingRequirements?:{deliveryRequired:boolean;pickupRequired:boolean};
   inventory?: {equipments:string[];deliveryRequired:boolean;pickupRequired:boolean;staff:{id:string;name:string}[];onBack:()=>void;onSubmit:(payload:Record<string,unknown>)=>Promise<void>};
 }) {
@@ -374,7 +375,7 @@ export function AllmightApplyForm({
 
   const draft=useFormDraft(draftKey??`application:allmight-apply-form:${pathname}:${requestId??(formTypeId)}`,{skipApplicantContact,applicantName,applicantPhone,applicantEmail,companyStaffName,agencyName,eventBooth,billingMonth,shippingFee,usageStart,usageEnd,equipments,manualDeliveryDate,deliveryPostal,deliveryAddress,deliveryReceiver,deliveryContact,manualPickupDate,pickupPostal,pickupAddress,pickupReceiver,pickupContact,sameAsDelivery,slipTo,slipCc,emergencyName,emergencyPhone,customerRequests},{skipApplicantContact:setSkipApplicantContact,applicantName:setApplicantName,applicantPhone:setApplicantPhone,applicantEmail:setApplicantEmail,companyStaffName:setCompanyStaffName,agencyName:setAgencyName,eventBooth:setEventBooth,billingMonth:setBillingMonth,shippingFee:setShippingFee,usageStart:setUsageStart,usageEnd:setUsageEnd,equipments:setEquipments,manualDeliveryDate:setDeliveryDate,deliveryPostal:setDeliveryPostal,deliveryAddress:setDeliveryAddress,deliveryReceiver:setDeliveryReceiver,deliveryContact:setDeliveryContact,manualPickupDate:setPickupDate,pickupPostal:setPickupPostal,pickupAddress:setPickupAddress,pickupReceiver:setPickupReceiver,pickupContact:setPickupContact,sameAsDelivery:setSameAsDelivery,slipTo:setSlipTo,slipCc:setSlipCc,emergencyName:setEmergencyName,emergencyPhone:setEmergencyPhone,customerRequests:setCustomerRequests},true,draftBaseline??baseUpdatedAt??'');
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="application-form mt-6 space-y-6"><DraftNotice draft={draft}/><fieldset disabled={submitting} className="space-y-6">
+    <form ref={formRef} onSubmit={handleSubmit} className="application-form mt-6 space-y-6"><DraftNotice draft={{...draft,discard:()=>{if(draft.discard())onDraftDiscard?.();}}}/><fieldset disabled={submitting} className="space-y-6">
       <button
         type="button"
         onClick={handleBack}
