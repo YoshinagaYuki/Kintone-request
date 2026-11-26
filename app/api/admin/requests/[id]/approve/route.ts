@@ -112,7 +112,11 @@ async function POSTHandler(
   if(correctionHistory.error)return NextResponse.json({error:'訂正履歴を確認できませんでした。もう一度お試しください'},{status:503});
   const correctionData={...request.parsed_data,'担当者':request.company_staff_name_input??request.parsed_data?.['担当者']??'','氏名':request.applicant_name??'','電話番号':request.applicant_phone??'','メールアドレス':request.applicant_email??'','お客様からの要望':request.customer_requests??''};
   const correctionRows=approvalCorrections(correctionData,correctionHistory.data??[],{...shippingData,...body.contents,...(body.delivery_fee!==undefined?{'配送費':body.delivery_fee}:{}),...(typeof body.staff_name==='string'&&body.staff_name?{'担当者':body.staff_name}:{})});
-  if((correctionRows.length||body.corrections_signature!==undefined)&&body.corrections_signature!==correctionsSignature(correctionRows))return NextResponse.json({error:'訂正内容が変わっています。画面を再読み込みし、メールに記載する項目を確認してください'},{status:409});
+  // Internal hold promotion sends no applicant mail; there is no correction-mail selection to confirm.
+  const internalSource=request.parsed_data?._inventory_skip_applicant_contact===true?await supabase.from('inventory_confirmation_sources').select('request_id').eq('request_id',id).limit(1).maybeSingle():null;
+  if(internalSource?.error)return NextResponse.json({error:'社内本登録の保存元を確認できません'},{status:503});
+  const internalConfirmation=!!internalSource?.data;
+  if(!internalConfirmation&&(correctionRows.length||body.corrections_signature!==undefined)&&body.corrections_signature!==correctionsSignature(correctionRows))return NextResponse.json({error:'訂正内容が変わっています。画面を再読み込みし、メールに記載する項目を確認してください'},{status:409});
   let selectedCorrections;try{selectedCorrections=selectedApprovalCorrections(correctionRows,body.correction_keys??[]);}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'訂正箇所を確認してください'},{status:400});}
   if (isTezukuru) {
     const kits = await supabase.from('item_name_master').select('id,name,aliases,is_active').eq('category','tezukuru').eq('inventory_role','rental_kit');
