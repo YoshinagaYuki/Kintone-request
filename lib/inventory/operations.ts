@@ -48,7 +48,7 @@ export function addedSlotSchedule(before:InventoryRecord[],after:InventoryRecord
  });
 }
 export function holdBatchInput(body:Record<string,unknown>){
- if(!uuid(body.batch_id)||!uuid(body.staff_id))throw Error('担当者を選択してください');
+ if(!uuid(body.batch_id)||body.staff_mode!=='external'&&!uuid(body.staff_id))throw Error('担当者を選択してください');
  const patch=bookingPatch({item_id:(body.lines as any[])?.[0]?.item_id,staff:'担当者',store:body.store_name,start:body.start,end:body.end,from:body.from,to:body.to,delivery:body.delivery??'',pickup:body.pickup??'',transport:body.transport});
  if(!Array.isArray(body.lines)||body.lines.length<1||body.lines.length>20)throw Error('商品を1〜20行で指定してください');const lines=body.lines.map((line:any)=>{if(!uuid(line.item_id)||!Number.isInteger(line.quantity)||line.quantity<1||line.quantity>100)throw Error('商品・台数を確認してください');if(!Array.isArray(line.numbers)||line.numbers.length!==line.quantity)throw Error('台数分の番号を指定してください（未割当も選択できます）');if(!Number.isInteger(line.screen_quantity??0)||(line.screen_quantity??0)<0||(line.screen_quantity??0)>line.quantity)throw Error('背景スクリーンは貸出機器の台数以下で指定してください');return {item_id:line.item_id,quantity:line.quantity,screen_quantity:line.screen_quantity??0,numbers:line.numbers.map((n:unknown)=>n==='auto'?'auto' as const:unitNumber(n))};});if(lines.reduce((n,l)=>n+l.quantity,0)>100)throw Error('一度の仮押さえは100台までです');if(typeof body.note!=='string'||body.note.length>2000)throw Error('備考は2000文字までです');return {batch_id:body.batch_id,staff_id:body.staff_id,patch,lines,note:body.note,...manualConfirmation({status:body.status??'hold',managementNo:body.managementNo??''})};
 }

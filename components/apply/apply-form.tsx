@@ -83,6 +83,7 @@ export type TezukuruInitialValues = {
   applicantPhone?: string;
   applicantEmail?: string;
   companyStaffName?: string;
+  externalStaff?:boolean;
   rentalItems?: RentalDraft[];
   rentalStatus?: RentalStatus | "";
   rentalPlanId?: string;
@@ -161,7 +162,7 @@ export function ApplyForm({
   const [applicantPhone, setApplicantPhone] = useState(iv.applicantPhone ?? "");
   const [applicantEmail, setApplicantEmail] = useState(iv.applicantEmail ?? "");
   const [companyStaffName, setCompanyStaffName] = useState(iv.companyStaffName ?? "");
-  const [externalStaff,setExternalStaff]=useState(false);
+  const [externalStaff,setExternalStaff]=useState(iv.externalStaff??false);
 
   // レンタル
   const [rentalStatus, setRentalStatus] = useState<RentalStatus | "">(iv.rentalStatus ?? "");

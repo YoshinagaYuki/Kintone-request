@@ -36,6 +36,7 @@ export type AllmightInitialValues = {
   applicantPhone?: string;
   applicantEmail?: string;
   companyStaffName?: string;
+  externalStaff?:boolean;
   agencyName?: string;
   eventBooth?: string;
   billingMonth?: string;
@@ -104,7 +105,7 @@ export function AllmightApplyForm({
   const [applicantPhone, setApplicantPhone] = useState(iv.applicantPhone ?? "");
   const [applicantEmail, setApplicantEmail] = useState(iv.applicantEmail ?? "");
   const [companyStaffName, setCompanyStaffName] = useState(iv.companyStaffName ?? "");
-  const [externalStaff,setExternalStaff]=useState(false);
+  const [externalStaff,setExternalStaff]=useState(iv.externalStaff??false);
 
   // 基本情報
   const [agencyName, setAgencyName] = useState(iv.agencyName ?? "");
