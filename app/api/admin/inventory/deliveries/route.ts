@@ -1,3 +1,5 @@
+import {findRecords} from '@/lib/kintone/client';
+import {loadWarehouseDeliveryTracking} from '@/lib/inventory/delivery-tracking';
 import { createHash } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { inventoryAccess } from '@/lib/inventory/access';
@@ -23,6 +25,12 @@ export async function GET(req: NextRequest) {
   } catch (error) { return response({ error: (error as Error).message }, 400); }
   try {
     if (!await allowed(access.admin.id, business)) return response({ error: 'この事業を操作する権限がありません。' }, 403);
+    if(req.nextUrl.searchParams.get('tracking')==='1'){
+      const model=await loadInventoryModel(access.db,'',business);
+      const rows=deliveryRows(model.records,model.items).filter(row=>row.date>=range.from&&row.date<=range.to);
+      try{return response({tracking:await loadWarehouseDeliveryTracking(rows.map(row=>row.managementNo),business==='allmight'?10:49,Number(process.env.KINTONE_APP_ID_SHIPPING??'11'),findRecords),checkedAt:new Date().toISOString()});}
+      catch{return response({error:'kintoneの配送情報を取得できませんでした。時間をおいて再読み込みしてください。'},502);}
+    }
     const result = await createAdminClient().from('inventory_delivery_completions').select('delivery_key,completed,completed_at').eq('business', business).gte('delivery_date', range.from).lte('delivery_date', range.to);
     if (result.error) throw Error('配送完了の記録を取得できませんでした。');
     return response({ completions: (result.data ?? []).map(row => ({ key: row.delivery_key, completed: row.completed, completedAt: row.completed_at })) });
