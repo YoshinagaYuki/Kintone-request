@@ -35,3 +35,11 @@ test('new occupancy subtracts several previous segments and never subtracts anot
  assert.equal(addedSlotSchedule([{...original,itemId:'another'}],[original]).length,2);
  assert.equal(addedSlotSchedule([{...original,booking:{...b,group:'another'}}],[original]).length,2);
 });
+test('1215-style intermediate exchange can be replaced with one full-period assignment without splitting invoices or dates',()=>{
+ const before={itemId:'item',booking:{...b,managementNo:'1215'}};
+ const after=applyInventoryEdits([before],[{booking_key:'case',patch:{unitSwitches:[]},deleted:false}],[{group_key:'case:0',item_id:'item',unit_number:1}])[0];
+ const segments=unitSegments(after.booking);
+ assert.equal(segments.length,1);assert.equal(segments[0].unitNumber,1);
+ for(const key of ['id','managementNo','start','end','delivery','pickup'] as const)assert.equal(after.booking[key],before.booking[key]);
+ assert.deepEqual(before.booking.unitSwitches,b.unitSwitches);
+});
