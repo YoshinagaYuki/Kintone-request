@@ -18,7 +18,7 @@
 
 ## 確認
 
-関連テスト356件、typecheck、production build成功。実際の西濃結果で配達済み・配達中・配達店到着を確認。
+関連テスト357件、typecheck、production build成功。実際の西濃結果で配達済み・配達中・配達店到着を確認。
 DBで二重実行防止、実際の完了更新、伝票変更時の再確認、手動変更との競合、匿名・一般認証ロールからのアクセス拒否を確認。QA用データは全件ロールバック。
 新規テーブルはサーバー専用のRLS/no-policy。既存の請求システム等の権限・設定は変更していない。
 
@@ -28,3 +28,5 @@ DBで二重実行防止、実際の完了更新、伝票変更時の再確認、
 - https://www2.sagawa-exp.co.jp/information/detail/430/
 - https://supabase.com/docs/guides/cron/quickstart
 - https://supabase.com/docs/guides/database/extensions/pg_net
+
+本番の定期処理を有効化し、2026-11-27 12:00 JSTのスケジュール実行成功を確認。初回の照会で13件の配達済みを自動反映し、配達中・確認待ち3件は未完了を保持。本番画面で管理番号1224の自動完了表示と、管理番号1135の配達中・未完了表示を確認。

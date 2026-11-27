@@ -17,7 +17,8 @@ export function parseSeinoResult(html:string,number:string,deliveryDate:string):
  const dates=[year-1,year,year+1].map(y=>`${y}-${accepted[1].padStart(2,'0')}-${accepted[2].padStart(2,'0')}`).filter(d=>validDate(d)&&d>=addDays(deliveryDate,-30)&&d<=addDays(deliveryDate,7));
  if(dates.length!==1)return unknown;
  const delivered=status==='配達済みです';
- const safeStatus=delivered?'配達済み':status==='現在配達中です'?'配達中':status==='配達店に到着しています'?'配達店到着':/^(受付|集荷|輸送中|配達中|持出中|保管中|配達店到着|配達予定)/.test(status)&&status.length<=60?status:'追跡結果を確認できませんでした';
+ const pendingStatus=status.replace(/^現在地はコチラ/,'');
+ const safeStatus=delivered?'配達済み':pendingStatus==='現在配達中です'?'配達中':pendingStatus==='配達店に到着しています'?'配達店到着':/^(受付|集荷|輸送中|配達中|持出中|保管中|配達店到着|配達予定)/.test(status)&&status.length<=60?status:'追跡結果を確認できませんでした';
  return {delivered,status:safeStatus,number,acceptedDate:dates[0]};
 }
 export async function checkSeino(number:string,date:string,fetcher:typeof fetch=fetch):Promise<CarrierCheck>{
