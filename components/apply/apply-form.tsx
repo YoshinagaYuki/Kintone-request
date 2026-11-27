@@ -1,4 +1,5 @@
 "use client";
+import {StaffNameField} from "../admin/staff-name-field";
 import {useFormDraft,DraftNotice} from "@/components/drafts/form-draft";
 import {EmailRecipientFields} from "./email-recipient-fields";
 
@@ -140,7 +141,7 @@ export function ApplyForm({
   draftBaseline?: string;
   onDraftDiscard?:()=>void;
   rentalItemsOptions?:(KitProductRule&{name:string})[];
-  inventory?:{deliveryRequired:boolean;pickupRequired:boolean;onBack:()=>void;onSubmit:(payload:Record<string,unknown>)=>Promise<void>};
+  inventory?:{staff:{id:string;name:string}[];deliveryRequired:boolean;pickupRequired:boolean;onBack:()=>void;onSubmit:(payload:Record<string,unknown>)=>Promise<void>};
 }) {
   const router = useRouter();
   const pathname=usePathname();
@@ -160,6 +161,7 @@ export function ApplyForm({
   const [applicantPhone, setApplicantPhone] = useState(iv.applicantPhone ?? "");
   const [applicantEmail, setApplicantEmail] = useState(iv.applicantEmail ?? "");
   const [companyStaffName, setCompanyStaffName] = useState(iv.companyStaffName ?? "");
+  const [externalStaff,setExternalStaff]=useState(false);
 
   // レンタル
   const [rentalStatus, setRentalStatus] = useState<RentalStatus | "">(iv.rentalStatus ?? "");
@@ -378,6 +380,7 @@ export function ApplyForm({
       applicant_phone: omitApplicantContact ? "" : applicantPhone.trim(),
       applicant_email: omitApplicantContact ? "" : applicantEmail.trim(),
       company_staff_name: companyStaffName.trim(),
+      ...(inventory?{staff_mode:externalStaff?"external":"master"}:{}),
       rental_status: usesRentalPlan ? effectiveRentalStatus : null,
       rental_plan_id: effectiveRentalStatus === "new_rental" ? rentalPlanId : null,
       customer_requests: customerRequests.trim() || null,
@@ -463,7 +466,7 @@ export function ApplyForm({
   const req = <span className="text-red-600">*</span>;
   const filledProductCount = validProducts(products).length;
 
-  const draft=useFormDraft(draftKey??`application:apply-form:${pathname}:${requestId??(formTypes.map(f=>f.id).join(","))}`,{skipApplicantContact,rentalItems,selectedId,applicantName,applicantPhone,applicantEmail,companyStaffName,rentalStatus,rentalPlanId,agencyName,boothName,billingMonth,shippingFee,products,manualDeliveryDate,deliveryPostal,deliveryAddress,deliveryReceiver,deliveryContact,manualPickupDate,pickupPostal,pickupAddress,pickupHandover,pickupContact,sameAsDelivery,slipTo,slipCc,emergencyName,emergencyPhone,snsPromotion,customerRequests,eventStart,eventEnd},{skipApplicantContact:setSkipApplicantContact,rentalItems:setRentalItems,selectedId:setSelectedId,applicantName:setApplicantName,applicantPhone:setApplicantPhone,applicantEmail:setApplicantEmail,companyStaffName:setCompanyStaffName,rentalStatus:setRentalStatus,rentalPlanId:setRentalPlanId,agencyName:setAgencyName,boothName:setBoothName,billingMonth:setBillingMonth,shippingFee:setShippingFee,products:setProducts,manualDeliveryDate:setDeliveryDate,deliveryPostal:setDeliveryPostal,deliveryAddress:setDeliveryAddress,deliveryReceiver:setDeliveryReceiver,deliveryContact:setDeliveryContact,manualPickupDate:setPickupDate,pickupPostal:setPickupPostal,pickupAddress:setPickupAddress,pickupHandover:setPickupHandover,pickupContact:setPickupContact,sameAsDelivery:setSameAsDelivery,slipTo:setSlipTo,slipCc:setSlipCc,emergencyName:setEmergencyName,emergencyPhone:setEmergencyPhone,snsPromotion:setSnsPromotion,customerRequests:setCustomerRequests,eventStart:setEventStart,eventEnd:setEventEnd},true,draftBaseline??baseUpdatedAt??'');
+  const draft=useFormDraft(draftKey??`application:apply-form:${pathname}:${requestId??(formTypes.map(f=>f.id).join(","))}`,{externalStaff,skipApplicantContact,rentalItems,selectedId,applicantName,applicantPhone,applicantEmail,companyStaffName,rentalStatus,rentalPlanId,agencyName,boothName,billingMonth,shippingFee,products,manualDeliveryDate,deliveryPostal,deliveryAddress,deliveryReceiver,deliveryContact,manualPickupDate,pickupPostal,pickupAddress,pickupHandover,pickupContact,sameAsDelivery,slipTo,slipCc,emergencyName,emergencyPhone,snsPromotion,customerRequests,eventStart,eventEnd},{externalStaff:setExternalStaff,skipApplicantContact:setSkipApplicantContact,rentalItems:setRentalItems,selectedId:setSelectedId,applicantName:setApplicantName,applicantPhone:setApplicantPhone,applicantEmail:setApplicantEmail,companyStaffName:setCompanyStaffName,rentalStatus:setRentalStatus,rentalPlanId:setRentalPlanId,agencyName:setAgencyName,boothName:setBoothName,billingMonth:setBillingMonth,shippingFee:setShippingFee,products:setProducts,manualDeliveryDate:setDeliveryDate,deliveryPostal:setDeliveryPostal,deliveryAddress:setDeliveryAddress,deliveryReceiver:setDeliveryReceiver,deliveryContact:setDeliveryContact,manualPickupDate:setPickupDate,pickupPostal:setPickupPostal,pickupAddress:setPickupAddress,pickupHandover:setPickupHandover,pickupContact:setPickupContact,sameAsDelivery:setSameAsDelivery,slipTo:setSlipTo,slipCc:setSlipCc,emergencyName:setEmergencyName,emergencyPhone:setEmergencyPhone,snsPromotion:setSnsPromotion,customerRequests:setCustomerRequests,eventStart:setEventStart,eventEnd:setEventEnd},true,draftBaseline??baseUpdatedAt??'');
   return (
     <form onSubmit={handleSubmit} className="application-form mt-6 space-y-6"><DraftNotice draft={{...draft,discard:()=>{if(draft.discard())onDraftDiscard?.();}}}/>
       <button
@@ -582,14 +585,14 @@ export function ApplyForm({
               </>}
               <div>
                 <label htmlFor={fieldId("companyStaffName")} className={labelClass}>弊社担当者氏名 {req}</label>
-                <input
+                {inventory?<StaffNameField label="弊社担当者氏名" value={companyStaffName} external={externalStaff} onExternalChange={setExternalStaff} onChange={setCompanyStaffName} options={inventory.staff.map(s=>s.name)}/>:<input
                   type="text"
                   id={fieldId("companyStaffName")} value={companyStaffName}
                   onChange={(e) => setCompanyStaffName(e.target.value)}
                   maxLength={100}
                   placeholder="例：吉永、田中、山田太郎"
                   className={inputClass}
-                />
+                />}
                 <p className="mt-1 text-xs text-gray-500">
                   弊社の担当者名をご入力ください(社内で正式名称に確認・修正します)。
                 </p>

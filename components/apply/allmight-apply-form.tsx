@@ -1,4 +1,5 @@
 "use client";
+import {StaffNameField} from "../admin/staff-name-field";
 import {useFormDraft,DraftNotice} from "@/components/drafts/form-draft";
 import {automaticShippingDay,SHIPPING_DATE_REQUEST_NOTE} from '@/lib/application-shipping';
 import {EmailRecipientFields} from "./email-recipient-fields";
@@ -103,6 +104,7 @@ export function AllmightApplyForm({
   const [applicantPhone, setApplicantPhone] = useState(iv.applicantPhone ?? "");
   const [applicantEmail, setApplicantEmail] = useState(iv.applicantEmail ?? "");
   const [companyStaffName, setCompanyStaffName] = useState(iv.companyStaffName ?? "");
+  const [externalStaff,setExternalStaff]=useState(false);
 
   // 基本情報
   const [agencyName, setAgencyName] = useState(iv.agencyName ?? "");
@@ -316,6 +318,7 @@ export function AllmightApplyForm({
       applicant_phone: omitApplicantContact ? "" : applicantPhone.trim(),
       applicant_email: omitApplicantContact ? "" : applicantEmail.trim(),
       company_staff_name: companyStaffName.trim(),
+      ...(inventory?{staff_mode:externalStaff?"external":"master"}:{}),
       rental_status: null,
       rental_plan_id: null,
       customer_requests: customerRequests.trim() || null,
@@ -373,7 +376,7 @@ export function AllmightApplyForm({
   const req = <span className="text-red-600">*</span>;
   const filledCount = validEquipments(effectiveEquipments).length;
 
-  const draft=useFormDraft(draftKey??`application:allmight-apply-form:${pathname}:${requestId??(formTypeId)}`,{skipApplicantContact,applicantName,applicantPhone,applicantEmail,companyStaffName,agencyName,eventBooth,billingMonth,shippingFee,usageStart,usageEnd,equipments,manualDeliveryDate,deliveryPostal,deliveryAddress,deliveryReceiver,deliveryContact,manualPickupDate,pickupPostal,pickupAddress,pickupReceiver,pickupContact,sameAsDelivery,slipTo,slipCc,emergencyName,emergencyPhone,customerRequests},{skipApplicantContact:setSkipApplicantContact,applicantName:setApplicantName,applicantPhone:setApplicantPhone,applicantEmail:setApplicantEmail,companyStaffName:setCompanyStaffName,agencyName:setAgencyName,eventBooth:setEventBooth,billingMonth:setBillingMonth,shippingFee:setShippingFee,usageStart:setUsageStart,usageEnd:setUsageEnd,equipments:setEquipments,manualDeliveryDate:setDeliveryDate,deliveryPostal:setDeliveryPostal,deliveryAddress:setDeliveryAddress,deliveryReceiver:setDeliveryReceiver,deliveryContact:setDeliveryContact,manualPickupDate:setPickupDate,pickupPostal:setPickupPostal,pickupAddress:setPickupAddress,pickupReceiver:setPickupReceiver,pickupContact:setPickupContact,sameAsDelivery:setSameAsDelivery,slipTo:setSlipTo,slipCc:setSlipCc,emergencyName:setEmergencyName,emergencyPhone:setEmergencyPhone,customerRequests:setCustomerRequests},true,draftBaseline??baseUpdatedAt??'');
+  const draft=useFormDraft(draftKey??`application:allmight-apply-form:${pathname}:${requestId??(formTypeId)}`,{externalStaff,skipApplicantContact,applicantName,applicantPhone,applicantEmail,companyStaffName,agencyName,eventBooth,billingMonth,shippingFee,usageStart,usageEnd,equipments,manualDeliveryDate,deliveryPostal,deliveryAddress,deliveryReceiver,deliveryContact,manualPickupDate,pickupPostal,pickupAddress,pickupReceiver,pickupContact,sameAsDelivery,slipTo,slipCc,emergencyName,emergencyPhone,customerRequests},{externalStaff:setExternalStaff,skipApplicantContact:setSkipApplicantContact,applicantName:setApplicantName,applicantPhone:setApplicantPhone,applicantEmail:setApplicantEmail,companyStaffName:setCompanyStaffName,agencyName:setAgencyName,eventBooth:setEventBooth,billingMonth:setBillingMonth,shippingFee:setShippingFee,usageStart:setUsageStart,usageEnd:setUsageEnd,equipments:setEquipments,manualDeliveryDate:setDeliveryDate,deliveryPostal:setDeliveryPostal,deliveryAddress:setDeliveryAddress,deliveryReceiver:setDeliveryReceiver,deliveryContact:setDeliveryContact,manualPickupDate:setPickupDate,pickupPostal:setPickupPostal,pickupAddress:setPickupAddress,pickupReceiver:setPickupReceiver,pickupContact:setPickupContact,sameAsDelivery:setSameAsDelivery,slipTo:setSlipTo,slipCc:setSlipCc,emergencyName:setEmergencyName,emergencyPhone:setEmergencyPhone,customerRequests:setCustomerRequests},true,draftBaseline??baseUpdatedAt??'');
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="application-form mt-6 space-y-6"><DraftNotice draft={{...draft,discard:()=>{if(draft.discard())onDraftDiscard?.();}}}/><fieldset disabled={submitting} className="space-y-6">
       <button
@@ -437,7 +440,7 @@ export function AllmightApplyForm({
           </>}
               <div>
             <label htmlFor={fieldId("companyStaffName")} className={labelClass}>弊社担当者氏名 {req}</label>
-            {inventory?<select aria-label="弊社担当者氏名" id={fieldId("companyStaffName")} value={companyStaffName} onChange={e=>setCompanyStaffName(e.target.value)} className={inputClass}><option value="">正式名称を選択</option>{inventory.staff.map(s=><option key={s.id} value={s.name}>{s.name}</option>)}</select>:<input type="text" id={fieldId("companyStaffName")} value={companyStaffName} onChange={(e) => setCompanyStaffName(e.target.value)} maxLength={100} placeholder="例：吉永、田中、山田太郎" className={inputClass} />}
+            {inventory?<StaffNameField label="弊社担当者氏名" value={companyStaffName} external={externalStaff} onExternalChange={setExternalStaff} onChange={setCompanyStaffName} options={inventory.staff.map(s=>s.name)}/>:<input type="text" id={fieldId("companyStaffName")} value={companyStaffName} onChange={(e) => setCompanyStaffName(e.target.value)} maxLength={100} placeholder="例：吉永、田中、山田太郎" className={inputClass} />}
             <p className="mt-1 text-xs text-gray-500">弊社の担当者名をご入力ください(社内で正式名称に確認・修正します)。</p>
           </div>
         </div>

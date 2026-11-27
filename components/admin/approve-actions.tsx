@@ -1,4 +1,5 @@
 "use client";
+import {StaffNameField} from "./staff-name-field";
 import{ApprovalCorrectionPicker}from'./approval-correction-picker';
 import{approvalCorrections,correctionsSignature,type CorrectionHistory}from'@/lib/mail/approval-corrections';
 import {ApprovalFeeFields} from "./approval-fee-fields";
@@ -113,9 +114,10 @@ export function ApproveActions({
   const unselectedContents = contentSlots.filter((s) => !contents[s.label]);
 
   /** 弊社担当者(確定値)。担当者項目がある(=staffInputあり)場合は選択必須 */
-  const [staffName, setStaffName] = useState(staffSuggested);
+  const [staffName, setStaffName] = useState(staffSuggested||staffInput);
+  const [externalStaff,setExternalStaff]=useState(false);
   const staffRequired = staffInput.trim().length > 0;
-  const staffUnselected = staffRequired && !staffName;
+  const staffUnselected = staffRequired && (!staffName.trim()||!externalStaff&&!staffOptions.includes(staffName));
 
   /** 料金区分(てずくーるのみ・初期未選択)。未選択では承認不可 */
   const [billingType, setBillingType] = useState<"" | "paid" | "free">(billingTypeDefault);
@@ -210,6 +212,7 @@ export function ApproveActions({
         ...(planId ? { rental_plan_id: planId } : {}),
         contents,
         staff_name: staffName,
+        staff_mode:externalStaff?"external":"master",
         ...(requireBillingType ? { billing_type: billingType } : {}),
         dsp_handover_note: dspNote,
       });
@@ -220,6 +223,7 @@ export function ApproveActions({
     void post("approve", {
       contents,
       staff_name: staffName,
+        staff_mode:externalStaff?"external":"master",
       ...(requireBillingType ? { billing_type: billingType } : {}),
       dsp_handover_note: dspNote,
     });
@@ -295,23 +299,7 @@ export function ApproveActions({
               <span className="ml-2 text-gray-400">(参考値・誤りがあれば選び直してください)</span>
             </p>
           )}
-          <select
-            value={staffName}
-            onChange={(e) => {
-              setStaffName(e.target.value);
-              setError(null);
-            }}
-            className={`mt-1 w-full max-w-sm rounded-md border p-2.5 text-sm focus:outline-none ${
-              staffName ? "border-gray-300 bg-white focus:border-blue-500" : "border-red-400 bg-red-50"
-            }`}
-          >
-            <option value="">選択してください</option>
-            {staffOptions.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
+          <StaffNameField value={staffName} external={externalStaff} onExternalChange={setExternalStaff} onChange={name=>{setStaffName(name);setError(null);}} options={staffOptions} label="弊社担当者氏名"/>
         </div>
       )}
 

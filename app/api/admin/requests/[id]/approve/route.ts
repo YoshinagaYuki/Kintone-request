@@ -1,3 +1,4 @@
+import {resolveAdminStaff} from '@/lib/inventory/admin-staff';
 import {ensureStaffReview} from '@/lib/staff-review/server';
 import{approvalCorrections,correctionsSignature,selectedApprovalCorrections}from'@/lib/mail/approval-corrections';
 import {approvedCompanyName} from '@/lib/company-portal/company-name';
@@ -50,6 +51,7 @@ async function POSTHandler(
     contents?: Record<string, string> | null;
     /** 承認画面で確定した弊社担当者の正式名称 */
     staff_name?: string | null;
+    staff_mode?: "master" | "external";
     /** 料金区分(てずくーるのみ): 'paid'|'free' */
     billing_type?: string | null;
     /** DSP様共有事項(倉庫への引き継ぎ)。任意。改行保持。空欄も可 */
@@ -227,21 +229,23 @@ async function POSTHandler(
         { status: 409 }
       );
     }
+    if(body.staff_mode==="external"){try{resolveAdminStaff(body,[]);}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"担当者名を確認してください"},{status:400});}}
     const { data: staff } = await supabase
       .from("staff_members")
       .select("name, is_active")
       .eq("name", staffName)
       .maybeSingle();
-    if (!staff || !staff.is_active) {
+    if (body.staff_mode!=="external" && (!staff || !staff.is_active)) {
       return NextResponse.json(
         { error: "選択された担当者は担当者マスターに存在しないか、無効です" },
         { status: 400 }
       );
     }
-    await supabase
+    const staffSaved=await supabase
       .from("requests")
-      .update({ approved_staff_name: staff.name })
+      .update({ approved_staff_name: body.staff_mode==="external" ? resolveAdminStaff(body,[]).name : staff!.name,approved_staff_external:body.staff_mode==="external" })
       .eq("id", id);
+    if(staffSaved.error)return NextResponse.json({error:"担当者の確定内容を保存できませんでした"},{status:400});
   }
 
   // DSP様共有事項(倉庫への引き継ぎ)。任意。両事業共通。

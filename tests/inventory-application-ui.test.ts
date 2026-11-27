@@ -9,7 +9,7 @@ import {AllmightApplyForm} from '../components/apply/allmight-apply-form';
 (globalThis as any).React=React;
 const formTypes=[{id:'test',name:'てずくーる',is_tezukuru:true,has_rental_plan:true,select_fields:[],fmt_template:'',input_guide:'',notes:''}];
 const rentalPlans=[{id:'plan',name:'検証用プラン',is_active:true,description:'',sort_order:0}];
-const inventory={deliveryRequired:true,pickupRequired:true,onBack(){},async onSubmit(){}};
+const inventory={staff:[],deliveryRequired:true,pickupRequired:true,onBack(){},async onSubmit(){}};
 function render(element:React.ReactElement){return renderToStaticMarkup(React.createElement(AppRouterContext.Provider,{value:{} as any},element));}
 test('manual Tezukuru confirmation exposes its required rental plan and removes legacy fee field',()=>{
  const html=render(React.createElement(ApplyForm,{formTypes,rentalPlans,productItems:[],minimumOrderQuantity:100,inventory}));

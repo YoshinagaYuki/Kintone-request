@@ -1,3 +1,4 @@
+import {resolveAdminStaff} from '@/lib/inventory/admin-staff';
 import {ensureStaffReview} from '@/lib/staff-review/server';
 import {requestDateSnapshot, applyRequestDates, assertTransferredDates, recordDateSnapshot} from "./request-dates";
 import{transportFromRequest}from'../inventory/shipping-record';
@@ -59,7 +60,7 @@ async function registerRequestInternal(
   const { data: request, error: fetchError } = await supabase
     .from("requests")
     .select(
-      "id, inventory_parent_request_id, parsed_data, status, kintone_record_id, form_type_id, form_type_version, applicant_name, applicant_email, approved_rental_plan_id, requested_rental_plan_id, approved_contents, company_staff_name_input, approved_staff_name, customer_requests, billing_type, dsp_handover_note, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, allmight_arrangement_updated_at, form_types(name, kintone_app_id, field_mapping)"
+      "id, inventory_parent_request_id, parsed_data, status, kintone_record_id, form_type_id, form_type_version, applicant_name, applicant_email, approved_rental_plan_id, requested_rental_plan_id, approved_contents, company_staff_name_input, approved_staff_name, approved_staff_external, customer_requests, billing_type, dsp_handover_note, allmight_delivery_arrangement, allmight_pickup_arrangement, allmight_delivery_time, allmight_pickup_time, allmight_arrangement_updated_at, form_types(name, kintone_app_id, field_mapping)"
     )
     .eq("id", requestId)
     .maybeSingle();
@@ -124,14 +125,14 @@ async function registerRequestInternal(
       .select("name, is_active")
       .eq("name", approvedStaff)
       .maybeSingle();
-    if (!staffRow || !staffRow.is_active) {
+    if (!request.approved_staff_external && (!staffRow || !staffRow.is_active)) {
       return {
         ok: false,
         error: "確定した担当者が担当者マスターに存在しないか無効です",
       };
     }
     // App49「担当者」= 文字列__1行__0(FMTラベル「担当者」経由でマッピング)
-    parsedData["担当者"] = staffRow.name;
+    parsedData["担当者"] = request.approved_staff_external ? resolveAdminStaff({staff_mode:"external",staff_name:approvedStaff},[]).name : staffRow!.name;
   }
 
   // kintone AppID は form_types(現行)から取得
