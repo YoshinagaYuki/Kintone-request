@@ -1,3 +1,4 @@
+import {canonicalCopySource} from './copy-origin';
 import{tezukuruKitNames}from'./business';
 import'server-only';
 import type{SupabaseClient}from'@supabase/supabase-js';
@@ -8,7 +9,7 @@ import{getVersionedConfig}from'../form-types';
 import{equipmentLabel}from'../allmight-fmt';
 import{matchCapacityItem}from'./availability';
 export async function prepareCopySource(db:SupabaseClient,model:InventoryModel,key:string){
- const source=model.records.find(r=>r.booking.key===key);if(source?.booking.unitSwitches?.length)throw Error('機器番号を切替済みの予定は、切り替えを解除してからコピーしてください');if(!source||source.booking.status==='blocked')throw Error('コピーする貸出予定を選択してください');
+ const selected=model.records.find(r=>r.booking.key===key);const source=selected?canonicalCopySource(model,selected):undefined;if(source?.booking.unitSwitches?.length)throw Error('機器番号を切替済みの予定は、切り替えを解除してからコピーしてください');if(!source||source.booking.status==='blocked')throw Error('コピーする貸出予定を選択してください');
  if(model.items.find(i=>i.id===source.itemId)?.is_active===false)throw Error('削除済みのレンタル品です。レンタル品マスタから復元してからコピーしてください');
  const tezu=model.items.find(i=>i.id===source.itemId)?.inventory_role==='rental_kit',app=tezu?49:10;const b=source.booking;if(b.status!=='registered'||!b.managementNo)throw Error('元の管理番号を確定してからコピーしてください');if(b.kind==='request'){const outgoing=await db.from('inventory_extensions').select('child_request_id').eq('parent_request_id',b.id).maybeSingle();if(outgoing.data)throw Error('この申請には延長先があります。最新の延長先からコピーしてください');}
  const form=await db.from('form_types').select('id,version,field_mapping').eq('kintone_app_id',app).single();if(form.error)throw Error('オールマイトの申請設定を確認してください');
@@ -16,7 +17,7 @@ export async function prepareCopySource(db:SupabaseClient,model:InventoryModel,k
  if(b.kind==='request'){const r=await db.from('requests').select('parsed_data,form_type_id,form_type_version,kintone_record_id,processing_at,status,billing_type,approved_rental_plan_id,requested_rental_plan_id').eq('id',b.id).single();if(r.error||r.data.processing_at)throw Error('元申請の処理が完了してからコピーしてください');parsed={...r.data.parsed_data};billingType=r.data.billing_type??'';rentalPlanId=r.data.approved_rental_plan_id??r.data.requested_rental_plan_id??'';formId=r.data.form_type_id;version=r.data.form_type_version;recordId=r.data.kintone_record_id;}
  let related=b.kind==='request'?model.records.filter(r=>r.booking.kind==='request'&&r.booking.id===b.id):b.managementNo?model.records.filter(r=>r.booking.managementNo===b.managementNo&&r.booking.end===b.end&&r.booking.status!=='blocked'): [source];
  // One case is copied as one invoice, including repeated equipment slots.
- related=related.filter((r,i,all)=>b.kind==='request'||r.booking.unitNumber==null||all.findIndex(t=>t.itemId===r.itemId&&t.booking.unitNumber===r.booking.unitNumber)===i).sort((a,z)=>a.booking.key!.localeCompare(z.booking.key!));
+ related=related.filter(r=>!r.deleted).filter((r,i,all)=>b.kind==='request'||r.booking.unitNumber==null||all.findIndex(t=>t.itemId===r.itemId&&t.booking.unitNumber===r.booking.unitNumber)===i).sort((a,z)=>a.booking.key!.localeCompare(z.booking.key!));
  const config=await getVersionedConfig(db,formId,version);const mapping=(config?.field_mapping??form.data.field_mapping)as FieldMapping;
  if(!mapping?.mappings?.length)throw Error('申請のkintone項目設定がありません');
  let remote:Awaited<ReturnType<typeof getRecord>>|null=null;
@@ -29,5 +30,5 @@ export async function prepareCopySource(db:SupabaseClient,model:InventoryModel,k
  }
  if(tezu)related=related.map(r=>({...r,booking:{...r.booking,unitNumber:[...(r.booking.sourceUnitSwitches??[])].filter(s=>s.date<=r.booking.end).at(-1)?.number??r.booking.unitNumber}}));
  if(related.length<1||related.length>5||related.some(r=>r.booking.end!==b.end))throw Error('同じ申請の全機器は共通の利用終了日・最大5台でコピーしてください');
- return{source,related,parsed,formId,version,business:tezu?'tezukuru':'allmight',billingType,rentalPlanId,parentKey:b.managementNo?`number:${b.managementNo}`:b.kind==='request'?`request:${b.id}`:b.key!,snapshot:{source_request_id:b.kind==='request'?b.id:null,record_id:recordId,management_no:b.managementNo,usage_end:b.end,pickup_date:remote?String(remote.record['集荷_日付']?.value??''):b.pickup,source_kind:b.kind}};
+ return{source,sourceWarning:source.booking.key!==key?'同じ管理番号の本登録データを元に、全機器を引き継いでいます。機器番号をご確認ください。':'',related,parsed,formId,version,business:tezu?'tezukuru':'allmight',billingType,rentalPlanId,parentKey:b.managementNo?`number:${b.managementNo}`:b.kind==='request'?`request:${b.id}`:b.key!,snapshot:{source_request_id:b.kind==='request'?b.id:null,record_id:recordId,management_no:b.managementNo,usage_end:b.end,pickup_date:remote?String(remote.record['集荷_日付']?.value??''):b.pickup,source_kind:b.kind}};
 }

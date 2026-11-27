@@ -149,15 +149,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
             placeholder="staff@unity-corp.jp"
           />
         </div>
-        <label className="flex items-center gap-1.5 pb-2 text-xs font-medium text-gray-600">
-          <input
-            type="checkbox"
-            checked={newEmailNotify}
-            onChange={(e) => setNewEmailNotify(e.target.checked)}
-            className="h-4 w-4 accent-blue-600"
-          />
-          メール通知
-        </label>
+        <p className="pb-2 text-xs text-indigo-700">申請の担当者には必ずメール通知します</p>
 <label className="flex items-center gap-2 pb-2 text-xs"><input type="checkbox" checked={newReview} onChange={e=>setNewReview(e.target.checked)}/>担当者確認を必須にする</label>
         <div>
           <label htmlFor={`${createPrefix}-newOrder`} className="block text-xs font-medium text-gray-600">表示順</label>
@@ -226,14 +218,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
                     />
                   </td>
                   <td role="cell" data-label="メール通知" className="px-4 py-2 text-center">
-                    <label className="management-checkbox-target"><input aria-label="メール通知"
-                      type="checkbox"
-                      checked={edit.email_notify_enabled}
-                      onChange={(e) =>
-                        setEdit({ ...edit, email_notify_enabled: e.target.checked })
-                      }
-                      className="h-4 w-4 accent-blue-600"
-                    /></label>
+                    <span className="text-xs text-indigo-700">担当申請は必須通知</span>
                   </td>
 <td role="cell" data-label="担当者確認" className="px-4 py-2"><input aria-label="担当者確認を必須にする" type="checkbox" checked={edit.review_required} onChange={e=>setEdit({...edit,review_required:e.target.checked})}/></td>
                   <td role="cell" data-label="表示順" className="px-4 py-2">
@@ -271,12 +256,12 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
                   <td role="cell" data-label="メール通知" className="px-4 py-2">
                     <span
                       className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        row.email_notify_enabled
+                        !!row.email
                           ? "bg-green-100 text-green-800"
                           : "bg-gray-200 text-gray-600"
                       }`}
                     >
-                      {row.email_notify_enabled ? "ON" : "OFF"}
+                      {row.email ? "担当申請は通知" : "メール未登録"}
                     </span>
                   </td>
                   <td role="cell" data-label="担当者確認" className="px-4 py-2"><span className={`rounded-full px-2 py-1 text-xs ${row.review_required?'bg-indigo-100 text-indigo-900':'bg-slate-100 text-slate-500'}`}>{row.review_required?'確認が必要':'確認なし'}</span></td><td role="cell" data-label="表示順" className="px-4 py-2">{row.sort_order}</td>
@@ -328,7 +313,7 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
       <p className="mt-3 text-xs text-gray-500">
         公開中の担当者が申請画面のプルダウンに表示順で表示されます(表示例: 氏名（所属会社）)。
         選択された氏名は「担当者:氏名」としてFMTに自動追加され、kintoneの担当者フィールドへ登録されます。
-        メール通知がONかつメールアドレスが登録されている担当者は、申請の弊社担当者名が氏名と完全一致したとき(1名のみ)に新規申請メールを受け取ります。
+        申請の「弊社担当者氏名」とマスタの氏名が一致する1名へ必ず通知します。宛先は登録メールアドレス、CCは y-yoshinaga@unity-corp.jp です。担当者確認のON/OFFは申請サイトからの申請だけに適用します。
       </p>
     </div>
   );

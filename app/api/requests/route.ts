@@ -304,7 +304,7 @@ async function POSTHandler(req: NextRequest) {
   const baseUrl = (process.env.APP_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
   const staffReviewPending=await ensureStaffReview(request.id,true).catch(()=>true);
   await notifyNewRequest({
-    staffReviewPending,
+    staffReviewPending,requestId:request.id,
     formTypeId: formType.id,
     formTypeName: formType.name,
     applicantName: applicant_name,

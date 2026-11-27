@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendMail } from "@/lib/mail/mailer";
+import {sendRequestNotificationMail} from "./request-mail";
 import { dedupeEmails, EMAIL_RE } from "@/lib/system-settings";
 import { newRequestSubject, newRequestBody } from "./new-request-mail-content";
 import type { NewRequestNotification } from "./notify";
@@ -9,7 +9,7 @@ import type { NewRequestNotification } from "./notify";
 /**
  * 管理者向け新規申請メール通知(事業別)。
  * 対象: 当該事業の担当管理者で、利用中(active)かつ email_notify_enabled=true かつ有効なメールを登録。
- * ・常時CCは付けない(skipAlwaysCc)。申請者向けメールとは分離。
+ * ・設定の常時CCとは別に、必須の社内CCを通知共通処理で付ける。
  * ・DB不備・対象0件でも全員送信フォールバックはしない。
  * ・送信失敗は申請を失敗させず、ログに記録する(throw しない)。
  */
@@ -50,7 +50,7 @@ export async function sendAdminNewRequestMail(n: NewRequestNotification): Promis
     const text = newRequestBody(n);
     for (const to of emails) {
       try {
-        const r = await sendMail({ to, subject, text, skipAlwaysCc: true });
+        const r = await sendRequestNotificationMail(n,{ to, subject, text, skipAlwaysCc: true });
         if ("error" in r) console.error("[admin-mail] 送信失敗:", to, r.error);
       } catch (err) {
         console.error("[admin-mail] 送信例外:", to, err instanceof Error ? err.message : err);

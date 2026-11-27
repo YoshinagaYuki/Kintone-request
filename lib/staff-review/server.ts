@@ -1,3 +1,4 @@
+import {RENTAL_REQUIRED_CC} from "@/lib/mail/rental-notification-policy";
 import 'server-only';
 import {createHash,randomBytes} from 'node:crypto';
 import {createAdminClient} from '@/lib/supabase/admin';
@@ -23,7 +24,7 @@ export async function sendStaffReviewMail(requestId:string,role:'reviewer'|'requ
  const reviewer=role==='reviewer',to=reviewer?claim.data.email:q.data.applicant_email;
  const subject=reviewer?`【${type}】申請内容の確認・承認をお願いします`:`【${type}】申請内容の修正をお願いします`;
  const text=reviewer?`${q.data.company_staff_name_input} 様\n\n${q.data.applicant_name??'申請者'}様から申請が届きました。\n下記の専用ページで内容を確認し、問題がなければ「承認」を押してください。\n誤りがある場合は「差し戻し」または「修正」を選択できます。\n\n${url}\n\n担当者の承認後、ユニティ管理者が最終承認して本登録します。\nこのリンクは申請内容を閲覧できます。転送・共有しないでください。有効期限は30日です。`:`${q.data.applicant_name??'ご担当者'} 様\n\n担当者から申請内容の修正依頼が届きました。\n\n【差し戻し理由】\n${r.data.reason}\n\n下記から内容を修正して再申請してください。\n${url}\n\n再申請後、担当者が改めて確認します。リンクは転送・共有しないでください。有効期限は30日です。`;
- const result=to?await sendMail({to,subject,text,skipAlwaysCc:true}):{sent:false as const,error:'申請者のメールアドレスが未入力です'};
+ const result=to?await sendMail({to,subject,text,cc:[RENTAL_REQUIRED_CC],skipAlwaysCc:true}):{sent:false as const,error:'申請者のメールアドレスが未入力です'};
  const error=result.sent?null:'error'in result?result.error:'メール送信が設定されていません';
  const update=reviewer?{reviewer_sending_at:null,reviewer_mail_error:error,...(result.sent?{reviewer_sent_revision:claim.data.revision}:{})}:{requester_sending_at:null,requester_mail_error:error,...(result.sent?{requester_sent_revision:claim.data.revision}:{})};
  const saved=await db.from('request_staff_reviews').update(update).eq('request_id',requestId).eq(reviewer?'reviewer_token_hash':'requester_token_hash',hash);if(saved.error)throw Error('送信結果を記録できません');

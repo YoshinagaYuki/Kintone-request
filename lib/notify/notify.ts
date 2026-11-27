@@ -4,10 +4,10 @@
  * 第4段階で「事業別の振り分け」を導入:
  *   1) 事業別Push(担当事業一致 + 利用中 + Push通知ON の管理者端末のみ)
  *   2) 管理者メール(担当事業一致 + 利用中 + メール通知ON の管理者)
- *   3) 担当者メール(申請の担当者名が担当者マスターと完全一致・1件・公開中・通知ON・有効メール)
+ *   3) 担当者メール(申請の担当者名が担当者マスターと完全一致・1件・公開中・有効メール)
  *
  * ・各通知は独立して try/catch。失敗しても throw せず、申請受付は失敗させない(ログのみ)。
- * ・管理者/担当者メールには常時CCを付けない(mailer の skipAlwaysCc)。
+ * ・管理者/担当者メールには必須の社内CCを付ける。
  * ・Google Chat / LINE(登録完了通知)は別系統(notifyRegistration)で現状維持。
  */
 
@@ -18,6 +18,8 @@ import { sendStaffNewRequestMail } from "./staff-mail";
 /** 新規申請通知の内容 */
 export type NewRequestNotification = {
   /** 申請事業(form_types.id)。通知振り分けのキー */
+  requestId?:string;
+  notificationKind?:"submitted"|"staff_approved"|"internal"|"extension";
   staffReviewPending?:boolean;
   skipStaffNotification?:boolean;
   formTypeId: string;

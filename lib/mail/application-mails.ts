@@ -1,3 +1,4 @@
+import {RENTAL_REQUIRED_CC} from "@/lib/mail/rental-notification-policy";
 import {driveVariables} from './drive-links';
 import{approvalMailContent,type ApprovalCorrection}from'./approval-corrections';
 import "server-only";
@@ -106,7 +107,7 @@ export async function sendApplicationMail(
   const subject = renderTemplate(template.subject, vars);
   const text = renderTemplate(template.body, vars);
 
-  const result = await sendMail({ to: ctx.applicant_email, subject, text });
+  const result = await sendMail({ to: ctx.applicant_email, subject, text,cc:[RENTAL_REQUIRED_CC] });
 
   if (result.sent) {
     await supabase
@@ -157,7 +158,7 @@ export async function sendApprovalMail(
 
   const correctionRows=(current?.approval_email_corrections??[]) as ApprovalCorrection[];
   const content=approvalMailContent(subject,text,correctionRows);
-  const result = await sendMail({to:ctx.applicant_email,...content});
+  const result = await sendMail({to:ctx.applicant_email,...content,cc:[RENTAL_REQUIRED_CC]});
 
   if (result.sent) {
     await supabase

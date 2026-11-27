@@ -1,3 +1,4 @@
+import {notifyStoredRequest} from '@/lib/notify/stored-request';
 import {ensureStaffReview} from '@/lib/staff-review/server';
 import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
 import { canManageInventoryRequest } from "@/lib/inventory/request-access";
@@ -18,7 +19,8 @@ async function POSTHandler(req:Request,{params}:{params:Promise<{id:string}>}) {
   if(!await canManageInventoryRequest(db,id,access.admin.auth_user_id))return NextResponse.json({error:"この事業の担当権限が必要です"},{status:403});
   const {data:childId,error}=await db.rpc("create_inventory_extension",{p_id:input.id,p_parent_id:id,p_usage_end:input.usage_end,p_pickup_date:input.pickup_date,p_billing_month:input.billing_month,p_actor:access.admin.auth_user_id});
   if(error||!childId)return NextResponse.json({error:"延長を作成できませんでした。登録済みか、利用日・集荷日・既存の延長を確認してください"},{status:409});
-  if(await ensureStaffReview(childId,true))return NextResponse.json({ok:true,childId,staffReviewPending:true},{status:202});
+  await notifyStoredRequest(childId,'extension');
+  if(await ensureStaffReview(childId,false))return NextResponse.json({ok:true,childId,staffReviewPending:true},{status:202});
   const result=await runInventoryExtension(childId,access.admin.auth_user_id);
   return NextResponse.json({...result,childId},{status:result.ok?201:502});
 }

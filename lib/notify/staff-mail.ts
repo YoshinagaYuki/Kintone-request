@@ -1,71 +1,18 @@
-import "server-only";
-
-import { createAdminClient } from "@/lib/supabase/admin";
-import { sendMail } from "@/lib/mail/mailer";
-import { EMAIL_RE } from "@/lib/system-settings";
-import { newRequestSubject, newRequestBody } from "./new-request-mail-content";
-import type { NewRequestNotification } from "./notify";
-
-/**
- * 担当者向け新規申請メール通知。
- * 送信条件(すべて満たす場合のみ):
- *   ・申請の弊社担当者名が staff_members.name と「完全一致」(trim後の厳密一致。ファジー禁止)
- *   ・公開中(is_active=true)で、その完全一致が「ちょうど1件」(同名複数は送らない)
- *   ・email_notify_enabled=true
- *   ・有効なメールアドレスが登録済み
- * 未入力・不一致・同名複数・OFF・メール未登録 → 送信しない。
- * ・常時CCは付けない(skipAlwaysCc)。
- * ・送信失敗は申請を失敗させず、ログに記録する(throw しない)。
- */
-export async function sendStaffNewRequestMail(n: NewRequestNotification): Promise<void> {
-  const nameInput = (n.staffNameInput ?? "").trim();
-  if (!nameInput) {
-    console.info("[staff-mail] 担当者未入力のため送信しません");
-    return;
-  }
-  try {
-    const admin = createAdminClient();
-    const { data, error } = await admin
-      .from("staff_members")
-      .select("name, email, email_notify_enabled")
-      .eq("is_active", true);
-    if (error) throw new Error(error.message);
-
-    // 完全一致(trim後の厳密一致)。ファジーマッチはしない。
-    const matches = (data ?? []).filter(
-      (s) => ((s.name as string | null) ?? "").trim() === nameInput
-    );
-    if (matches.length !== 1) {
-      console.info(`[staff-mail] 完全一致が ${matches.length} 件のため送信しません(1件のみ送信)`);
-      return;
-    }
-
-    const staff = matches[0];
-    if (staff.email_notify_enabled !== true) {
-      console.info("[staff-mail] 担当者のメール通知がOFFのため送信しません");
-      return;
-    }
-    const email = ((staff.email as string | null) ?? "").trim();
-    if (!EMAIL_RE.test(email)) {
-      console.info("[staff-mail] 有効なメールアドレス未登録のため送信しません");
-      return;
-    }
-
-    try {
-      const r = await sendMail({
-        to: email,
-        subject: newRequestSubject(n),
-        text: newRequestBody(n),
-        skipAlwaysCc: true,
-      });
-      if ("error" in r) console.error("[staff-mail] 送信失敗:", r.error);
-    } catch (err) {
-      console.error("[staff-mail] 送信例外:", err instanceof Error ? err.message : err);
-    }
-  } catch (err) {
-    console.error(
-      "[staff-mail] 担当者メール通知に失敗しました:",
-      err instanceof Error ? err.message : err
-    );
-  }
+import 'server-only';
+import {createAdminClient} from '@/lib/supabase/admin';
+import {sendRequestNotificationMail} from './request-mail';
+import {assignedStaffRecipient,RENTAL_REQUIRED_CC} from '@/lib/mail/rental-notification-policy';
+import {newRequestSubject,newRequestBody} from './new-request-mail-content';
+import type {NewRequestNotification} from './notify';
+/** The assigned staff member always receives request notices; review_required only controls approval. */
+export async function sendStaffNewRequestMail(n:NewRequestNotification):Promise<void>{
+ const db=createAdminClient();try{
+  const result=await db.from('staff_members').select('name,email,is_active').eq('is_active',true);if(result.error)throw Error('担当者マスタを取得できませんでした');
+  const email=assignedStaffRecipient(n.staffNameInput??'',result.data??[]);
+  const sent=await sendRequestNotificationMail(n,{to:email,subject:newRequestSubject(n),text:newRequestBody(n),skipAlwaysCc:true});
+  if('error'in sent)console.error('[staff-mail] 担当者への通知を送信できませんでした');
+ }catch(error){
+  console.error('[staff-mail] 担当者への通知を準備できませんでした');
+  if(n.requestId)await db.from('request_histories').insert({request_id:n.requestId,action:'email_failed',actor:'system',detail:{kind:'assigned_staff_notice',staff_name:n.staffNameInput,cc:[RENTAL_REQUIRED_CC],error:error instanceof Error?error.message:'担当者通知に失敗しました'}});
+ }
 }
