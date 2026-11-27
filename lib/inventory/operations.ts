@@ -22,10 +22,14 @@ export function bookingPatch(body:Record<string,unknown>):BookingPatch{
 export function unitNumber(value:unknown){if(value===null||value==='')return null;if(!Number.isInteger(value)||(value as number)<1||(value as number)>250)throw Error('番号は1〜250から選択してください');return value as number;}
 export function resolveUnitNumber(model:InventoryModel,r:InventoryRecord,value:unknown,existing=model.records){
  if(value!=='auto')return unitNumber(value);
- const item=model.items.find(i=>i.id===r.itemId);if(!item)throw Error('有効な商品を選択してください');
- const available:number[]=[];for(let n=unitStart(item);n<=250;n++){const cycle=occupiedCycle(r.booking);if([cycle.from,...(item.schedule??[]).filter(s=>cycle.from<=s.effective_date&&s.effective_date<=cycle.to).map(s=>s.effective_date)].some(d=>n>=unitStart(item)+(stockOn(item,d)?.usable??0)))break;try{validateNumber(model,r,n);}catch{continue;}if(automaticNumberAvailable(model,r,n,existing))available.push(n);}
+ const available=availableAutomaticNumbers(model,r,existing);
  available.sort((a,b)=>automaticPackingScore(model,r,a,existing)-automaticPackingScore(model,r,b,existing)||a-b);if(available.length)return available[0];
  throw Error('確保期間を通して空いている番号がありません。日程を調整するか未割当を選択してください');
+}
+export function availableAutomaticNumbers(model:InventoryModel,r:InventoryRecord,existing=model.records){
+ const item=model.items.find(i=>i.id===r.itemId);if(!item)throw Error('有効な商品を選択してください');
+ const available:number[]=[];for(let n=unitStart(item);n<=250;n++){const cycle=occupiedCycle(r.booking);if([cycle.from,...(item.schedule??[]).filter(s=>cycle.from<=s.effective_date&&s.effective_date<=cycle.to).map(s=>s.effective_date)].some(d=>n>=unitStart(item)+(stockOn(item,d)?.usable??0)))break;try{validateNumber(model,r,n);}catch{continue;}if(automaticNumberAvailable(model,r,n,existing))available.push(n);}
+ return available;
 }
 export function validateNumber(model:InventoryModel,r:InventoryRecord,n:number|null){const item=model.items.find(i=>i.id===r.itemId);if(!item)throw Error('有効な商品を選択してください');for(const segment of unitSegments({...r.booking,unitNumber:n})){const number=segment.unitNumber;if(number==null)continue;const cycle=occupiedCycle(segment);const checks=[cycle.from,...(item.schedule??[]).filter(s=>cycle.from<=s.effective_date&&s.effective_date<=cycle.to).map(s=>s.effective_date)];if(!Number.isInteger(number)||number<unitStart(item)||number>250||checks.some(d=>number>=unitStart(item)+(stockOn(item,d)?.total??0)))throw Error('この機器番号は確保期間中の保有数を超えています');}}
 export function slotSchedule(records:InventoryRecord[]){return records.filter(r=>!r.deleted).flatMap(r=>unitSegments(r.booking).filter(b=>b.unitNumber!=null).map(b=>({item_id:r.itemId,unit_number:b.unitNumber,group_key:b.group,occupied_from:occupiedCycle(b).from,occupied_to:occupiedCycle(b).to})));}
