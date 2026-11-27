@@ -1,0 +1,33 @@
+begin;
+do $$
+declare k text:='qa:auto-delivery-rollback'; d text:=encode(sha256(convert_to(k,'UTF8')),'hex'); l uuid; l2 uuid; r public.inventory_delivery_completions%rowtype;
+begin
+ l:=public.claim_delivery_auto_check('allmight',k,'2026-11-27',repeat('a',64));
+ if l is null then raise exception 'claim missing'; end if;
+ if public.claim_delivery_auto_check('allmight',k,'2026-11-27',repeat('a',64)) is not null then raise exception 'duplicate lease'; end if;
+ perform public.finish_delivery_auto_check('allmight',k,gen_random_uuid(),repeat('a',64),true,'配達済み');
+ select * into r from public.inventory_delivery_completions where business='allmight' and delivery_id=d;
+ if r.completed then raise exception 'wrong lease completed'; end if;
+ perform public.finish_delivery_auto_check('allmight',k,l,repeat('a',64),true,'配達済み');
+ select * into r from public.inventory_delivery_completions where business='allmight' and delivery_id=d;
+ if not r.completed or r.completion_source<>'seino' or r.completed_at is null then raise exception 'not auto completed'; end if;
+ perform public.invalidate_delivery_auto_identity('allmight',k,repeat('z',64));
+ select * into r from public.inventory_delivery_completions where business='allmight' and delivery_id=d;
+ if not r.completed then raise exception 'old identity invalidation won'; end if;
+ perform public.invalidate_delivery_auto_identity('allmight',k,repeat('a',64));
+ select * into r from public.inventory_delivery_completions where business='allmight' and delivery_id=d;
+ if r.completed then raise exception 'changed identity not reset'; end if;
+ l2:=public.claim_delivery_auto_check('allmight',k,'2026-11-27',repeat('b',64));
+ if l2 is null then raise exception 'changed shipment not claimed'; end if;
+ update public.inventory_delivery_completions set auto_disabled=true,completed=false,auto_lease=null where business='allmight' and delivery_id=d;
+ perform public.finish_delivery_auto_check('allmight',k,l2,repeat('b',64),true,'配達済み');
+ select * into r from public.inventory_delivery_completions where business='allmight' and delivery_id=d;
+ if r.completed then raise exception 'manual override lost'; end if;
+ update public.inventory_delivery_completions set completed=true,completion_source='manual' where business='allmight' and delivery_id=d;
+ perform public.invalidate_delivery_auto_identity('allmight',k,repeat('a',64));
+ select * into r from public.inventory_delivery_completions where business='allmight' and delivery_id=d;
+ if not r.completed then raise exception 'manual completion invalidated'; end if;
+ if has_function_privilege('authenticated','public.claim_delivery_auto_check(text,text,date,text)','EXECUTE') or has_function_privilege('anon','public.finish_delivery_auto_check(text,text,uuid,text,boolean,text)','EXECUTE') or has_table_privilege('anon','public.inventory_delivery_automation_config','SELECT') then raise exception 'access exposed'; end if;
+end $$;
+rollback;
+select 'lease, automatic completion, source change, manual precedence and role checks passed; QA data rolled back' as result;
