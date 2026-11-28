@@ -1,4 +1,5 @@
 "use client";
+import {InventoryUnitOptionsProvider} from "./inventory-unit-options-context";
 import{InventoryMemoSearch}from'./inventory-memo-search';
 import{boardSelectionItem}from'@/lib/inventory/display-groups';
 import{bookingPhase}from'@/lib/inventory/board';
@@ -19,7 +20,7 @@ const mobileQuery='(max-width: 639px), (pointer: coarse)';
 const subscribeMobile=(notify:()=>void)=>{const query=window.matchMedia(mobileQuery);query.addEventListener('change',notify);return()=>query.removeEventListener('change',notify);};
 const mobileSnapshot=()=>window.matchMedia(mobileQuery).matches;
 const DAY=46;
-export function InventoryBoard({item,items,dates,anchor,lanes,staff,version,requests,backgroundDays}:{backgroundDays?:ScreenDay[];item:CapacityItem;items:CapacityItem[];dates:string[];anchor:string;lanes:BoardLane[];staff:{id:string;name:string}[];version:number;requests:InventoryRecord[]}){
+function InventoryBoardContents({item,items,dates,anchor,lanes,staff,version,requests,backgroundDays}:{backgroundDays?:ScreenDay[];item:CapacityItem;items:CapacityItem[];dates:string[];anchor:string;lanes:BoardLane[];staff:{id:string;name:string}[];version:number;requests:InventoryRecord[]}){
  const mobile=useSyncExternalStore(subscribeMobile,mobileSnapshot,()=>false);
  const [zoom,setZoom]=useState(100),[zoomInput,setZoomInput]=useState("100");const scale=zoom/100;const previousView=useRef({anchor:"",scale});const viewNode=useRef<HTMLDivElement|null>(null);const zoomRef=useRef(zoom);zoomRef.current=zoom;const pinchView=useRef<{left:number;top:number}|null>(null);
  function changeZoom(value:number){const next=Math.max(50,Math.min(150,Math.round(value)));setZoom(next);setZoomInput(String(next));}
@@ -123,3 +124,5 @@ export function InventoryBoard({item,items,dates,anchor,lanes,staff,version,requ
   </section></div>}
  </>;
 }
+
+export function InventoryBoard(props:Parameters<typeof InventoryBoardContents>[0]){return <InventoryUnitOptionsProvider model={{items:props.items,records:props.requests,version:props.version}}><InventoryBoardContents {...props}/></InventoryUnitOptionsProvider>;}

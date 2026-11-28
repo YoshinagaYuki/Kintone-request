@@ -1,5 +1,5 @@
 import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { registerRequestToKintone } from "@/lib/kintone/register-request";
 import { getVersionedConfig, isKintoneReady } from "@/lib/form-types";
@@ -83,7 +83,7 @@ async function POSTHandler(
     );
   }
 
-  const result = await registerRequestToKintone(supabase, id, user.id);
+  const result = await registerRequestToKintone(supabase, id, user.id, {deferNotifications:after});
 
   // 連携終了で processing_at を解除(自処理トークン一致時のみ)
   await supabase

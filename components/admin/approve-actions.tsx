@@ -1,4 +1,5 @@
 "use client";
+import {InventoryRegistrationComplete} from "./inventory-completion";
 import {StaffNameField} from "./staff-name-field";
 import{ApprovalCorrectionPicker}from'./approval-correction-picker';
 import{approvalCorrections,correctionsSignature,type CorrectionHistory}from'@/lib/mail/approval-corrections';
@@ -153,7 +154,7 @@ export function ApproveActions({
       } else {
         setDone(true);
         succeeded = true;
-        router.push(body?.inventoryWarning ? '/admin/requests?inventory=unassigned' : '/admin/requests'); // 成功: ボタンを「登録完了」に固定(二重登録防止)
+        router.refresh(); // 成功: ボタンを「登録完了」に固定(二重登録防止)
       }
     } catch {
       setError("通信エラーが発生しました");
@@ -229,6 +230,7 @@ export function ApproveActions({
     });
   }
 
+  if(done)return <InventoryRegistrationComplete requestId={requestId} inventoryHref={requireBillingType?'/admin/inventory/tezukuru':'/admin/inventory/allmight'}/>;
   return (
     <div id="request-approval" className="mt-8 scroll-mt-24">
       {optionalShippingAddress&&status==='pending'&&<p className="text-sm text-slate-600">延長コピーの住所・連絡先は任意です。空欄でも本登録できます。住所がない区間は輸送日数を自動計算せず、入力済みの確保期間で登録します。</p>}

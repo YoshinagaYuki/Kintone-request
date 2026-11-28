@@ -51,10 +51,13 @@ export type RegisterResult =
   | { ok: true; recordId: string; managementNo: string; inventoryWarning?:string }
   | { ok: false; error: string };
 
+type RegisterOptions = { deferNotifications?: (job: () => Promise<void>) => void };
+
 async function registerRequestInternal(
   supabase: SupabaseClient,
   requestId: string,
-  actor: string
+  actor: string,
+  options: RegisterOptions
 ): Promise<RegisterResult> {
   if(await ensureStaffReview(requestId))return {ok:false,error:'担当者の確認・承認が完了していません'};
   const { data: request, error: fetchError } = await supabase
@@ -350,6 +353,12 @@ async function registerRequestInternal(
     console.error("[register-request] requests更新失敗:", updateError.message);
   }
 
+  const sendNotifications = async () => {
+    const {createAdminClient} = await import('../supabase/admin');
+    const notificationDb = createAdminClient();
+    const addHistory = async (action:string, detail:Record<string,unknown>|null) => {
+      await notificationDb.from('request_histories').insert({request_id:requestId,action,actor,detail});
+    };
   // LINE WORKS通知(no-opスタブ)。失敗してもフローは止めない
   try {
     await notifyApproved({ formTypeName: formType.name, kintoneRecordId: recordId });
@@ -386,7 +395,7 @@ async function registerRequestInternal(
   // approval_email_sent_at で二重送信を防止(retry再実行・再読み込みでも重複しない)
   try {
     await sendApprovalMail(
-      supabase,
+      notificationDb,
       requestId,
       {
         applicant_name: (request.applicant_name as string | null) ?? null,
@@ -408,11 +417,15 @@ async function registerRequestInternal(
     console.error("[register-request] 承認完了メール失敗:", err);
   }
 
+  };
+  if(options.deferNotifications) options.deferNotifications(sendNotifications);
+  else await sendNotifications();
+
   return { ok: true, recordId, managementNo };
 }
 
-export async function registerRequestToKintone(supabase:SupabaseClient,requestId:string,actor:string):Promise<RegisterResult>{
- const result=await registerRequestInternal(supabase,requestId,actor);if(!result.ok)return result;
+export async function registerRequestToKintone(supabase:SupabaseClient,requestId:string,actor:string,options:RegisterOptions={}):Promise<RegisterResult>{
+ const result=await registerRequestInternal(supabase,requestId,actor,options);if(!result.ok)return result;
  try{
   const kind=await supabase.from('requests').select('form_types(kintone_app_id)').eq('id',requestId).single();
   if(kind.error)throw Error('申請種別を確認できませんでした');

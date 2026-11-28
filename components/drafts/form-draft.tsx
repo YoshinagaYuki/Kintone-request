@@ -50,4 +50,4 @@ export function useFormDraft<T extends Record<string,unknown>>(key:string,value:
  function discard(){if(!window.confirm('保存した下書きを破棄して、最初の内容に戻しますか？'))return false;reset();return true;}
  return {clear,discard,reset,status,ready,restart:()=>{cleared.current=false;}};
 }
-export function DraftNotice({draft}:{draft:{status:string;discard:()=>void}}){return <aside className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-xs leading-6 text-indigo-950"><div><p role="status" className="font-semibold">{draft.status||'入力途中でも、戻ってから続きができます'}</p><p className="text-indigo-700">同じ端末・ブラウザで7日間保存。もう一度この入力画面を開くと再開できます。</p></div></aside>}
+export function DraftNotice({draft}:{draft:{status:string;discard:()=>void}}){return draft.status.includes('保存できません')?<p role="alert" className="text-xs text-rose-700">{draft.status}</p>:null;}

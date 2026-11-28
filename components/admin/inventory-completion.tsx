@@ -1,0 +1,7 @@
+'use client';
+export function InventoryRegistrationComplete({requestId,inventoryHref,warning,onNavigate}:{requestId:string;inventoryHref:string;warning?:boolean;onNavigate?:()=>void}){
+ return <section role="status" className="space-y-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4"><h3 className="font-semibold text-emerald-950">本登録が完了しました</h3>{warning&&<p className="text-sm text-amber-900">機器番号の割り当てを確認してください。</p>}<div className="grid gap-2 sm:grid-cols-2"><a href={`/admin/requests/${requestId}`} onClick={onNavigate} className="flex min-h-11 items-center justify-center rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white">登録内容を確認</a><a href={inventoryHref} onClick={onNavigate} className="flex min-h-11 items-center justify-center rounded-lg border bg-white px-3 py-2 text-sm font-semibold text-slate-700">在庫管理表へ移動</a></div></section>;
+}
+export function InventoryHoldComplete({onInventory,onConfirm}:{onInventory:()=>void;onConfirm:()=>void}){
+ return <section role="status" className="space-y-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4"><h3 className="font-semibold text-emerald-950">在庫を確保しました</h3><div className="grid gap-2 sm:grid-cols-2"><button type="button" onClick={onInventory} className="min-h-11 rounded-lg border bg-white px-3 py-2 text-sm font-semibold text-slate-700">在庫管理表に戻る</button><button type="button" onClick={onConfirm} className="min-h-11 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white">本登録に進む</button></div></section>;
+}

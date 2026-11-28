@@ -1,3 +1,4 @@
+import {after} from 'next/server';
 import {resolveAdminStaff} from '@/lib/inventory/admin-staff';
 import {notifyStoredRequest} from '@/lib/notify/stored-request';
 import {confirmationConflicts,slideConfirmationNumbers} from '@/lib/inventory/confirmation-conflicts';
@@ -75,6 +76,6 @@ async function handler(req:NextRequest){const a=await inventoryAccess();if('erro
  const saved=await db.rpc('create_inventory_confirmation',{p_actor:a.admin.auth_user_id,p_id:body.id,p_hash:hash,p_expected:model.version,p_form:f.id,p_version:f.version,p_parsed:data,p_raw:rawText,p_input:{...input,staff:staff.name},p_slots:slots,p_candidate:slotSchedule(candidates),p_existing:slotSchedule(existing)});
  if(saved.error){if(saved.error.message.includes('inventory_stale'))return NextResponse.json({code:'inventory_stale',error:'在庫の更新を確認しています。入力は保持しています。'},{status:409});if(saved.error.message.includes('source_already_confirmed')||saved.error.code==='23505')throw Error('この仮押さえは本登録の申請が作成済みです。申請一覧を確認してください');if(saved.error.message.includes('inventory_conflict'))throw Error('機器番号が別の予定と重なっています。日程・機器番号を確認してください');throw Error('申請を保存できませんでした。入力は保持しています');}
  if(input.skip_applicant_contact===true){const internal=await db.rpc('confirm_internal_inventory_review',{p_id:body.id,p_actor:a.admin.auth_user_id});if(internal.error)throw Error('社内本登録の確認を完了できませんでした。保存済み申請から再試行してください');}
- const staffReviewPending=await ensureStaffReview(body.id,false);await notifyStoredRequest(body.id,'internal');revalidatePath('/admin/inventory/allmight');revalidatePath('/admin/inventory/tezukuru');revalidatePath('/admin/requests');return NextResponse.json({ok:true,requestId:body.id,status:'pending',staffReviewPending,numberChanges});
+ const staffReviewPending=await ensureStaffReview(body.id,false);after(()=>notifyStoredRequest(body.id,'internal'));revalidatePath('/admin/inventory/allmight');revalidatePath('/admin/inventory/tezukuru');revalidatePath('/admin/requests');return NextResponse.json({ok:true,requestId:body.id,status:'pending',staffReviewPending,numberChanges});
  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'入力内容を確認してください'},{status:400});}}
 export const POST=withInventorySheetPush(handler);

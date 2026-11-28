@@ -10,7 +10,7 @@ import {withInventorySheetPush} from "@/lib/inventory/sheet-push";
 import {tezukuruKitNames} from '@/lib/inventory/business';
 import {matchCapacityItem} from '@/lib/inventory/availability';
 import {savedRentalItems} from '@/lib/inventory/rental-items';
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { registerRequestToKintone } from "@/lib/kintone/register-request";
 import { getVersionedConfig, isKintoneReady } from "@/lib/form-types";
@@ -307,7 +307,7 @@ async function POSTHandler(
   });
 
   // kintone登録(共通処理。成功時に承認完了メールも送信される)
-  const result = await registerRequestToKintone(supabase, id, user.id);
+  const result = await registerRequestToKintone(supabase, id, user.id, {deferNotifications:after});
 
   // 連携処理の終了(成功/失敗問わず)で processing_at を解除。自処理のトークン一致時のみ解除する
   // (他処理が設定したロックを誤解除しない)。
